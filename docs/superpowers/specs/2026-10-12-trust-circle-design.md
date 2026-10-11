@@ -87,6 +87,7 @@ When the sender's answer names someone as the requester, the AI identifies who i
 - An entry becomes confirmed when a trusted contact blocks a payment to it, a real person answers "It wasn't me", or two independent users report it.
 - Confirmed entries make any payment to that identifier high risk for every user. Unconfirmed entries are a signal only.
 - One-tap report: the AI drafts a report (message, identifiers, scam type, reasons). With consent it is emailed to `phishing@paypal.com`. The registry never stores victim details or message content.
+- Pattern matching (Elastic): for each reported scam the AI writes a short anonymised description of the script (for example, "caller claims to be a grandchild in custody and asks for bail money to be sent urgently and kept secret"). Descriptions are indexed in Elastic and searched by meaning. A new message or payment answer that closely matches a known pattern raises a signal even when every identifier is new, so reworded versions of a known scam are still caught. Only the anonymised description is indexed, never the original message.
 
 ### 4.6 Link inspection (phase 2)
 
@@ -116,7 +117,7 @@ One Next.js (TypeScript, App Router) application, installable as a PWA, hosted o
 | `ai` | Groq client, prompts, structured-output validation | Groq |
 | `payments` | PayPal orders, authorise, capture, void, payout, refund; payment state machine | PayPal |
 | `verification` | Real-person check, safe word, memory-question coaching | `alerts` |
-| `registry` | Store and look up scam identifiers; confirmation rules; report drafts | database |
+| `registry` | Store and look up scam identifiers; confirmation rules; report drafts; pattern search | database, Elastic |
 | `alerts` | Web push and email delivery | push service, email provider |
 | `agent` | Aftercare and investigation using PayPal's Agent Toolkit | `ai`, PayPal |
 | UI | Sender view, trusted-contact view, onboarding, landing | all of the above via server routes |
@@ -130,6 +131,7 @@ Supporting choices
 - Email: Resend.
 - Push: the `web-push` library with VAPID keys. Email is always sent alongside push.
 - Scheduled work (cooling-off expiry, 72-hour auto-void): a Render cron job calling a protected route.
+- Pattern search: an Elastic index of scam pattern descriptions, using Elastic's built-in semantic search so no separate embedding provider is needed. PostgreSQL stays the source of truth; the index can be rebuilt from it. If Elastic is unreachable, the signal is skipped and the other rules still apply.
 
 ## 6. Risk engine
 
@@ -144,6 +146,7 @@ Step 1, signals computed in code
 | Payee is a confirmed registry entry | High, always |
 | Payee is linked to a message this sender checked and that was judged a scam | High |
 | Payee is an unconfirmed registry entry | At least medium |
+| The message or the sender's answer closely matches a known scam pattern | At least medium |
 | First-time payee | Contributes |
 | Amount well above the sender's normal, or above a limit the circle set | Contributes |
 | Several payments in a short time | Contributes |
@@ -201,6 +204,7 @@ Server SDK: `@paypal/paypal-server-sdk`.
 | `MessageCheck` | Checked text, verdict, extracted identifiers |
 | `Verification` | Payment, method (real person, safe word, memory question), outcome |
 | `RegistryEntry` | Identifier type and value, scam type, status, report count |
+| `ScamPattern` | Anonymised script description, scam type, report count (mirrored to Elastic) |
 | `Report` | Registry entry, drafted report, where it was sent |
 | `Alert` | Recipient, channel, payload, delivery status |
 | `AuditLog` | Actor, action, payment, timestamp |
@@ -236,6 +240,7 @@ Design skills: UI/UX Pro Max and `frontend-design` for product screens, the Tast
 | PayPal void fails | Retried by the cron job; the authorisation expires by itself as a backstop |
 | Payout fails or is unclaimed | Captured funds are refunded to the sender |
 | Push not delivered | Email is always sent as well |
+| Elastic unreachable | Pattern signal skipped; identifier and behaviour rules still apply |
 | Webhook missed | Reconciliation on the next cron run reads state from PayPal |
 | Trusted contact never responds | Cooling-off release by the sender, then auto-void at 72 hours |
 
@@ -247,6 +252,7 @@ Design skills: UI/UX Pro Max and `frontend-design` for product screens, the Tast
 | APIMatic | PayPal context plugin for the coding assistant during the build | Eligible |
 | Render | Hosting, database, cron | Eligible |
 | KERNEL | Link inspection (phase 2) | No prize offered |
+| Elastic | Semantic matching of scam patterns in the registry | No prize offered |
 
 A project can win at most one sponsor prize; AG Grid is the target.
 
@@ -262,6 +268,7 @@ These are checked with a throwaway script before any product code depends on the
 6. The Agent Toolkit's tool list matches section 8.
 7. Groq's current vision and text models, structured-output support, and free-tier rate limits.
 8. KERNEL's access terms for hackathon participants.
+9. Elastic's access terms for participants, and that its built-in semantic search works on the tier we get.
 
 If 3 fails, the fallback is to name the recipient as payee on the order directly; if that also fails, the demo recipient is a second business account.
 
@@ -279,7 +286,7 @@ If 3 fails, the fallback is to name the recipient as payee on the order directly
 2. Demo path: guarded send with hold, alert, approve or block, real sandbox calls.
 3. Risk engine with the evaluation set; message checker.
 4. Verify the real person; safe word; memory-question coaching.
-5. Registry, one-tap report, dashboard and trend feed.
+5. Registry, one-tap report, pattern matching with Elastic, dashboard and trend feed.
 6. PWA install, push, onboarding, presets.
 7. Aftercare, then link inspection if access allows.
 8. Accessibility pass, demo mode, README with accuracy figures and architecture diagram, licence.
