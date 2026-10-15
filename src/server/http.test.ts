@@ -3,7 +3,7 @@ import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentInputError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
-import { errorResponse } from "./http";
+import { errorResponse, readJsonObject } from "./http";
 
 vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -36,5 +36,13 @@ describe("errorResponse", () => {
     const r = errorResponse(new Error("secret detail"));
     expect(r.status).toBe(500);
     expect(JSON.stringify(await r.json())).not.toContain("secret detail");
+  });
+});
+
+describe("readJsonObject", () => {
+  const req = (body: string) => new Request("http://x", { method: "POST", body });
+  it("parses an object", async () => expect(await readJsonObject(req('{"a":1}'))).toEqual({ a: 1 }));
+  it("returns null for malformed json, arrays, null and scalars", async () => {
+    for (const b of ["{oops", "[1]", "null", "5", ""]) expect(await readJsonObject(req(b))).toBeNull();
   });
 });

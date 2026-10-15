@@ -10,6 +10,12 @@ const base = (over: Partial<NewPayment> = {}): NewPayment => ({
 });
 
 describe("memory payment repo", () => {
+  it("reports whether a user exists", async () => {
+    const repo = createMemoryPaymentRepo({ users: ["u1"] });
+    expect(await repo.userExists("u1")).toBe(true);
+    expect(await repo.userExists("nope")).toBe(false);
+  });
+
   it("lets exactly one of two concurrent transitions win", async () => {
     const repo = createMemoryPaymentRepo();
     const p = await repo.insert(base());

@@ -18,6 +18,22 @@ export function currentUserId(req: Request): string | null {
   return verifySession(decoded, getContainer().env.SESSION_SECRET);
 }
 
+export const BAD_BODY = "Please check the details and try again.";
+
+/** Parses a JSON object body; returns null for malformed JSON or a non-object (array, null, scalar). */
+export async function readJsonObject(req: Request): Promise<Record<string, unknown> | null> {
+  try {
+    const body: unknown = await req.json();
+    return typeof body === "object" && body !== null && !Array.isArray(body) ? (body as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function badBody(): Response {
+  return Response.json({ error: BAD_BODY }, { status: 400 });
+}
+
 export function errorResponse(e: unknown): Response {
   if (e instanceof PaymentInputError) return Response.json({ error: e.message, field: e.field }, { status: 400 });
   if (e instanceof NotAllowedError) return Response.json({ error: e.message }, { status: 403 });

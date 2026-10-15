@@ -28,6 +28,13 @@ beforeEach(async () => {
 afterAll(async () => handle?.close());
 
 describe("drizzle payment repo", () => {
+  it("reports whether a user exists, tolerating non-uuid ids", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    expect(await repo.userExists(senderId)).toBe(true);
+    expect(await repo.userExists(randomUUID())).toBe(false);
+    expect(await repo.userExists("not-a-uuid")).toBe(false);
+  });
+
   it("inserts and reads a payment", async () => {
     const repo = createDrizzlePaymentRepo(handle.db);
     const p = await repo.insert(base());

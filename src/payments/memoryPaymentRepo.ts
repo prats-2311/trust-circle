@@ -1,6 +1,6 @@
 import { ConcurrentUpdateError, type AuditEntry, type PaymentRecord, type PaymentRepo } from "./paymentRepo";
 
-export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string; contactId: string }[] } = {}): PaymentRepo {
+export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string; contactId: string }[]; users?: string[] } = {}): PaymentRepo {
   const rows = new Map<string, PaymentRecord>();
   const audits: AuditEntry[] = [];
   const links = seed.trustLinks ?? [];
@@ -47,6 +47,9 @@ export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string;
     },
     async isContactFor(contactId, senderId) {
       return links.some((l) => l.contactId === contactId && l.senderId === senderId);
+    },
+    async userExists(id) {
+      return (seed.users ?? []).includes(id) || links.some((l) => l.senderId === id || l.contactId === id);
     },
     async audit(e) {
       audits.push(structuredClone(e));

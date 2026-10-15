@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { auditLog, payments, trustLinks } from "@/db/schema";
+import { auditLog, payments, trustLinks, users } from "@/db/schema";
 import type { ScamType } from "@/domain/types";
 import { ConcurrentUpdateError, type PaymentRecord, type PaymentRepo } from "./paymentRepo";
 
@@ -58,6 +58,11 @@ export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
         recentAmountsCents: paid.map((r) => r.amountCents),
         paymentsInLastHour: count?.n ?? 0,
       };
+    },
+    async userExists(id) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return false;
+      const [row] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
+      return Boolean(row);
     },
     async isContactFor(contactId, senderId) {
       const [row] = await db

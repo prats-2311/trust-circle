@@ -54,6 +54,7 @@ export interface PaymentRepo {
     now: Date,
   ): Promise<{ previousPayees: string[]; recentAmountsCents: number[]; paymentsInLastHour: number }>;
   isContactFor(contactId: string, senderId: string): Promise<boolean>;
+  userExists(id: string): Promise<boolean>;
   audit(e: AuditEntry): Promise<void>;
   auditFor(paymentId: string): Promise<AuditEntry[]>;
 }
