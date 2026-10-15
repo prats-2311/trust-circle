@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConcurrentUpdateError } from "./paymentRepo";
 import { createMemoryPaymentRepo } from "./memoryPaymentRepo";
-import { NotAllowedError, PaymentInputError, createPaymentService } from "./paymentService";
+import { NotAllowedError, PaymentInputError, STALE_MS, createPaymentService } from "./paymentService";
 import { PayPalError, type PayPalGateway } from "./paypalGateway";
 
 const SENDER = "00000000-0000-4000-8000-000000000001";
@@ -32,7 +32,7 @@ function setup(opts: { level?: "low" | "medium" | "high"; gateway?: Partial<PayP
     now: () => clock,
     newId: () => `00000000-0000-4000-9000-${String(++n).padStart(12, "0")}`,
   });
-  return { repo, gateway, service, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
+  return { repo, gateway, service, now: () => clock, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
 }
 const send = { senderId: SENDER, payee: "Grandson@Example.com", amountCents: 80000, senderAnswer: "my grandson" };
 
@@ -109,7 +109,7 @@ describe("completeApproval", () => {
     });
     const { payment } = await service.start({ ...send, amountCents: 1000 });
     await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
-    expect((await repo.get(payment.id))?.state).toBe("authorised");
+    expect((await repo.get(payment.id))?.state).toBe("released");
   });
 });
 
@@ -304,4 +304,176 @@ it("approve racing block: exactly one wins, the loser gets ConcurrentUpdateError
   const cap = (ctx.gateway.captureAuthorization as ReturnType<typeof vi.fn>).mock.calls.length;
   const vd = (ctx.gateway.voidAuthorization as ReturnType<typeof vi.fn>).mock.calls.length;
   expect(cap + vd).toBe(1);
+});
+
+function gate() {
+  let open!: () => void;
+  const promise = new Promise<void>((r) => (open = r));
+  return { promise, open };
+}
+
+describe("RELEASE is the claim (capture in flight)", () => {
+  async function heldWithGatedCapture() {
+    // Real-time start so the in-flight released row is not stale to the sweep.
+    const g = gate();
+    const captureAuthorization = vi.fn().mockImplementation(async () => {
+      await g.promise;
+      return { captureId: "CAP1" };
+    });
+    const ctx = setup({ level: "high", start: new Date(), gateway: { captureAuthorization } });
+    const { payment } = await ctx.service.start(send);
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    return { ...ctx, g, id: payment.id, captureAuthorization };
+  }
+
+  it("a block arriving while approve's capture is pending is refused and nothing is voided", async () => {
+    const { service, gateway, g, id, captureAuthorization } = await heldWithGatedCapture();
+    const approve = service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "approve" });
+    await vi.waitFor(() => expect(captureAuthorization).toHaveBeenCalled());
+    await expect(service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    expect(gateway.voidAuthorization).not.toHaveBeenCalled();
+    g.open();
+    expect((await approve).state).toBe("paid_out");
+  });
+
+  it("a block arriving while senderRelease's capture is pending is refused", async () => {
+    const { service, gateway, g, id, captureAuthorization, advance } = await heldWithGatedCapture();
+    advance(24 * 3_600_000);
+    const release = service.senderRelease({ paymentId: id, senderId: SENDER });
+    await vi.waitFor(() => expect(captureAuthorization).toHaveBeenCalled());
+    await expect(service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    expect(gateway.voidAuthorization).not.toHaveBeenCalled();
+    g.open();
+    expect((await release).state).toBe("paid_out");
+  });
+
+  it("expireStale at 72h does not void a payment whose capture is pending", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-11-01T10:00:00Z"));
+      const { service, gateway, g, id, captureAuthorization, advance } = await heldWithGatedCapture();
+      const tick = (ms: number) => { advance(ms); vi.setSystemTime(new Date(Date.now() + ms)); };
+      tick(71 * 3_600_000 + 59 * 60_000);
+      const approve = service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "approve" });
+      await vi.waitFor(() => expect(captureAuthorization).toHaveBeenCalled());
+      tick(60_000);
+      expect((await service.expireStale()).expired).toEqual([]);
+      expect(gateway.voidAuthorization).not.toHaveBeenCalled();
+      g.open();
+      expect((await approve).state).toBe("paid_out");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("refuses approve and release once the 72-hour hold has ended, but still allows block", async () => {
+    const { service, advance, id } = await heldWithGatedCapture();
+    advance(72 * 3_600_000);
+    await expect(service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "approve" })).rejects.toThrow("This payment's hold has ended.");
+    await expect(service.senderRelease({ paymentId: id, senderId: SENDER })).rejects.toThrow("This payment's hold has ended.");
+    expect((await service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" })).state).toBe("voided");
+  });
+});
+
+describe("when compensation is allowed", () => {
+  const uncertain = () => new PayPalError("payout", 503, undefined, "d", true);
+  async function run(sendPayout: PayPalGateway["sendPayout"]) {
+    const ctx = setup({ level: "low", gateway: { sendPayout } });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    const result = await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch((e) => e);
+    return { ...ctx, id: payment.id, result, state: (await ctx.repo.get(payment.id))?.state };
+  }
+
+  it("uncertain then a token failure leaves it captured with no refund", async () => {
+    const r = await run(vi.fn().mockRejectedValueOnce(uncertain()).mockRejectedValue(new PayPalError("t", 0, undefined, undefined)));
+    expect(r.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+  });
+  it("uncertain then 422 leaves it captured with no refund", async () => {
+    const r = await run(vi.fn().mockRejectedValueOnce(uncertain()).mockRejectedValue(new PayPalError("p", 422, "X", "d")));
+    expect(r.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+  });
+  it("a first-attempt 422 refunds", async () => {
+    const r = await run(vi.fn().mockRejectedValue(new PayPalError("p", 422, "X", "d")));
+    expect(r.state).toBe("refunded");
+  });
+  it.each([401, 408, 429, 0, 500])("a first-attempt status %i leaves it captured with no refund", async (status) => {
+    const r = await run(vi.fn().mockRejectedValue(new PayPalError("p", status, undefined, "d")));
+    expect(r.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+  });
+  it("a non-PayPal error leaves it captured with no refund", async () => {
+    const r = await run(vi.fn().mockRejectedValue(new Error("boom")));
+    expect(r.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+  });
+  it("the sweep never compensates a captured payment and records the failed retry", async () => {
+    const sendPayout = vi.fn().mockRejectedValueOnce(uncertain()).mockRejectedValueOnce(uncertain()).mockRejectedValue(new PayPalError("p", 422, "X", "d"));
+    const r = await run(sendPayout);
+    const out = await r.service.expireStale();
+    expect(out.payoutRetried).toEqual([]);
+    expect((await r.repo.get(r.id))?.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+    expect((await r.repo.auditFor(r.id)).map((a) => a.action)).toContain("payout_retry_failed");
+  });
+});
+
+describe("stranded payments self-heal", () => {
+  const fresh = () => setup({ level: "high", start: new Date() });
+
+  async function strandAt(state: "approved" | "authorised" | "released") {
+    const ctx = fresh();
+    const { payment } = await ctx.service.start(send);
+    const row = await ctx.repo.get(payment.id);
+    const base = { authorizationId: "AUTH1", authorisedAt: new Date(ctx.now().getTime()) };
+    if (state === "approved") await ctx.repo.transition(payment.id, "created", { state: "approved" }, row!.version);
+    else if (state === "authorised") {
+      const a = await ctx.repo.transition(payment.id, "created", { state: "approved" }, row!.version);
+      await ctx.repo.transition(payment.id, "approved", { state: "authorised", ...base }, a.version);
+    } else {
+      const a = await ctx.repo.transition(payment.id, "created", { state: "approved" }, row!.version);
+      const b = await ctx.repo.transition(payment.id, "approved", { state: "authorised", ...base }, a.version);
+      const c = await ctx.repo.transition(payment.id, "authorised", { state: "held", ...base }, b.version);
+      await ctx.repo.transition(payment.id, "held", { state: "released" }, c.version);
+    }
+    return { ...ctx, id: payment.id };
+  }
+
+  it("recovers an approved payment into held", async () => {
+    const ctx = await strandAt("approved");
+    ctx.advance(STALE_MS + 1);
+    const out = await ctx.service.expireStale();
+    expect(out.recovered).toEqual([ctx.id]);
+    const row = await ctx.repo.get(ctx.id);
+    expect(row?.state).toBe("held");
+    expect(row?.authorizationId).toBe("AUTH1");
+    expect(row!.coolingOffUntil!.getTime() - row!.authorisedAt!.getTime()).toBe(24 * 3_600_000);
+  });
+
+  it("recovers an authorised payment into held", async () => {
+    const ctx = await strandAt("authorised");
+    ctx.advance(STALE_MS + 1);
+    expect((await ctx.service.expireStale()).recovered).toEqual([ctx.id]);
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("held");
+  });
+
+  it("replays capture and pays out a stale released payment", async () => {
+    const ctx = await strandAt("released");
+    ctx.advance(STALE_MS + 1);
+    const out = await ctx.service.expireStale();
+    expect(out.captureRetried).toEqual([ctx.id]);
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("paid_out");
+  });
+
+  it("does not touch fresh released, approved or authorised rows", async () => {
+    for (const st of ["released", "approved", "authorised"] as const) {
+      const ctx = await strandAt(st);
+      ctx.advance(STALE_MS - 1000);
+      const out = await ctx.service.expireStale();
+      expect(out.captureRetried).toEqual([]);
+      expect(out.recovered).toEqual([]);
+      expect((await ctx.repo.get(ctx.id))?.state).toBe(st);
+    }
+  });
 });

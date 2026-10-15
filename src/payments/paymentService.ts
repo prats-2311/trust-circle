@@ -10,6 +10,7 @@ import { PayPalError, type PayPalGateway } from "./paypalGateway";
 
 export const COOLING_OFF_MS = 24 * 3_600_000;
 export const AUTO_VOID_MS = 72 * 3_600_000;
+export const STALE_MS = 5 * 60_000;
 const MAX_AMOUNT_CENTS = 1_000_000;
 const MAX_TEXT = 500;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,35 +71,67 @@ export function createPaymentService(deps: {
     return step(p, "REFUND", actorId, { refundId });
   }
 
+  /** A 4xx that PayPal answered definitively: no money moved, so compensating is safe. */
+  function isDefinitePayoutRejection(e: unknown): boolean {
+    return (
+      e instanceof PayPalError && !e.uncertain && e.status >= 400 && e.status <= 499 && ![401, 408, 429].includes(e.status)
+    );
+  }
+
   /**
-   * Pays the recipient. An uncertain error is retried once with the same request id and never
-   * compensated (a refund after a payout that really happened would pay twice). Only a definite
-   * failure moves to payout_failed and refunds.
+   * Live payout. Compensation (refund) happens only after a definite rejection on the first attempt.
+   * Anything uncertain or ambiguous leaves the payment captured for the sweep, because a refund after
+   * a payout that really happened would pay twice.
    */
   async function payOut(p: PaymentRecord, actorId: string | null): Promise<PaymentRecord> {
     const args = { paymentId: p.id, receiver: p.payee, amountCents: p.amountCents };
     let payoutBatchId: string;
     try {
-      try {
-        ({ payoutBatchId } = await gateway.sendPayout(args));
-      } catch (e) {
-        if (!isUncertain(e)) throw e;
-        ({ payoutBatchId } = await gateway.sendPayout(args));
-      }
+      ({ payoutBatchId } = await gateway.sendPayout(args));
     } catch (e) {
-      if (isUncertain(e)) throw e;
-      const failed = await step(p, "PAYOUT_FAIL", actorId);
-      return refundPayment(failed, actorId);
+      if (isDefinitePayoutRejection(e)) {
+        const failed = await step(p, "PAYOUT_FAIL", actorId);
+        return refundPayment(failed, actorId);
+      }
+      if (!isUncertain(e)) throw e;
+      ({ payoutBatchId } = await gateway.sendPayout(args));
     }
     return step(p, "PAY_OUT", actorId, { payoutBatchId });
   }
 
+  /** Sweep payout: retry only. Never compensates. */
+  async function retryPayout(p: PaymentRecord): Promise<PaymentRecord | null> {
+    let payoutBatchId: string;
+    try {
+      ({ payoutBatchId } = await gateway.sendPayout({ paymentId: p.id, receiver: p.payee, amountCents: p.amountCents }));
+    } catch (e) {
+      await repo.audit({
+        paymentId: p.id, actorId: null, action: "payout_retry_failed", fromState: p.state, toState: p.state,
+        detail: e instanceof PayPalError ? { status: e.status } : {},
+      });
+      return null;
+    }
+    return step(p, "PAY_OUT", null, { payoutBatchId });
+  }
+
+  async function captureThenPay(released: PaymentRecord, actorId: string | null, sweep: boolean) {
+    if (!released.authorizationId) throw new Error(`Payment ${released.id} has no authorization`);
+    const { captureId } = await gateway.captureAuthorization({ paymentId: released.id, authorizationId: released.authorizationId });
+    const captured = await step(released, "CAPTURE", actorId, { captureId });
+    return sweep ? retryPayout(captured) : payOut(captured, actorId);
+  }
+
+  /** RELEASE is the claim: a real state change made before any money moves, so a racing block or expiry cannot also act. */
   async function settle(p: PaymentRecord, actorId: string | null): Promise<PaymentRecord> {
     if (!p.authorizationId) throw new Error(`Payment ${p.id} has no authorization`);
-    const { captureId } = await gateway.captureAuthorization({ paymentId: p.id, authorizationId: p.authorizationId });
-    let cur = await step(p, "RELEASE", actorId);
-    cur = await step(cur, "CAPTURE", actorId, { captureId });
-    return payOut(cur, actorId);
+    const released = await step(p, "RELEASE", actorId);
+    return captureThenPay(released, actorId, false) as Promise<PaymentRecord>;
+  }
+
+  function assertHoldOpen(p: PaymentRecord) {
+    if (p.authorisedAt && now().getTime() - p.authorisedAt.getTime() >= AUTO_VOID_MS) {
+      throw new NotAllowedError("This payment's hold has ended.");
+    }
   }
 
   async function voidHeld(p: PaymentRecord, event: "BLOCK" | "EXPIRE", actorId: string | null): Promise<PaymentRecord> {
@@ -162,9 +195,8 @@ export function createPaymentService(deps: {
       }
       if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
       if (a.decision === "approve") {
-        // Claim the row first so a racing block or release fails before any money moves.
-        const claimed = await repo.transition(p.id, "held", { state: "held" }, p.version);
-        return settle(claimed, a.contactId);
+        assertHoldOpen(p);
+        return settle(p, a.contactId);
       }
       return voidHeld(p, "BLOCK", a.contactId);
     },
@@ -175,8 +207,8 @@ export function createPaymentService(deps: {
       if (p.state !== "held" || !p.coolingOffUntil || now() < p.coolingOffUntil) {
         throw new NotAllowedError("This payment can't be released yet.");
       }
-      const claimed = await repo.transition(p.id, "held", { state: "held" }, p.version);
-      return settle(claimed, a.senderId);
+      assertHoldOpen(p);
+      return settle(p, a.senderId);
     },
 
     async expireStale() {
@@ -184,6 +216,10 @@ export function createPaymentService(deps: {
       const voidRetried: string[] = [];
       const payoutRetried: string[] = [];
       const refundRetried: string[] = [];
+      const recovered: string[] = [];
+      const captureRetried: string[] = [];
+      const staleBefore = now().getTime() - STALE_MS;
+      const isStale = (p: PaymentRecord) => p.updatedAt.getTime() < staleBefore;
 
       // One failing row never aborts the sweep; a ConcurrentUpdateError means someone else acted.
       async function each(rows: PaymentRecord[], work: (p: PaymentRecord) => Promise<void>) {
@@ -207,15 +243,31 @@ export function createPaymentService(deps: {
         await step(p, "VOID", null);
         voidRetried.push(p.id);
       });
+      await each((await repo.listByStates(["released"])).filter(isStale), async (p) => {
+        await captureThenPay(p, null, true);
+        captureRetried.push(p.id);
+      });
       await each(await repo.listByStates(["captured"]), async (p) => {
-        await payOut(p, null);
-        payoutRetried.push(p.id);
+        if (await retryPayout(p)) payoutRetried.push(p.id);
       });
       await each(await repo.listByStates(["payout_failed"]), async (p) => {
         await refundPayment(p, null);
         refundRetried.push(p.id);
       });
-      return { expired, voidRetried, payoutRetried, refundRetried };
+      await each((await repo.listByStates(["approved"])).filter(isStale), async (p) => {
+        if (!p.paypalOrderId) throw new Error(`Payment ${p.id} has no order`);
+        const { authorizationId } = await gateway.authorizeOrder({ paymentId: p.id, orderId: p.paypalOrderId });
+        const authorisedAt = now();
+        const auth = await step(p, "AUTHORISE", null, { authorizationId, authorisedAt });
+        await step(auth, "HOLD", null, { coolingOffUntil: new Date(authorisedAt.getTime() + COOLING_OFF_MS) });
+        recovered.push(p.id);
+      });
+      await each((await repo.listByStates(["authorised"])).filter(isStale), async (p) => {
+        const base = (p.authorisedAt ?? now()).getTime();
+        await step(p, "HOLD", null, { coolingOffUntil: new Date(base + COOLING_OFF_MS) });
+        recovered.push(p.id);
+      });
+      return { expired, voidRetried, payoutRetried, refundRetried, recovered, captureRetried };
     },
   };
 }
