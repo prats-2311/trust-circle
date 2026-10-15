@@ -1,4 +1,5 @@
 "use client";
+import { SessionNotice } from "../SessionNotice";
 import { useEffect, useState } from "react";
 
 type HeldPayment = {
@@ -13,12 +14,17 @@ export default function CirclePage() {
   const [held, setHeld] = useState<HeldPayment[]>([]);
   const [msg, setMsg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
 
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     fetch("/api/circle/held")
       .then((r) => {
+        if (r.status === 401) {
+          setSignedOut(true);
+          return [] as HeldPayment[];
+        }
         if (!r.ok) throw new Error("load failed");
         return r.json() as Promise<HeldPayment[]>;
       })
@@ -35,6 +41,8 @@ export default function CirclePage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ decision }),
     });
+    setMsg(null);
+    if (r.status === 401) return setSignedOut(true);
     const j: unknown = await r.json().catch(() => null);
     const obj = j && typeof j === "object" ? (j as Record<string, unknown>) : {};
     if (r.ok && typeof obj.state === "string") setMsg(`Payment ${obj.state}`);
@@ -46,8 +54,9 @@ export default function CirclePage() {
     <main>
       <h1>Payments waiting for you</h1>
       {msg && <p role="status" data-testid="decision-result">{msg}</p>}
-      {failed && <p role="alert">We couldn&apos;t load your payments. Please refresh.</p>}
-      {!failed && held.length === 0 && <p>Nothing is waiting.</p>}
+      {signedOut && <SessionNotice />}
+      {failed && !signedOut && <p role="alert">We couldn&apos;t load your payments. Please refresh.</p>}
+      {!failed && !signedOut && held.length === 0 && <p>Nothing is waiting.</p>}
       {held.map((p) => (
         <article key={p.id} data-testid="held-payment">
           <p>${(p.amountCents / 100).toFixed(2)} to {p.payee}</p>

@@ -1,6 +1,7 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SessionNotice, SIGN_IN_AGAIN } from "../SessionNotice";
 import { PayPalApprove } from "./PayPalApprove";
 
 type Risk = { level: "low" | "medium" | "high"; reasons: string[] };
@@ -11,6 +12,7 @@ export default function SendPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [confirmedMedium, setConfirmedMedium] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const approvedFor = useRef<string | null>(null);
 
   async function submit(form: FormData) {
     setError(null);
@@ -28,6 +30,7 @@ export default function SendPage() {
     });
     const json: unknown = await res.json().catch(() => null);
     if (!res.ok) {
+      if (res.status === 401) return setError(SIGN_IN_AGAIN);
       const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
       setError(msg ?? "Something went wrong. Nothing was sent.");
       return;
@@ -37,12 +40,15 @@ export default function SendPage() {
 
   const paymentId = result?.paymentId;
   const onApproved = useCallback(async () => {
-    if (!paymentId) return;
+    if (!paymentId || approvedFor.current === paymentId) return;
+    approvedFor.current = paymentId;
+    setError(null);
     const res = await fetch(`/api/payments/${paymentId}/approved`, { method: "POST" });
     if (res.ok) {
       router.push(`/payments/${paymentId}`);
       return;
     }
+    if (res.status === 401) return setError(SIGN_IN_AGAIN);
     const json: unknown = await res.json().catch(() => null);
     const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
     setError(msg ?? "We couldn't finish that just now. Please check your payments for the latest status.");
@@ -58,7 +64,7 @@ export default function SendPage() {
           <label>Note<input name="note" data-testid="note" /></label>
           <label>Who asked you to make this payment, and why?<textarea name="answer" data-testid="answer" /></label>
           <button type="submit" data-testid="check">Continue</button>
-          {error && <p role="alert">{error}</p>}
+          {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
         </form>
       )}
       {result && (
@@ -71,7 +77,7 @@ export default function SendPage() {
           ) : (
             <PayPalApprove orderId={result.orderId} onApproved={onApproved} />
           )}
-          {error && <p role="alert">{error}</p>}
+          {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
         </section>
       )}
     </main>

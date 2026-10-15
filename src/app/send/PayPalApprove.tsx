@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { loadSdk } from "./sdkLoader";
 
 type PayPalSession = { start(opts: { presentationMode: string }, order: Promise<{ orderId: string }>): Promise<void> };
 type PayPalSdk = {
@@ -18,25 +19,16 @@ declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace React.JSX {
     interface IntrinsicElements {
-      "paypal-button": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { type?: string };
+      "paypal-button": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { type?: string; disabled?: boolean };
     }
   }
-}
-
-function loadSdk(): Promise<void> {
-  if (window.paypal) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://www.sandbox.paypal.com/web-sdk/v6/core";
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("PayPal failed to load"));
-    document.body.appendChild(s);
-  });
 }
 
 export function PayPalApprove({ orderId, onApproved }: { orderId: string; onApproved: () => void }) {
   const ref = useRef<HTMLElement>(null);
   const approvedRef = useRef(onApproved);
+  const openRef = useRef(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,18 +53,39 @@ export function PayPalApprove({ orderId, onApproved }: { orderId: string; onAppr
           return;
         }
         const session = sdk.createPayPalOneTimePaymentSession({
-          onApprove: () => approvedRef.current(),
-          onCancel: () => setError("You cancelled in PayPal. Nothing was sent."),
-          onError: () => setError("PayPal had a problem. Nothing was sent."),
+          onApprove: () => {
+            openRef.current = false;
+            setBusy(false);
+            approvedRef.current();
+          },
+          onCancel: () => {
+            openRef.current = false;
+            setBusy(false);
+            setError("You cancelled in PayPal. Nothing was sent.");
+          },
+          onError: () => {
+            openRef.current = false;
+            setBusy(false);
+            setError("PayPal had a problem. Nothing was sent.");
+          },
         });
         if (cancelled || !ref.current) return;
         button = ref.current;
         handler = () => {
-          void session.start({ presentationMode: "auto" }, Promise.resolve({ orderId }));
+          if (openRef.current) return;
+          openRef.current = true;
+          setBusy(true);
+          setError(null);
+          session.start({ presentationMode: "auto" }, Promise.resolve({ orderId })).catch(() => {
+            openRef.current = false;
+            setBusy(false);
+            setError("PayPal had a problem. Nothing was sent.");
+          });
         };
         button.hidden = false;
         button.addEventListener("click", handler);
       } catch {
+        if (cancelled) return;
         setError("PayPal couldn't load. Please try again.");
       }
     })();
@@ -84,7 +97,7 @@ export function PayPalApprove({ orderId, onApproved }: { orderId: string; onAppr
 
   return (
     <div>
-      <paypal-button ref={ref} type="pay" hidden data-testid="paypal-button"></paypal-button>
+      <paypal-button ref={ref} type="pay" hidden data-testid="paypal-button" disabled={busy}></paypal-button>
       {error && <p role="alert">{error}</p>}
     </div>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { SessionNotice, SIGN_IN_AGAIN } from "../../SessionNotice";
 import { use, useEffect, useState } from "react";
 
 type PaymentView = { id: string; state: string; coolingOffUntil: string | null };
@@ -13,19 +14,29 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const [p, setP] = useState<PaymentView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/payments")
-      .then((r) => r.json())
-      .then((all: PaymentView[]) => setP(all.find((x) => x.id === id) ?? null))
+      .then(async (r) => {
+        if (r.status === 401) {
+          setError(SIGN_IN_AGAIN);
+          return;
+        }
+        if (!r.ok) throw new Error("load failed");
+        const all = (await r.json()) as PaymentView[];
+        setP(all.find((x) => x.id === id) ?? null);
+        setLoaded(true);
+      })
       .catch(() => setError("We couldn't load this payment. Please refresh."));
   }, [id]);
 
   async function release() {
+    setError(null);
     const r = await fetch(`/api/payments/${id}/release`, { method: "POST" });
+    if (r.status === 401) return setError(SIGN_IN_AGAIN);
     const j: unknown = await r.json().catch(() => null);
     if (r.ok) {
-      setError(null);
       setP(j as PaymentView);
     } else {
       setError(errorText(j));
@@ -35,7 +46,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   if (!p) {
     return (
       <main>
-        {error ? <p role="alert">{error}</p> : "Loading…"}
+        {error === SIGN_IN_AGAIN ? <SessionNotice /> : error ? <p role="alert">{error}</p> : loaded ? <p role="alert">We couldn&apos;t find this payment.</p> : "Loading…"}
       </main>
     );
   }
@@ -48,7 +59,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       {p.state === "held" && (
         <button data-testid="release" onClick={release}>Release now</button>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
     </main>
   );
 }
