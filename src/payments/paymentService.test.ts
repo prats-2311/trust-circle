@@ -477,3 +477,31 @@ describe("stranded payments self-heal", () => {
     }
   });
 });
+
+describe("sweep leaves in-flight captured and payout_failed rows alone", () => {
+  it("skips a fresh captured row and retries a stale one", async () => {
+    const sendPayout = vi.fn().mockRejectedValue(new PayPalError("p", 503, undefined, "d", true));
+    const ctx = setup({ level: "low", start: new Date(), gateway: { sendPayout } });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch(() => undefined);
+    sendPayout.mockClear();
+    sendPayout.mockResolvedValue({ payoutBatchId: "B2" });
+    expect((await ctx.service.expireStale()).payoutRetried).toEqual([]);
+    expect(sendPayout).not.toHaveBeenCalled();
+    ctx.advance(STALE_MS + 1);
+    expect((await ctx.service.expireStale()).payoutRetried).toEqual([payment.id]);
+  });
+
+  it("skips a fresh payout_failed row", async () => {
+    const refundCapture = vi.fn().mockRejectedValue(new PayPalError("r", 500, undefined, "d", true));
+    const ctx = setup({
+      level: "low", start: new Date(),
+      gateway: { sendPayout: vi.fn().mockRejectedValue(new PayPalError("p", 422, "X", "d")), refundCapture },
+    });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch(() => undefined);
+    refundCapture.mockClear();
+    expect((await ctx.service.expireStale()).refundRetried).toEqual([]);
+    expect(refundCapture).not.toHaveBeenCalled();
+  });
+});

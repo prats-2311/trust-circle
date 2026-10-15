@@ -245,12 +245,13 @@ export function createPaymentService(deps: {
       });
       await each((await repo.listByStates(["released"])).filter(isStale), async (p) => {
         await captureThenPay(p, null, true);
+        // Counted once the CAPTURE step succeeded, even if the payout retry then failed (row stays captured).
         captureRetried.push(p.id);
       });
-      await each(await repo.listByStates(["captured"]), async (p) => {
+      await each((await repo.listByStates(["captured"])).filter(isStale), async (p) => {
         if (await retryPayout(p)) payoutRetried.push(p.id);
       });
-      await each(await repo.listByStates(["payout_failed"]), async (p) => {
+      await each((await repo.listByStates(["payout_failed"])).filter(isStale), async (p) => {
         await refundPayment(p, null);
         refundRetried.push(p.id);
       });
