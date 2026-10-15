@@ -117,4 +117,86 @@ describe("paypal gateway", () => {
     expect(pe).toBeInstanceOf(PayPalError);
     expect([pe.issue, pe.debugId, pe.status]).toEqual(["INSUFFICIENT_FUNDS", "dbg9", 400]);
   });
+
+  it("fails with PayPalError when no authorization id comes back", async () => {
+    server.use(token(), record("/v2/checkout/orders/ORDERX/authorize", () => HttpResponse.json({ id: "ORDERX", status: "COMPLETED" }, { status: 201 })));
+    const err = await gw.authorizeOrder({ paymentId: "px", orderId: "ORDERX" }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(PayPalError);
+  });
+
+  describe("baseUrl", () => {
+    it("accepts only the sandbox origin", () => {
+      const mk = (baseUrl?: string) => () => createPayPalGateway({ clientId: "c", clientSecret: "s", baseUrl });
+      expect(mk()).not.toThrow();
+      expect(mk(BASE)).not.toThrow();
+      expect(mk(BASE + "/")).not.toThrow();
+      expect(mk("https://api-m.paypal.com")).toThrow();
+      expect(mk("")).toThrow();
+      expect(mk("garbage")).toThrow();
+      expect(mk("https://sandbox.evil.com")).toThrow();
+    });
+  });
+
+  describe("uncertain outcomes", () => {
+    const pay = async (): Promise<PayPalError> => {
+      const r = await gw.sendPayout({ paymentId: "pu", receiver: "a@b.com", amountCents: 100 }).catch((e: unknown) => e);
+      return r as PayPalError;
+    };
+    it("network error is uncertain", async () => {
+      server.use(token(), http.post(`${BASE}/v1/payments/payouts`, () => HttpResponse.error()));
+      const e = await pay();
+      expect(e).toBeInstanceOf(PayPalError);
+      expect(e.uncertain).toBe(true);
+    });
+    it("5xx is uncertain", async () => {
+      server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({}, { status: 500 })));
+      expect((await pay()).uncertain).toBe(true);
+    });
+    it("422 is definite", async () => {
+      server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({ details: [{ issue: "X" }] }, { status: 422 })));
+      expect((await pay()).uncertain).toBe(false);
+    });
+    it("2xx without batch id is uncertain", async () => {
+      server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({}, { status: 201 })));
+      expect((await pay()).uncertain).toBe(true);
+    });
+    it("SDK 5xx is uncertain, SDK 422 is not", async () => {
+      server.use(token(), record("/v2/payments/authorizations/A5/capture", () => HttpResponse.json({}, { status: 503 })));
+      const e5 = (await gw.captureAuthorization({ paymentId: "p5", authorizationId: "A5" }).catch((e: unknown) => e)) as PayPalError;
+      expect(e5.uncertain).toBe(true);
+      server.use(token(), record("/v2/payments/authorizations/A4/capture", () => HttpResponse.json({}, { status: 422 })));
+      const e4 = (await gw.captureAuthorization({ paymentId: "p4", authorizationId: "A4" }).catch((e: unknown) => e)) as PayPalError;
+      expect(e4.uncertain).toBe(false);
+    });
+  });
+
+  describe("payout token handling", () => {
+    it("retries once with a fresh token after a 401", async () => {
+      const g = createPayPalGateway({ clientId: "c", clientSecret: "s" });
+      let tokens = 0;
+      const ids: (string | null)[] = [];
+      let calls = 0;
+      server.use(
+        http.post(`${BASE}/v1/oauth2/token`, () => {
+          tokens++;
+          return HttpResponse.json({ access_token: "tok" + tokens, token_type: "Bearer", expires_in: 32000 });
+        }),
+        http.post(`${BASE}/v1/payments/payouts`, ({ request }) => {
+          ids.push(request.headers.get("paypal-request-id"));
+          return ++calls === 1
+            ? HttpResponse.json({}, { status: 401 })
+            : HttpResponse.json({ batch_header: { payout_batch_id: "B2" } }, { status: 201 });
+        }),
+      );
+      expect(await g.sendPayout({ paymentId: "pr", receiver: "a@b.com", amountCents: 100 })).toEqual({ payoutBatchId: "B2" });
+      expect(tokens).toBe(2);
+      expect(ids).toEqual(["tc-pr-payout", "tc-pr-payout"]);
+    });
+    it("rejects a malformed token response", async () => {
+      const g = createPayPalGateway({ clientId: "c", clientSecret: "s" });
+      server.use(http.post(`${BASE}/v1/oauth2/token`, () => HttpResponse.json({ nope: 1 })));
+      const e = await g.sendPayout({ paymentId: "pm", receiver: "a@b.com", amountCents: 100 }).catch((x: unknown) => x);
+      expect(e).toBeInstanceOf(PayPalError);
+    });
+  });
 });
