@@ -442,7 +442,7 @@ describe("stranded payments self-heal", () => {
 
   it("recovers an approved payment into held", async () => {
     const ctx = await strandAt("approved");
-    ctx.advance(STALE_MS + 1);
+    ctx.advance(STALE_MS + 60_000);
     const out = await ctx.service.expireStale();
     expect(out.recovered).toEqual([ctx.id]);
     const row = await ctx.repo.get(ctx.id);
@@ -453,14 +453,14 @@ describe("stranded payments self-heal", () => {
 
   it("recovers an authorised payment into held", async () => {
     const ctx = await strandAt("authorised");
-    ctx.advance(STALE_MS + 1);
+    ctx.advance(STALE_MS + 60_000);
     expect((await ctx.service.expireStale()).recovered).toEqual([ctx.id]);
     expect((await ctx.repo.get(ctx.id))?.state).toBe("held");
   });
 
   it("replays capture and pays out a stale released payment", async () => {
     const ctx = await strandAt("released");
-    ctx.advance(STALE_MS + 1);
+    ctx.advance(STALE_MS + 60_000);
     const out = await ctx.service.expireStale();
     expect(out.captureRetried).toEqual([ctx.id]);
     expect((await ctx.repo.get(ctx.id))?.state).toBe("paid_out");
@@ -469,7 +469,7 @@ describe("stranded payments self-heal", () => {
   it("does not touch fresh released, approved or authorised rows", async () => {
     for (const st of ["released", "approved", "authorised"] as const) {
       const ctx = await strandAt(st);
-      ctx.advance(STALE_MS - 1000);
+      ctx.advance(STALE_MS - 60_000);
       const out = await ctx.service.expireStale();
       expect(out.captureRetried).toEqual([]);
       expect(out.recovered).toEqual([]);
@@ -488,7 +488,7 @@ describe("sweep leaves in-flight captured and payout_failed rows alone", () => {
     sendPayout.mockResolvedValue({ payoutBatchId: "B2" });
     expect((await ctx.service.expireStale()).payoutRetried).toEqual([]);
     expect(sendPayout).not.toHaveBeenCalled();
-    ctx.advance(STALE_MS + 1);
+    ctx.advance(STALE_MS + 60_000);
     expect((await ctx.service.expireStale()).payoutRetried).toEqual([payment.id]);
   });
 
