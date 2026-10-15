@@ -43,15 +43,22 @@ export default function SendPage() {
     if (!paymentId || approvedFor.current === paymentId) return;
     approvedFor.current = paymentId;
     setError(null);
-    const res = await fetch(`/api/payments/${paymentId}/approved`, { method: "POST" });
-    if (res.ok) {
-      router.push(`/payments/${paymentId}`);
-      return;
+    const fallback = "We couldn't finish that just now. Please check your payments for the latest status.";
+    try {
+      const res = await fetch(`/api/payments/${paymentId}/approved`, { method: "POST" });
+      if (res.ok) {
+        router.push(`/payments/${paymentId}`);
+        return;
+      }
+      approvedFor.current = null;
+      if (res.status === 401) return setError(SIGN_IN_AGAIN);
+      const json: unknown = await res.json().catch(() => null);
+      const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
+      setError(msg ?? fallback);
+    } catch {
+      approvedFor.current = null;
+      setError(fallback);
     }
-    if (res.status === 401) return setError(SIGN_IN_AGAIN);
-    const json: unknown = await res.json().catch(() => null);
-    const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
-    setError(msg ?? "We couldn't finish that just now. Please check your payments for the latest status.");
   }, [paymentId, router]);
 
   return (

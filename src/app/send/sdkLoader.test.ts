@@ -1,29 +1,44 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { loadSdk, resetSdkLoaderForTests, SDK_SRC } from "./sdkLoader";
 
-type FakeScript = { src: string; listeners: Record<string, () => void>; addEventListener(e: string, f: () => void): void };
+type Listener = () => void;
+class FakeScript {
+  src = "";
+  removed = false;
+  listeners: Record<string, Listener> = {};
+  addEventListener(e: string, f: Listener) {
+    this.listeners[e] = f;
+  }
+  remove() {
+    this.removed = true;
+  }
+}
+
+const g = globalThis as Record<string, unknown>;
+let saved: { window: unknown; document: unknown };
 
 function setup(existing?: FakeScript) {
   const appended: FakeScript[] = [];
-  const mk = (): FakeScript => ({
-    src: "",
-    listeners: {},
-    addEventListener(e, f) {
-      this.listeners[e] = f;
-    },
-  });
-  const g = globalThis as Record<string, unknown>;
   g.window = {};
   g.document = {
-    querySelector: () => existing ?? appended[0] ?? null,
-    createElement: mk,
+    querySelector: () => existing ?? appended.find((s) => !s.removed) ?? null,
+    createElement: () => new FakeScript(),
     body: { appendChild: (s: FakeScript) => appended.push(s) },
   };
   return appended;
 }
 
 describe("loadSdk", () => {
-  beforeEach(() => resetSdkLoaderForTests());
+  beforeEach(() => {
+    saved = { window: g.window, document: g.document };
+    resetSdkLoaderForTests();
+  });
+  afterEach(() => {
+    if (saved.window === undefined) delete g.window;
+    else g.window = saved.window;
+    if (saved.document === undefined) delete g.document;
+    else g.document = saved.document;
+  });
 
   it("returns the same promise and appends one script", async () => {
     const appended = setup();
@@ -37,7 +52,8 @@ describe("loadSdk", () => {
   });
 
   it("reuses an existing script tag", async () => {
-    const existing: FakeScript = { src: SDK_SRC, listeners: {}, addEventListener(e, f) { this.listeners[e] = f; } };
+    const existing = new FakeScript();
+    existing.src = SDK_SRC;
     const appended = setup(existing);
     const p = loadSdk();
     expect(appended).toHaveLength(0);
@@ -45,11 +61,17 @@ describe("loadSdk", () => {
     await p;
   });
 
-  it("allows a retry after a load failure", async () => {
+  it("removes a failed tag and loads a fresh one on retry", async () => {
     const appended = setup();
-    const p = loadSdk();
+    const first = loadSdk();
     appended[0]!.listeners.error!();
-    await expect(p).rejects.toThrow();
-    expect(loadSdk()).not.toBe(p);
+    await expect(first).rejects.toThrow();
+    expect(appended[0]!.removed).toBe(true);
+
+    const second = loadSdk();
+    expect(second).not.toBe(first);
+    expect(appended).toHaveLength(2);
+    appended[1]!.listeners.load!();
+    await expect(second).resolves.toBeUndefined();
   });
 });

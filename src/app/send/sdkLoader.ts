@@ -8,11 +8,12 @@ export function loadSdk(): Promise<void> {
   if (window.paypal) return Promise.resolve();
   pending = new Promise<void>((resolve, reject) => {
     const fail = () => {
+      s.remove();
       pending = null;
       reject(new Error("PayPal failed to load"));
     };
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`);
-    const s = existing ?? document.createElement("script");
+    const s: HTMLScriptElement = existing ?? document.createElement("script");
     s.addEventListener("load", () => resolve());
     s.addEventListener("error", fail);
     if (!existing) {

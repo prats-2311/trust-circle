@@ -17,18 +17,25 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/payments")
       .then(async (r) => {
         if (r.status === 401) {
-          setError(SIGN_IN_AGAIN);
+          if (!cancelled) setError(SIGN_IN_AGAIN);
           return;
         }
         if (!r.ok) throw new Error("load failed");
         const all = (await r.json()) as PaymentView[];
+        if (cancelled) return;
         setP(all.find((x) => x.id === id) ?? null);
         setLoaded(true);
       })
-      .catch(() => setError("We couldn't load this payment. Please refresh."));
+      .catch(() => {
+        if (!cancelled) setError("We couldn't load this payment. Please refresh.");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   async function release() {

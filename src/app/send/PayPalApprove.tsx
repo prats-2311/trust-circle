@@ -49,6 +49,7 @@ export function PayPalApprove({ orderId, onApproved }: { orderId: string; onAppr
         });
         const methods = await sdk.findEligibleMethods({ currencyCode: "USD" });
         if (!methods.isEligible("paypal")) {
+          if (cancelled) return;
           setError("PayPal isn't available right now. Nothing was sent.");
           return;
         }
@@ -76,7 +77,7 @@ export function PayPalApprove({ orderId, onApproved }: { orderId: string; onAppr
           openRef.current = true;
           setBusy(true);
           setError(null);
-          session.start({ presentationMode: "auto" }, Promise.resolve({ orderId })).catch(() => {
+          Promise.resolve().then(() => session.start({ presentationMode: "auto" }, Promise.resolve({ orderId }))).catch(() => {
             openRef.current = false;
             setBusy(false);
             setError("PayPal had a problem. Nothing was sent.");

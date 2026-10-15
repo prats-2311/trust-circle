@@ -36,12 +36,12 @@ export default function CirclePage() {
   }, [tick]);
 
   async function decide(id: string, decision: "approve" | "block") {
+    setMsg(null);
     const r = await fetch(`/api/payments/${id}/decision`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ decision }),
     });
-    setMsg(null);
     if (r.status === 401) return setSignedOut(true);
     const j: unknown = await r.json().catch(() => null);
     const obj = j && typeof j === "object" ? (j as Record<string, unknown>) : {};
