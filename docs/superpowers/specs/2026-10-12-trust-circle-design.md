@@ -231,6 +231,35 @@ Design rules
 
 Design skills: UI/UX Pro Max and `frontend-design` for product screens, the Taste skill (`design-taste-frontend`) for the landing page. Where they conflict, accessibility wins.
 
+### 10.1 Design quality bar
+
+The interface must feel deliberately designed, refined and modern, and must not read as AI-generated.
+
+Banned defaults
+
+- Purple-to-blue gradients, glassmorphism and glowing blobs used as decoration.
+- The template landing page: centred hero, three feature cards with icons, testimonial strip.
+- Emoji as icons, mixed icon sets, stock illustrations.
+- Default framework typography and spacing left untouched.
+- Cards nested inside cards; every section boxed.
+- Motion that decorates instead of explaining.
+
+Required
+
+- A written design direction and a token file (`DESIGN.md`): type scale, colour, spacing, radius, elevation, motion, before any screen is built.
+- A distinctive but calm type pairing chosen for legibility at large sizes.
+- One accent colour with a clear meaning; status colours (safe, caution, held, blocked) that also work without colour (icon and label).
+- Purposeful motion only: a held payment visibly "pausing", a verification request visibly travelling to the real person. Reduced-motion respected.
+- Real copy in every screen, written for the audience; no placeholder text.
+- Designed empty, loading and error states.
+
+Design process
+
+1. Direction and tokens with UI/UX Pro Max and the Taste skill, written to `DESIGN.md`.
+2. Screen concepts generated in Stitch, or as a Claude Design artifact if Stitch is unavailable, reviewed and approved before code.
+3. Build each screen to the approved concept with `frontend-design`.
+4. Review gate per screen: screenshot at phone and desktop widths, compare with the concept, run a design critique and an accessibility review, and fix before the screen is accepted.
+
 ## 11. Error handling
 
 | Failure | Behaviour |
