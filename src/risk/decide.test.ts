@@ -42,4 +42,34 @@ describe("decide", () => {
     expect(d.level).toBe("low");
     expect(d.reasons).toEqual([]);
   });
+
+  it("uses signal details and unknown scam type when rules overrode a lower AI level", () => {
+    const s: Signal[] = [
+      confirmed,
+      { code: "LINKED_SCAM_MESSAGE", detail: "L" },
+      first,
+      unusual,
+    ];
+    const d = decide(s, ai("low", ["ai says fine"]));
+    expect(d.level).toBe("high");
+    expect(d.reasons).toEqual([confirmed.detail, "L", first.detail]);
+    expect(d.scamType).toBe("unknown");
+    expect(d.aiUsed).toBe(true);
+    expect(d.impersonatedRequester).toEqual({ kind: "person", name: "grandson" });
+  });
+
+  it("falls back to signal details when AI reasons are empty at medium or high", () => {
+    expect(decide([first], ai("high", [])).reasons).toEqual([first.detail]);
+    expect(decide([first], ai("high", ["  "])).reasons).toEqual([first.detail]);
+    expect(decide([], ai("high", [])).reasons).toEqual([]);
+  });
+
+  it("trims, drops blanks and de-duplicates AI reasons before capping", () => {
+    expect(decide([], ai("medium", ["a", " a ", "", "b", "c", "d"])).reasons).toEqual(["a", "b", "c"]);
+  });
+
+  it("caps reasons at three when the AI fails with many signals", () => {
+    const many: Signal[] = [confirmed, first, unusual, { code: "RAPID_REPEAT", detail: "R" }];
+    expect(decide(many, { ok: false, error: "x" }).reasons).toHaveLength(3);
+  });
 });

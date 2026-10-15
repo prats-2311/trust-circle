@@ -21,13 +21,23 @@ export interface RiskDecision {
 
 const MAX_REASONS = 3;
 
+function sanitiseReasons(raw: string[]): string[] {
+  const cleaned = raw.map((r) => r.trim()).filter((r) => r.length > 0);
+  return [...new Set(cleaned)].slice(0, MAX_REASONS);
+}
+
 export function decide(signals: Signal[], ai: AiOutcome): RiskDecision {
   const rule = ruleLevel(signals);
   if (ai.ok) {
+    const level = maxLevel(rule, ai.judgement.level);
+    const details = signals.map((s) => s.detail).slice(0, MAX_REASONS);
+    const overridden = level !== ai.judgement.level;
+    let reasons = overridden ? details : sanitiseReasons(ai.judgement.reasons);
+    if (level !== "low" && reasons.length === 0) reasons = details;
     return {
-      level: maxLevel(rule, ai.judgement.level),
-      scamType: ai.judgement.scamType,
-      reasons: ai.judgement.reasons.slice(0, MAX_REASONS),
+      level,
+      scamType: overridden ? "unknown" : ai.judgement.scamType,
+      reasons,
       signals,
       aiUsed: true,
       impersonatedRequester: ai.judgement.impersonatedRequester,
