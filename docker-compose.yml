@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: trustcircle
+      POSTGRES_PASSWORD: trustcircle
+      POSTGRES_DB: trustcircle
+    ports: ["5433:5432"]
+    volumes: ["db-data:/var/lib/postgresql/data"]
+  db-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: trustcircle
+      POSTGRES_PASSWORD: trustcircle
+      POSTGRES_DB: trustcircle_test
+    ports: ["5434:5432"]
+volumes:
+  db-data:
