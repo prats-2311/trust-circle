@@ -160,6 +160,20 @@ describe("paypal gateway", () => {
       server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({}, { status: 201 })));
       expect((await pay()).uncertain).toBe(true);
     });
+    it("a 2xx without an id is uncertain for authorize, capture and refund", async () => {
+      server.use(token(), record("/v2/checkout/orders/O9/authorize", () => HttpResponse.json({}, { status: 201 })));
+      const a = (await gw.authorizeOrder({ paymentId: "pa", orderId: "O9" }).catch((e: unknown) => e)) as PayPalError;
+      expect(a).toBeInstanceOf(PayPalError);
+      expect(a.uncertain).toBe(true);
+      server.use(token(), record("/v2/payments/authorizations/A9/capture", () => HttpResponse.json({}, { status: 201 })));
+      const c = (await gw.captureAuthorization({ paymentId: "pc", authorizationId: "A9" }).catch((e: unknown) => e)) as PayPalError;
+      expect(c).toBeInstanceOf(PayPalError);
+      expect(c.uncertain).toBe(true);
+      server.use(token(), record("/v2/payments/captures/C9/refund", () => HttpResponse.json({}, { status: 201 })));
+      const r = (await gw.refundCapture({ paymentId: "pr9", captureId: "C9" }).catch((e: unknown) => e)) as PayPalError;
+      expect(r).toBeInstanceOf(PayPalError);
+      expect(r.uncertain).toBe(true);
+    });
     it("SDK 5xx is uncertain, SDK 422 is not", async () => {
       server.use(token(), record("/v2/payments/authorizations/A5/capture", () => HttpResponse.json({}, { status: 503 })));
       const e5 = (await gw.captureAuthorization({ paymentId: "p5", authorizationId: "A5" }).catch((e: unknown) => e)) as PayPalError;

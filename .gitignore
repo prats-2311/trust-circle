@@ -42,3 +42,9 @@ next-env.d.ts
 
 # SDD working files
 /.superpowers/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

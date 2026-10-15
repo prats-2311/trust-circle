@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ConcurrentUpdateError } from "./paymentRepo";
 import { createMemoryPaymentRepo } from "./memoryPaymentRepo";
-import { NotAllowedError, PaymentInputError, STALE_MS, createPaymentService } from "./paymentService";
+import { NotAllowedError, PaymentInputError, PaymentPendingError, STALE_MS, createPaymentService } from "./paymentService";
 import { PayPalError, type PayPalGateway } from "./paypalGateway";
 
 const SENDER = "00000000-0000-4000-8000-000000000001";
@@ -45,6 +45,9 @@ describe("start", () => {
     [{ amountCents: Number.NaN }, "amountCents"],
     [{ payee: "" }, "payee"],
     [{ payee: "not an email or phone" }, "payee"],
+    [{ payee: "ref 12345678" }, "payee"],
+    [{ payee: "12345" }, "payee"],
+    [{ payee: "+1 (555) 123-45678-90123" }, "payee"],
     [{ note: "x".repeat(501) }, "note"],
   ])("rejects %o before touching PayPal", async (over, field) => {
     const { service, gateway } = setup();
@@ -102,14 +105,35 @@ describe("completeApproval", () => {
     expect(gateway.refundCapture).toHaveBeenCalledWith({ paymentId: payment.id, captureId: "CAP1" });
   });
 
-  it("leaves the state unchanged when capture fails", async () => {
+  it("reports the payment as pending and leaves it released when capture fails after RELEASE", async () => {
     const { service, repo } = setup({
       level: "low",
       gateway: { captureAuthorization: vi.fn().mockRejectedValue(new PayPalError("capture", 500, undefined, "d")) },
     });
     const { payment } = await service.start({ ...send, amountCents: 1000 });
-    await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
+    const err = await service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch((e) => e);
+    expect(err).toBeInstanceOf(PaymentPendingError);
+    expect(err.paymentId).toBe(payment.id);
+    expect(err.cause).toBeInstanceOf(PayPalError);
     expect((await repo.get(payment.id))?.state).toBe("released");
+  });
+
+  it("reports the payment as pending when authorize throws after APPROVE", async () => {
+    const { service, repo } = setup({
+      level: "low",
+      gateway: { authorizeOrder: vi.fn().mockRejectedValue(new PayPalError("authorize", 500, undefined, "d")) },
+    });
+    const { payment } = await service.start({ ...send, amountCents: 1000 });
+    const err = await service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch((e) => e);
+    expect(err).toBeInstanceOf(PaymentPendingError);
+    expect(err.paymentId).toBe(payment.id);
+    expect((await repo.get(payment.id))?.state).toBe("approved");
+  });
+
+  it("does not wrap a refusal that happens before the claim", async () => {
+    const { service } = setup();
+    const { payment } = await service.start(send);
+    await expect(service.completeApproval({ paymentId: payment.id, senderId: STRANGER })).rejects.toBeInstanceOf(NotAllowedError);
   });
 });
 
@@ -153,7 +177,9 @@ describe("contactDecision", () => {
     const ctx = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue(undefined) } });
     const { payment } = await ctx.service.start(send);
     await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
-    await expect(ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" })).rejects.toBeInstanceOf(PayPalError);
+    const err = await ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" }).catch((e) => e);
+    expect(err).toBeInstanceOf(PaymentPendingError);
+    expect(err.paymentId).toBe(payment.id);
     expect((await ctx.repo.get(payment.id))?.state).toBe("blocked");
     const out = await ctx.service.expireStale();
     expect(out.voidRetried).toEqual([payment.id]);
@@ -223,7 +249,7 @@ describe("payout failure handling", () => {
     const sendPayout = vi.fn().mockRejectedValue(uncertain());
     const { service, gateway, repo } = setup({ level: "low", gateway: { sendPayout } });
     const { payment } = await service.start({ ...send, amountCents: 1000 });
-    await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
+    await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
     expect(sendPayout).toHaveBeenCalledTimes(2);
     expect((await repo.get(payment.id))?.state).toBe("captured");
     expect(gateway.refundCapture).not.toHaveBeenCalled();
@@ -238,7 +264,7 @@ describe("payout failure handling", () => {
       },
     });
     const { payment } = await service.start({ ...send, amountCents: 1000 });
-    await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
+    await expect(service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
     expect((await repo.get(payment.id))?.state).toBe("payout_failed");
   });
 });
@@ -248,7 +274,7 @@ describe("expireStale self-healing", () => {
     const sendPayout = vi.fn().mockRejectedValue(new PayPalError("payout", 503, undefined, "d", true));
     const ctx = setup({ level: "low", gateway: { sendPayout } });
     const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
-    await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
+    await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
     sendPayout.mockResolvedValue({ payoutBatchId: "BATCH2" });
     const out = await ctx.service.expireStale();
     expect(out.payoutRetried).toEqual([payment.id]);
@@ -265,7 +291,7 @@ describe("expireStale self-healing", () => {
       gateway: { sendPayout: vi.fn().mockRejectedValue(new PayPalError("payout", 422, "X", "d")), refundCapture },
     });
     const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
-    await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PayPalError);
+    await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
     const out = await ctx.service.expireStale();
     expect(out.refundRetried).toEqual([payment.id]);
     expect((await ctx.repo.get(payment.id))?.state).toBe("refunded");
@@ -403,6 +429,13 @@ describe("when compensation is allowed", () => {
     expect(r.state).toBe("captured");
     expect(r.gateway.refundCapture).not.toHaveBeenCalled();
   });
+  it("a 429 payout reports the payment as pending and leaves it captured", async () => {
+    const r = await run(vi.fn().mockRejectedValue(new PayPalError("p", 429, undefined, "d")));
+    expect(r.result).toBeInstanceOf(PaymentPendingError);
+    expect(r.result.paymentId).toBe(r.id);
+    expect(r.state).toBe("captured");
+    expect(r.gateway.refundCapture).not.toHaveBeenCalled();
+  });
   it("a non-PayPal error leaves it captured with no refund", async () => {
     const r = await run(vi.fn().mockRejectedValue(new Error("boom")));
     expect(r.state).toBe("captured");
@@ -503,5 +536,114 @@ describe("sweep leaves in-flight captured and payout_failed rows alone", () => {
     refundCapture.mockClear();
     expect((await ctx.service.expireStale()).refundRetried).toEqual([]);
     expect(refundCapture).not.toHaveBeenCalled();
+  });
+});
+
+describe("payee shapes", () => {
+  it.each(["+1 (555) 123-4567", "555-123-4567", "+447911123456"])("accepts the phone number %s", async (payee) => {
+    const { service } = setup();
+    const { payment } = await service.start({ ...send, payee });
+    expect(payment.payee).toMatch(/^\+?\d{7,15}$/);
+  });
+});
+
+describe("void after BLOCK", () => {
+  it("reports the payment as pending when void throws after the claim", async () => {
+    const ctx = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValue(new PayPalError("void", 500, undefined, "d")) } });
+    const { payment } = await ctx.service.start(send);
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    const err = await ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" }).catch((e) => e);
+    expect(err).toBeInstanceOf(PaymentPendingError);
+    expect((await ctx.repo.get(payment.id))?.state).toBe("blocked");
+  });
+});
+
+describe("sweep failure records", () => {
+  it("writes a sweep_failed audit row and a warning without message bodies", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const voidAuthorization = vi.fn().mockRejectedValue(new PayPalError("secret body text", 503, "X", "d", true));
+      const ctx = setup({ level: "high", gateway: { voidAuthorization } });
+      const { payment } = await ctx.service.start(send);
+      await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+      ctx.advance(72 * 3_600_000);
+      await ctx.service.expireStale();
+      const rows = (await ctx.repo.auditFor(payment.id)).filter((a) => a.action === "sweep_failed");
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0]!.detail).toEqual({ phase: "held", errorName: "PayPalError", status: 503 });
+      expect(warn).toHaveBeenCalledWith("sweep row failed", { paymentId: payment.id, phase: "held", errorName: "PayPalError", status: 503 });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("secret body text");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not record a ConcurrentUpdateError", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const ctx = setup({ level: "high" });
+      const { payment } = await ctx.service.start(send);
+      await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+      ctx.advance(72 * 3_600_000);
+      vi.spyOn(ctx.repo, "transition").mockRejectedValue(new ConcurrentUpdateError(payment.id, "held"));
+      await ctx.service.expireStale();
+      expect((await ctx.repo.auditFor(payment.id)).map((a) => a.action)).not.toContain("sweep_failed");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("does not touch a fresh blocked row", async () => {
+    const ctx = setup({ level: "high", start: new Date(), gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue(undefined) } });
+    const { payment } = await ctx.service.start(send);
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    await ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" }).catch(() => undefined);
+    (ctx.gateway.voidAuthorization as ReturnType<typeof vi.fn>).mockClear();
+    expect((await ctx.service.expireStale()).voidRetried).toEqual([]);
+    expect(ctx.gateway.voidAuthorization).not.toHaveBeenCalled();
+    ctx.advance(STALE_MS + 60_000);
+    expect((await ctx.service.expireStale()).voidRetried).toEqual([payment.id]);
+  });
+});
+
+describe("sweep of a stale released row uses live payout rules", () => {
+  async function stranded(sendPayout: PayPalGateway["sendPayout"]) {
+    const ctx = setup({ level: "low", start: new Date(), gateway: { sendPayout } });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    const row = await ctx.repo.get(payment.id);
+    const a = await ctx.repo.transition(payment.id, "created", { state: "approved" }, row!.version);
+    const b = await ctx.repo.transition(payment.id, "approved", { state: "authorised", authorizationId: "AUTH1", authorisedAt: ctx.now() }, a.version);
+    await ctx.repo.transition(payment.id, "authorised", { state: "released" }, b.version);
+    ctx.advance(STALE_MS + 60_000);
+    return { ...ctx, id: payment.id };
+  }
+
+  it("refunds after a definite first-attempt payout rejection", async () => {
+    const ctx = await stranded(vi.fn().mockRejectedValue(new PayPalError("p", 422, "X", "d")));
+    const out = await ctx.service.expireStale();
+    expect(out.captureRetried).toEqual([ctx.id]);
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("refunded");
+    expect(ctx.gateway.refundCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves it captured, never refunding, when the payout is uncertain", async () => {
+    const ctx = await stranded(vi.fn().mockRejectedValue(new PayPalError("p", 503, undefined, "d", true)));
+    await ctx.service.expireStale();
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("captured");
+    expect(ctx.gateway.refundCapture).not.toHaveBeenCalled();
+  });
+});
+
+describe("captured rows needing attention", () => {
+  it("audits payout_needs_attention and lists the id when the sweep retry fails", async () => {
+    const sendPayout = vi.fn().mockRejectedValue(new PayPalError("p", 503, undefined, "d", true));
+    const ctx = setup({ level: "low", start: new Date(), gateway: { sendPayout } });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER }).catch(() => undefined);
+    ctx.advance(STALE_MS + 60_000);
+    const out = await ctx.service.expireStale();
+    expect(out.needsAttention).toEqual([payment.id]);
+    expect((await ctx.repo.auditFor(payment.id)).map((a) => a.action)).toContain("payout_needs_attention");
   });
 });

@@ -10,6 +10,10 @@ const base = (over: Partial<NewPayment> = {}): NewPayment => ({
 });
 
 describe("memory payment repo", () => {
+  it("rejects a self trust link", () => {
+    expect(() => createMemoryPaymentRepo({ trustLinks: [{ senderId: "u1", contactId: "u1" }] })).toThrow();
+  });
+
   it("reports whether a user exists", async () => {
     const repo = createMemoryPaymentRepo({ users: ["u1"] });
     expect(await repo.userExists("u1")).toBe(true);

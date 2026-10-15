@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
-import { NotAllowedError, PaymentInputError } from "@/payments/paymentService";
+import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
 import { errorResponse, readJsonObject } from "./http";
 
@@ -12,6 +12,16 @@ describe("errorResponse", () => {
     const r = errorResponse(new PaymentInputError("payee", "Please enter who to pay."));
     expect(r.status).toBe(400);
     expect(await r.json()).toEqual({ error: "Please enter who to pay.", field: "payee" });
+  });
+  it("maps a pending payment to 202 with calm copy and the payment id", async () => {
+    const r = errorResponse(new PaymentPendingError("p1", new PayPalError("x", 429, undefined, "d")));
+    expect(r.status).toBe(202);
+    const body = await r.json();
+    expect(body).toEqual({
+      error: "We're finishing this payment for you. You can check its status on your payments page. Please don't send it again.",
+      paymentId: "p1",
+    });
+    expect(body.error).not.toContain("Nothing has been sent");
   });
   it("maps not-allowed to 403", () => {
     expect(errorResponse(new NotAllowedError("No.")).status).toBe(403);

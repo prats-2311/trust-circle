@@ -1,4 +1,5 @@
-import { integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const presetEnum = pgEnum("preset", ["family", "business", "solo"]);
 export const paymentStateEnum = pgEnum("payment_state", [
@@ -24,7 +25,10 @@ export const trustLinks = pgTable(
     relationship: text("relationship").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("trust_links_pair").on(t.senderId, t.contactId)],
+  (t) => [
+    uniqueIndex("trust_links_pair").on(t.senderId, t.contactId),
+    check("trust_links_no_self", sql`${t.senderId} <> ${t.contactId}`),
+  ],
 );
 
 export const payments = pgTable("payments", {

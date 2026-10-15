@@ -28,6 +28,10 @@ beforeEach(async () => {
 afterAll(async () => handle?.close());
 
 describe("drizzle payment repo", () => {
+  it("rejects a trust link from a user to themselves", async () => {
+    await expect(handle.db.insert(trustLinks).values({ senderId, contactId: senderId, relationship: "self" })).rejects.toThrow();
+  });
+
   it("reports whether a user exists, tolerating non-uuid ids", async () => {
     const repo = createDrizzlePaymentRepo(handle.db);
     expect(await repo.userExists(senderId)).toBe(true);

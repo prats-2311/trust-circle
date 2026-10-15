@@ -4,6 +4,7 @@ export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string;
   const rows = new Map<string, PaymentRecord>();
   const audits: AuditEntry[] = [];
   const links = seed.trustLinks ?? [];
+  if (links.some((l) => l.senderId === l.contactId)) throw new Error("A sender cannot be their own trusted contact");
   const clone = (p: PaymentRecord) => structuredClone(p);
 
   return {

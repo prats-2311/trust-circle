@@ -139,7 +139,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
       try {
         const { result } = await orders.authorizeOrder({ id: orderId, paypalRequestId: requestId(paymentId, "authorize") });
         const id = result.purchaseUnits?.[0]?.payments?.authorizations?.[0]?.id;
-        if (!id) throw new PayPalError("authorize returned no authorization id", 0, undefined, undefined);
+        if (!id) throw new PayPalError("authorize returned no authorization id", 0, undefined, undefined, true);
         return { authorizationId: id };
       } catch (e) {
         throw toPayPalError(e, "authorizeOrder");
@@ -153,7 +153,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
           paypalRequestId: requestId(paymentId, "capture"),
           body: { finalCapture: true },
         });
-        if (!result.id) throw new PayPalError("capture returned no id", 0, undefined, undefined);
+        if (!result.id) throw new PayPalError("capture returned no id", 0, undefined, undefined, true);
         return { captureId: result.id };
       } catch (e) {
         throw toPayPalError(e, "captureAuthorization");
@@ -208,7 +208,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
     async refundCapture({ paymentId, captureId }) {
       try {
         const { result } = await payments.refundCapturedPayment({ captureId, paypalRequestId: requestId(paymentId, "refund") });
-        if (!result.id) throw new PayPalError("refund returned no id", 0, undefined, undefined);
+        if (!result.id) throw new PayPalError("refund returned no id", 0, undefined, undefined, true);
         return { refundId: result.id };
       } catch (e) {
         throw toPayPalError(e, "refundCapture");

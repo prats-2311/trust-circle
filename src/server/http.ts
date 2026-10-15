@@ -1,6 +1,6 @@
 import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
-import { NotAllowedError, PaymentInputError } from "@/payments/paymentService";
+import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
 import { getContainer } from "./container";
 import { verifySession } from "./session";
@@ -39,6 +39,15 @@ export function errorResponse(e: unknown): Response {
   if (e instanceof NotAllowedError) return Response.json({ error: e.message }, { status: 403 });
   if (e instanceof ConcurrentUpdateError || e instanceof InvalidTransitionError) {
     return Response.json({ error: "This payment has already been dealt with." }, { status: 409 });
+  }
+  if (e instanceof PaymentPendingError) {
+    return Response.json(
+      {
+        error: "We're finishing this payment for you. You can check its status on your payments page. Please don't send it again.",
+        paymentId: e.paymentId,
+      },
+      { status: 202 },
+    );
   }
   if (e instanceof PayPalError) {
     console.error("paypal error", { issue: e.issue, debugId: e.debugId, status: e.status, uncertain: e.uncertain });
