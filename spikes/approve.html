@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <body>
+    <paypal-button id="pp" type="pay" hidden></paypal-button>
+    <pre id="log"></pre>
+    <script src="https://www.sandbox.paypal.com/web-sdk/v6/core"></script>
+    <script>
+      const qs = new URLSearchParams(location.search);
+      const log = (m) => (document.getElementById("log").textContent += m + "\n");
+      (async () => {
+        const sdk = await window.paypal.createInstance({
+          clientId: qs.get("clientId"),
+          components: ["paypal-payments"],
+          pageType: "checkout",
+        });
+        const methods = await sdk.findEligibleMethods({ currencyCode: "USD" });
+        if (!methods.isEligible("paypal")) return log("paypal not eligible");
+        const session = sdk.createPayPalOneTimePaymentSession({
+          onApprove: (data) => log("APPROVED " + JSON.stringify(data)),
+          onCancel: () => log("CANCELLED"),
+          onError: (e) => log("ERROR " + e),
+        });
+        const btn = document.getElementById("pp");
+        btn.hidden = false;
+        btn.addEventListener("click", () =>
+          session.start({ presentationMode: "auto" }, Promise.resolve({ orderId: qs.get("orderId") })),
+        );
+      })();
+    </script>
+  </body>
+</html>

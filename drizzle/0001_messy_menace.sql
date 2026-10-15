@@ -1,0 +1,1 @@
+ALTER TABLE "trust_links" ADD CONSTRAINT "trust_links_no_self" CHECK ("trust_links"."sender_id" <> "trust_links"."contact_id");
