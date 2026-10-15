@@ -1,13 +1,13 @@
 # Sandbox findings (2026-10-15)
 
-## PayPal items (Phase B complete except B and C)
+## PayPal items
 | # | Item | Result | Evidence |
 |---|------|--------|----------|
 | 1 | AUTHORIZE order created and authorised | PASS | Order A `3RH40508YJ349844A`: create 201 CREATED; after v6 approval GET status APPROVED; authorize 201, status COMPLETED, authorization ID `7U6089188T211500U` (status CREATED, funds held). |
 | 2 | Capture | PASS | POST /v2/payments/authorizations/7U6089188T211500U/capture -> 201, status COMPLETED, capture ID `3GC193730H6495825`. |
-| 3 | Void | PENDING | Order B `7LU819614A957884M` still status CREATED (not approved) when checked; needs approval at https://www.sandbox.paypal.com/checkoutnow?token=7LU819614A957884M |
+| 3 | Void | PASS | Order B `7LU819614A957884M` APPROVED; authorize 201 (auth `6CC19596C71011735`); void -> 200, status VOIDED. |
 | 4 | Payout to grandson, 20.00 USD | PASS | 201, batch `5RADDASE4E8X2`; GET shows batch SUCCESS, item `7RB2E93KJVSEE` SUCCESS. |
-| 5 | Refund | PARTIAL PASS | Order C `5KN79126GE1885146` still CREATED (not approved), needs approval at https://www.sandbox.paypal.com/checkoutnow?token=5KN79126GE1885146. Refund API itself verified on order A capture instead: POST .../captures/3GC193730H6495825/refund with amount 5.00 -> 201 COMPLETED, refund ID `6AR36609346986746`; capture became PARTIALLY_REFUNDED. Full refund (empty body) of C still PENDING. |
+| 5 | Refund | PASS | Order C `5KN79126GE1885146` APPROVED; authorize 201 (auth `67S80062TJ409992E`); capture 201 (capture `1KE398440B0622120`); full refund (empty body) -> 201, refund `7D917830GV4541746`, COMPLETED. Also verified earlier: partial 5.00 refund on order A capture `3GC193730H6495825` -> 201 COMPLETED, refund `6AR36609346986746`, capture PARTIALLY_REFUNDED. |
 | 6 | JS SDK v6 approval | PASS | User approved order A via approve.html. Log: `APPROVED {"orderId":"3RH40508YJ349844A","payerId":"BBJXY7NXURQT8","fundingSource":"paypal"}`. onApprove data shape `{orderId, payerId, fundingSource}`. Approval page showed "Ship to Margaret Hill", merchant name "Test Store", button "Complete Purchase". Working snippet = spikes/approve.html verbatim (below). |
 | 9 | Idempotency | PASS | Two refund calls with the SAME PayPal-Request-Id: first 201 refund `6AR36609346986746`, second 200 returning the same refund ID, no second refund created (capture refunded once). The script uses a fresh Request-Id per call by default; `REQ_ID` env var now overrides it. |
 
@@ -62,3 +62,6 @@ Rate limits (headers): text/vision models 500000 req, 250000 tokens limit; promp
 | meta-llama/llama-prompt-guard-2-86m | 200 | ~144ms | Returns a bare float string as content. Injection text 0.9995; plain scam text 0.0004. Clear separation. |
 
 Choice: text model `qwen/qwen3.8-27b`; vision model `qwen/qwen3.8-27b`. gpt-oss-120b rejected (refuses and fails JSON mode); gpt-oss-20b works but gives weak reasoning. Prompt guard: `meta-llama/llama-prompt-guard-2-86m`, threshold on float. Speech `whisper-large-v3-turbo` untested (Plan 2).
+
+## Notes
+- Redirect-style approval via the checkoutnow link spins forever without a return_url; popup (SDK v6) is unaffected.
