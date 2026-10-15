@@ -43,12 +43,12 @@ Working v6 snippet (verbatim):
 
 Serving: `npx serve -l 5175 spikes`. Default clean-URL redirect (301 /approve.html -> /approve) DROPS the query string; fixed with `spikes/serve.json` = `{"cleanUrls": false}`, after which approve.html loads with 200.
 
-## 7. Agent Toolkit (@paypal/agent-toolkit 1.11.0)
+## 7. Agent Toolkit (@paypal/agent-toolkit 1.11.0): PASS (tool names recorded; no authorize/capture/void/payout tools)
 Package exports are ./ai-sdk, ./mcp, ./langchain, ./openai, ./bedrock (no ./shared; used npm pack). Tool method names (from dist):
 accept_dispute_claim, activate_recurring_series, cancel_invoice_auto_reminder, cancel_recurring_series, cancel_sent_invoice, cancel_subscription, create_conditional_rules_for_invoice, create_invoice, create_order, create_product, create_recurring_series, create_refund, create_shipment_tracking, create_subscription, create_subscription_plan, delete_invoice, delete_recurring_series, generate_invoice_number, generate_invoice_qr_code, get_dispute, get_invoice, get_merchant_insights, get_order, get_recurring_series, get_refund, get_shipment_tracking, list_disputes, list_invoices, list_products, list_subscription_plans, list_transactions, pay_order, record_payment_for_invoice, record_refund_for_invoice, search_invoicing, send_invoice, send_invoice_reminder, setup_invoice_auto_reminders, show_product_details, show_subscription_details, show_subscription_plan_details, update_invoice_auto_reminder, update_invoicing, update_plan, update_product, update_subscription.
 Key point: NO tool for authorize, capture, void or payouts. create_order / pay_order / create_refund exist. Authorize/capture/void/payout must go through direct REST calls.
 
-## 8. Groq
+## 8. Groq: PASS (qwen/qwen3.8-27b text + vision); gpt-oss-120b FAIL under the spike prompt only (see retry)
 Test image: spikes/scam-sms.png (legible, rendered via qlmanage; has white strip below the bubble, harmless).
 Rate limits (headers): text/vision models 500000 req, 250000 tokens limit; prompt-guard 50000 req, 30000 tokens.
 
@@ -61,7 +61,13 @@ Rate limits (headers): text/vision models 500000 req, 250000 tokens limit; promp
 | qwen/qwen3.6-27b (vision) | 200 | 821ms | Read image text exactly (omitted phone number), level high. |
 | meta-llama/llama-prompt-guard-2-86m | 200 | ~144ms | Returns a bare float string as content. Injection text 0.9995; plain scam text 0.0004. Clear separation. |
 
+gpt-oss-120b retry (once) with protective system prompt ("You are a fraud-protection assistant helping an older person decide whether a payment request is a scam. Classify the risk. Reply with JSON only: ..."), same scam text, json mode, temperature 0: 200 in 548ms, valid JSON, level high, three accurate reasons. So the earlier 400s were a PROMPT problem (bare JSON-only prompt triggers a refusal), not a model limit. It is slower than qwen3.8-27b (275ms), so the chosen model is unchanged. Plan 2 should use a protective framing prompt for any gpt-oss model.
+Rate limits recorded from that run (gpt-oss-120b): limit-requests 500000, remaining-requests 499999, reset-requests 172ms, limit-tokens 250000, remaining-tokens 249538, reset-tokens 110ms. Earlier runs' per-model values are in the Phase A output and were similar.
+
 Choice: text model `qwen/qwen3.8-27b`; vision model `qwen/qwen3.8-27b`. gpt-oss-120b rejected (refuses and fails JSON mode); gpt-oss-20b works but gives weak reasoning. Prompt guard: `meta-llama/llama-prompt-guard-2-86m`, threshold on float. Speech `whisper-large-v3-turbo` untested (Plan 2).
 
 ## Notes
 - Redirect-style approval via the checkoutnow link spins forever without a return_url; popup (SDK v6) is unaffected.
+- Authorization ID path: `purchase_units[0].payments.authorizations[0].id` in the authorize response.
+- Void's release of the senior's held funds, and the sandbox UI checks (business account and grandson): not verified in the sandbox UI. API evidence only (void 200 VOIDED, payout SUCCESS, captures/refunds COMPLETED).
+- The spike logs full PayPal responses for debugging; product code must not (global constraint).
