@@ -1,5 +1,5 @@
 "use client";
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { Stage } from "@/app/payments/[id]/screen";
 import { Button, ButtonLink } from "@/ui/Button";
@@ -31,7 +31,7 @@ type State =
   | { kind: "notFound" }
   | { kind: "error"; message: string }
   | { kind: "ready"; p: Payment; senderName: string; stage: Stage | null };
-type Result = { decision: "approve" | "block"; status: number } | { failed: string };
+type Result = { decision: "approve" | "block"; status: number } | { failed: string; uncertain: boolean };
 
 const TILE: Record<DecisionTone, { cls: string; Icon: typeof InfoIcon }> = {
   safe: { cls: "bg-evergreen-tint text-evergreen", Icon: CheckCircleIcon },
@@ -45,24 +45,35 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const [result, setResult] = useState<Result | null>(null);
   const once = useOnce();
 
+  const load = useCallback(async (): Promise<State> => {
+    const [pay, ver] = await Promise.all([
+      fetchJson<{ payment: Payment; senderName: string }>(`/api/circle/payments/${id}`),
+      fetchJson<Stage>(`/api/payments/${id}/verification`),
+    ]);
+    if (!pay.ok && pay.signedOut) return { kind: "signedOut" };
+    if (!pay.ok) {
+      return pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." };
+    }
+    return { kind: "ready", p: pay.data.payment, senderName: pay.data.senderName, stage: ver.ok ? ver.data : null };
+  }, [id]);
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const [pay, ver] = await Promise.all([
-        fetchJson<{ payment: Payment; senderName: string }>(`/api/circle/payments/${id}`),
-        fetchJson<Stage>(`/api/payments/${id}/verification`),
-      ]);
-      if (cancelled) return;
-      if (!pay.ok && pay.signedOut) return setState({ kind: "signedOut" });
-      if (!pay.ok) {
-        return setState(pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." });
-      }
-      setState({ kind: "ready", p: pay.data.payment, senderName: pay.data.senderName, stage: ver.ok ? ver.data : null });
-    })();
+    load().then((next) => {
+      if (!cancelled) setState(next);
+    });
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [load]);
+
+  // After an uncertain failure the decision may have gone through: reload what is true instead of offering the buttons again.
+  const refresh = () =>
+    once.run(async () => {
+      const next = await load();
+      setResult(null);
+      setState(next);
+    });
 
   const decide = (decision: "approve" | "block") =>
     once.run(async () => {
@@ -70,11 +81,10 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
       if (!r.ok && r.signedOut) return setState({ kind: "signedOut" });
       if (r.ok || r.status === 202 || r.status === 409) return setResult({ decision, status: r.status });
       // For a network failure or a 5xx the decision may already have gone through, so server text ("nothing was sent") is never shown.
+      const uncertain = r.status === 0 || r.status >= 500;
       setResult({
-        failed:
-          r.status === 0 || r.status >= 500
-            ? "We couldn't confirm your decision just now. It may already have gone through. Please refresh this page before deciding again."
-            : r.error,
+        failed: uncertain ? "We couldn't confirm your decision just now. It may already have gone through. Refresh to see where this payment is." : r.error,
+        uncertain,
       });
     });
 
@@ -115,8 +125,14 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
         ) : (
           <>
             {result && "failed" in result && <Notice tone="error">{result.failed}</Notice>}
-            <Button variant="danger" data-testid="block" disabled={once.busy} onClick={() => decide("block")}>Stop this payment</Button>
-            <Button variant="secondary" data-testid="approve" disabled={once.busy} onClick={() => decide("approve")}>Approve this payment</Button>
+            {result && "failed" in result && result.uncertain ? (
+              <Button variant="primary" data-testid="refresh" disabled={once.busy} onClick={refresh}>Refresh</Button>
+            ) : (
+              <>
+                <Button variant="danger" data-testid="block" disabled={once.busy} onClick={() => decide("block")}>Stop this payment</Button>
+                <Button variant="secondary" data-testid="approve" disabled={once.busy} onClick={() => decide("approve")}>Approve this payment</Button>
+              </>
+            )}
           </>
         )
       }
