@@ -64,9 +64,7 @@ export function createPaymentService(deps: {
     patch: Omit<TransitionPatch, "state"> = {},
   ): Promise<PaymentRecord> {
     const to = nextState(p.state, event);
-    const updated = await repo.transition(p.id, p.state, { ...patch, state: to }, p.version);
-    await repo.audit({ paymentId: p.id, actorId, action: event, fromState: p.state, toState: to, detail: {} });
-    return updated;
+    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event });
   }
 
   async function mustGet(id: string): Promise<PaymentRecord> {

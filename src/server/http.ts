@@ -41,6 +41,12 @@ export function errorResponse(e: unknown): Response {
     return Response.json({ error: "This payment has already been dealt with." }, { status: 409 });
   }
   if (e instanceof PaymentPendingError) {
+    const c = e.cause;
+    console.error("payment pending", {
+      paymentId: e.paymentId,
+      cause: c instanceof Error ? c.name : "unknown",
+      ...(c instanceof PayPalError ? { status: c.status, debugId: c.debugId } : {}),
+    });
     return Response.json(
       {
         error: "We're finishing this payment for you. You can check its status on your payments page. Please don't send it again.",
@@ -53,8 +59,8 @@ export function errorResponse(e: unknown): Response {
     console.error("paypal error", { issue: e.issue, debugId: e.debugId, status: e.status, uncertain: e.uncertain });
     if (e.uncertain) {
       return Response.json(
-        { error: "PayPal is still confirming this step. We will finish it automatically. Nothing more is needed from you." },
-        { status: 202 },
+        { error: "PayPal didn't answer in time. Nothing has been sent. Please try again in a moment." },
+        { status: 503 },
       );
     }
     return Response.json(

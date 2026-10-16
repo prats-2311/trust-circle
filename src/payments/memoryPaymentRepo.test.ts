@@ -66,4 +66,13 @@ describe("memory payment repo", () => {
     const f = await repo.senderContextFacts("s1", new Date());
     expect(f).toEqual({ previousPayees: ["sarah@example.com"], recentAmountsCents: [2000], paymentsInLastHour: 2 });
   });
+
+  it("records the audit entry passed to transition", async () => {
+    const repo = createMemoryPaymentRepo();
+    const p = await repo.insert(base({ state: "created" }));
+    await repo.transition(p.id, "created", { state: "approved" }, p.version, { actorId: null, action: "APPROVE" });
+    expect(await repo.auditFor(p.id)).toEqual([
+      { paymentId: p.id, actorId: null, action: "APPROVE", fromState: "created", toState: "approved", detail: {} },
+    ]);
+  });
 });

@@ -18,13 +18,16 @@ export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string;
       const r = rows.get(id);
       return r ? clone(r) : null;
     },
-    async transition(id, expected, patch, expectedVersion) {
+    async transition(id, expected, patch, expectedVersion, audit) {
       const r = rows.get(id);
       if (!r || r.state !== expected || (expectedVersion !== undefined && r.version !== expectedVersion)) {
         throw new ConcurrentUpdateError(id, expected);
       }
       const next = { ...r, ...patch, version: r.version + 1, updatedAt: new Date() };
       rows.set(id, next);
+      if (audit) {
+        audits.push({ paymentId: id, actorId: audit.actorId, action: audit.action, fromState: expected, toState: next.state, detail: structuredClone(audit.detail ?? {}) });
+      }
       return clone(next);
     },
     async listBySender(senderId) {
