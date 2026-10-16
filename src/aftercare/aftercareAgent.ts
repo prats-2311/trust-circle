@@ -8,6 +8,8 @@ export interface AftercareFinding {
   severity: "info" | "check" | "act";
   title: string;
   detail: string;
+  /** "code" findings come from Trust Circle's own checks; "model" findings are the AI's words. */
+  source: "code" | "model";
 }
 export interface AftercareReport {
   findings: AftercareFinding[];
@@ -34,6 +36,7 @@ const SYSTEM_PROMPT = [
 
 const NO_PAYPAL = "PayPal's transaction history wasn't available, so this review uses Trust Circle's own records.";
 const NO_AI = "The AI review couldn't run, so these findings come from Trust Circle's own checks.";
+const NO_AI_NOTHING = "The AI review couldn't run, and Trust Circle's own checks found nothing to flag.";
 const DAY_MS = 86_400_000;
 
 const modelOutput = z.object({
@@ -57,7 +60,7 @@ const isReadOnly = (name: string) => (READ_ONLY_TOOLS as readonly string[]).incl
 function mandatoryFindings(input: AftercareInput): AftercareFinding[] {
   return input.payments
     .filter((p) => p.state === "paid_out" && p.confirmedScamPayee)
-    .map((p) => ({ paymentId: p.id, severity: "act" as const, title: SCAM_PAYEE_TITLE, detail: SCAM_PAYEE_DETAIL }));
+    .map((p) => ({ paymentId: p.id, severity: "act" as const, source: "code" as const, title: SCAM_PAYEE_TITLE, detail: SCAM_PAYEE_DETAIL }));
 }
 
 export async function runAftercareAgent(
@@ -79,12 +82,10 @@ export async function runAftercareAgent(
   toolCalls.push({ name: "list_transactions", ok: history.ok });
   const usedPayPal = history.ok;
 
-  const fallback = (): AftercareReport => ({
-    findings: mandatoryFindings(input),
-    toolCalls,
-    usedPayPal,
-    summary: `${NO_AI}${note(usedPayPal)}`,
-  });
+  const fallback = (): AftercareReport => {
+    const findings = mandatoryFindings(input);
+    return { findings, toolCalls, usedPayPal, summary: `${findings.length > 0 ? NO_AI : NO_AI_NOTHING}${note(usedPayPal)}` };
+  };
 
   const messages: ToolChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -137,12 +138,16 @@ function finish(content: string | null, input: AftercareInput, toolCalls: Afterc
     return null;
   }
   const known = new Set(input.payments.map((p) => p.id));
-  const fromModel: AftercareFinding[] = parsed.findings.map((f) => ({
-    paymentId: f.paymentId && known.has(f.paymentId) ? f.paymentId : null,
-    severity: f.severity,
-    title: f.title,
-    detail: f.detail,
-  }));
+  // A model finding may not borrow the scam-payee title: that title is what unlocks the dispute draft, and only code earns it.
+  const fromModel: AftercareFinding[] = parsed.findings
+    .filter((f) => f.title !== SCAM_PAYEE_TITLE)
+    .map((f) => ({
+      paymentId: f.paymentId && known.has(f.paymentId) ? f.paymentId : null,
+      severity: f.severity,
+      source: "model" as const,
+      title: f.title,
+      detail: f.detail,
+    }));
   // The code's own finding is the one that shows. A model "act" about the same payment would only repeat or soften it.
   const mandatory = mandatoryFindings(input);
   const flagged = new Set(mandatory.map((m) => m.paymentId));

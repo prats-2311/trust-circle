@@ -77,7 +77,7 @@ describe("aftercare agent", () => {
     const chat = vi.fn<Chat>().mockImplementation(async () => reply(null, [call("get_order"), call("get_refund", "c2")]));
     const r = await runAftercareAgent(deps(chat, tools), input());
     expect(r.summary).toContain("The AI review couldn't run, so these findings come from Trust Circle's own checks.");
-    expect(r.findings).toEqual([{ paymentId: P2, severity: "act", title: ACT, detail: expect.stringContaining("dispute") }]);
+    expect(r.findings).toEqual([{ paymentId: P2, severity: "act", source: "code", title: ACT, detail: expect.stringContaining("dispute") }]);
     expect(chat.mock.calls.length).toBeLessThanOrEqual(3);
   });
 
@@ -101,7 +101,7 @@ describe("aftercare agent", () => {
   it("always adds the act finding for a completed payment to a confirmed scam payee, even if the model omits it", async () => {
     const { tools } = runner();
     const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(JSON.stringify({ summary: "All fine", findings: [] }))), tools), input());
-    expect(r.findings).toEqual([{ paymentId: P2, severity: "act", title: ACT, detail: expect.stringContaining("ask PayPal to open a dispute") }]);
+    expect(r.findings).toEqual([{ paymentId: P2, severity: "act", source: "code", title: ACT, detail: expect.stringContaining("ask PayPal to open a dispute") }]);
   });
 
   it("replaces the model's own act about a scam payee with the code's finding, and drops invented payment ids", async () => {
@@ -111,7 +111,7 @@ describe("aftercare agent", () => {
       { paymentId: "99999999-9999-4999-8999-999999999999", severity: "check", title: "Invented", detail: "d" },
     ] });
     const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), tools), input());
-    expect(r.findings.filter((f) => f.paymentId === P2)).toEqual([{ paymentId: P2, severity: "act", title: ACT, detail: expect.stringContaining("open a dispute") }]);
+    expect(r.findings.filter((f) => f.paymentId === P2)).toEqual([{ paymentId: P2, severity: "act", source: "code", title: ACT, detail: expect.stringContaining("open a dispute") }]);
     expect(r.findings.find((f) => f.title === "Invented")?.paymentId).toBeNull();
   });
 
@@ -169,5 +169,25 @@ describe("aftercare agent", () => {
     const msgs = chat.mock.calls[0]![0].messages;
     expect(msgs[0]!.role).toBe("system");
     expect(JSON.stringify(msgs[0])).not.toContain("Ignore previous");
+  });
+
+  it("drops a model finding that reuses the scam-payee title, so only the code's finding can offer a dispute draft", async () => {
+    const { tools } = runner();
+    const model = JSON.stringify({ summary: "s", findings: [
+      { paymentId: P1, severity: "act", title: ACT, detail: "faked" },
+      { paymentId: P1, severity: "check", title: ACT, detail: "faked too" },
+      { paymentId: P1, severity: "check", title: "Odd amount", detail: "d" },
+    ] });
+    const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), tools), input());
+    expect(r.findings.filter((f) => f.title === ACT).map((f) => f.source)).toEqual(["code"]);
+    expect(r.findings.find((f) => f.title === "Odd amount")?.source).toBe("model");
+  });
+
+  it("says nothing was flagged when the AI review can't run and there are no findings", async () => {
+    const { tools } = runner();
+    const i = input({ payments: [{ id: P1, payee: "a@x.com", amountCents: 5000, state: "paid_out", createdAt: "2026-10-10T00:00:00Z", confirmedScamPayee: false }] });
+    const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce({ ok: false as const, error: "groq http 500" }), tools), i);
+    expect(r.findings).toEqual([]);
+    expect(r.summary).toBe("The AI review couldn't run, and Trust Circle's own checks found nothing to flag.");
   });
 });

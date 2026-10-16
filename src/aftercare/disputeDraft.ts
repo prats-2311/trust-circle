@@ -19,3 +19,8 @@ export function draftDispute(p: { senderName: string; payee: string; amountCents
     "Please open a dispute and tell me what else you need from me.",
   ].join("\n");
 }
+
+/** The dispute draft is only for the code's own scam-payee finding, never for anything the model wrote. */
+export function canDraftDispute(f: { source: "code" | "model"; severity: string; title: string }): boolean {
+  return f.source === "code" && f.severity === "act" && f.title === SCAM_PAYEE_TITLE;
+}

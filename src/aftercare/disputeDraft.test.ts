@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftDispute } from "./disputeDraft";
+import { canDraftDispute, draftDispute, SCAM_PAYEE_TITLE } from "./disputeDraft";
 
 describe("dispute draft", () => {
   it("states the payee, amount, date and reason", () => {
@@ -8,5 +8,12 @@ describe("dispute draft", () => {
     expect(t).toContain("Amount: $800.50");
     expect(t).toContain("Date: 2026-10-11");
     expect(t).toContain("reported as a scam to Trust Circle");
+  });
+
+  it("offers the draft only for the code's own scam-payee finding", () => {
+    const f = { paymentId: "p", severity: "act" as const, title: SCAM_PAYEE_TITLE, detail: "d" };
+    expect(canDraftDispute({ ...f, source: "code" })).toBe(true);
+    expect(canDraftDispute({ ...f, source: "model" })).toBe(false);
+    expect(canDraftDispute({ ...f, source: "code", severity: "check" })).toBe(false);
   });
 });

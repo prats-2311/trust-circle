@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
-import { SCAM_PAYEE_TITLE, draftDispute } from "@/aftercare/disputeDraft";
+import { canDraftDispute, draftDispute } from "@/aftercare/disputeDraft";
 import type { AftercareFinding, AftercareReport } from "@/aftercare/aftercareAgent";
 import type { DashboardRow } from "@/dashboard/dashboardService";
 import { Button } from "@/ui/Button";
@@ -23,7 +23,7 @@ function toolLine(t: AftercareReport["toolCalls"][number]): string {
 function Finding({ f, row, senderName }: { f: AftercareFinding; row: DashboardRow | undefined; senderName: string }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
-  const canDraft = f.severity === "act" && f.title === SCAM_PAYEE_TITLE && row !== undefined;
+  const canDraft = canDraftDispute(f) && row !== undefined;
   const draft = row ? draftDispute({ senderName, payee: row.payee, amountCents: row.amountCents, date: new Date(row.createdAt) }) : "";
   const copy = async () => {
     try {
