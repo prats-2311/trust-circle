@@ -45,7 +45,7 @@ describe("alert service", () => {
     const open = new Set(["v-open"]);
     const alerts = createAlertService({
       repo, users, appUrl: "http://x",
-      isVerifyRequestOpen: async ({ verificationId }) => verificationId !== null && open.has(verificationId),
+      isAlertOpen: async ({ kind, verificationId }) => kind !== "verify_request" || (verificationId !== null && open.has(verificationId)),
     });
     await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p1", verificationId: "v-open", payload });
     await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p2", verificationId: "v-done", payload });
@@ -55,6 +55,23 @@ describe("alert service", () => {
       expect.arrayContaining([["verify_request", "v-open"], ["payment_held", null]]),
     );
     expect(list.some((a) => a.verificationId === "v-done")).toBe(false);
+    expect(list).toHaveLength(2);
+  });
+
+  it("drops a payment_held row once the payment is no longer open, and keeps it while it is", async () => {
+    const repo = createMemoryAlertRepo();
+    const openPayments = new Set(["p-open"]);
+    const alerts = createAlertService({
+      repo, users, appUrl: "http://x",
+      isAlertOpen: async ({ kind, paymentId }) => kind !== "payment_held" || (paymentId !== null && openPayments.has(paymentId)),
+    });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p-open", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p-closed", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_update", paymentId: "p-closed", payload: { ...payload, reason: "cancelled" } });
+    const list = await alerts.list(SARAH);
+    expect(list.map((a) => [a.kind, a.paymentId])).toEqual(
+      expect.arrayContaining([["payment_held", "p-open"], ["payment_update", "p-closed"]]),
+    );
     expect(list).toHaveLength(2);
   });
 

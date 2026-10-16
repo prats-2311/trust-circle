@@ -79,10 +79,18 @@ export function getContainer(): Container {
     email: env.RESEND_API_KEY ? createResendEmailSender({ apiKey: env.RESEND_API_KEY, from: env.ALERT_FROM_EMAIL }) : undefined,
     appUrl: env.APP_URL,
     // A verify request is only worth showing while the verification is pending and the payment is still held.
-    isVerifyRequestOpen: async ({ paymentId, verificationId }) => {
-      if (!paymentId || !verificationId) return false;
-      const [v, p] = await Promise.all([verificationRepo.get(verificationId), repo.get(paymentId)]);
-      return v?.status === "pending" && p?.state === "held";
+    // A hold alert is only worth showing while the payment is still held. Every other kind stays visible.
+    isAlertOpen: async ({ kind, paymentId, verificationId }) => {
+      if (kind === "verify_request") {
+        if (!paymentId || !verificationId) return false;
+        const [v, p] = await Promise.all([verificationRepo.get(verificationId), repo.get(paymentId)]);
+        return v?.status === "pending" && p?.state === "held";
+      }
+      if (kind === "payment_held") {
+        if (!paymentId) return false;
+        return (await repo.get(paymentId))?.state === "held";
+      }
+      return true;
     },
   });
   // Payments and verification depend on each other through events, so the handler is bound once both exist.

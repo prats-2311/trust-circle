@@ -56,10 +56,11 @@ function setup(opts: { requester?: Requester | null } = {}) {
   const onImpersonationConfirmed = vi.fn().mockResolvedValue(undefined);
   const verifications = createMemoryVerificationRepo();
   const late: { verification?: VerificationService } = {};
+  const started: Awaited<ReturnType<VerificationService["startForHeld"]>>[] = [];
   const payments = createPaymentService({
     repo, gateway, judge, now,
     onEvent: async (e) => {
-      if (e.type === "held") await late.verification!.startForHeld(e.payment);
+      if (e.type === "held") started.push(await late.verification!.startForHeld(e.payment));
     },
   });
   const verification = (late.verification = createVerificationService({ verifications, payments: repo, paymentOps: payments, circle, alerts, onImpersonationConfirmed, now }));
@@ -68,7 +69,7 @@ function setup(opts: { requester?: Requester | null } = {}) {
     return payments.completeApproval({ paymentId: payment.id, senderId: MARGARET });
   }
   return {
-    circle, repo, gateway, alerts, verifications, payments, verification, onImpersonationConfirmed, held,
+    circle, repo, gateway, alerts, started, verifications, payments, verification, onImpersonationConfirmed, held,
     advance: (ms: number) => (clock = new Date(clock.getTime() + ms)),
   };
 }
@@ -99,7 +100,7 @@ describe("verify the real person", () => {
     });
     expect(s.gateway.voidAuthorization).toHaveBeenCalledTimes(1);
     expect(s.gateway.captureAuthorization).not.toHaveBeenCalled();
-    expect(s.alerts.notify).toHaveBeenLastCalledWith({
+    expect(s.alerts.notify).toHaveBeenCalledWith({
       recipientId: MARGARET,
       kind: "payment_stopped",
       paymentId: p.id,
@@ -107,6 +108,48 @@ describe("verify the real person", () => {
     });
     expect(s.onImpersonationConfirmed).toHaveBeenCalledWith(expect.objectContaining({ id: p.id }), DANIEL);
     expect(await s.verification.stage({ paymentId: p.id, viewerId: MARGARET })).toEqual({ stage: "resolved", outcome: "denied", contactName: "Daniel" });
+  });
+
+  it("tells the rest of the circle, not Daniel, when he says it wasn't him", async () => {
+    const s = setup();
+    const p = await s.held();
+    const [v] = await s.verifications.listForPayment(p.id);
+    await s.verification.respond({ verificationId: v!.id, responderId: DANIEL, answer: "not_me" });
+    const updates = s.alerts.notify.mock.calls.map((c) => c[0]).filter((a) => a.kind === "payment_update");
+    expect(updates).toEqual([
+      {
+        recipientId: SARAH, kind: "payment_update", paymentId: p.id,
+        payload: { senderName: "Margaret", amountCents: 80000, payee: PAYEE, reason: "denied", actorName: "Daniel" },
+      },
+    ]);
+  });
+
+  it("keeps the denial when telling the circle fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const s = setup();
+    const p = await s.held();
+    const [v] = await s.verifications.listForPayment(p.id);
+    s.alerts.notify.mockImplementation(async (a: { kind: string }) => {
+      if (a.kind === "payment_update") throw new Error("db");
+    });
+    expect(await s.verification.respond({ verificationId: v!.id, responderId: DANIEL, answer: "not_me" })).toEqual({ status: "denied", paymentState: "voided" });
+    expect((await s.verifications.get(v!.id))!.status).toBe("denied");
+  });
+
+  it("returns the asked contact from startForHeld, and null for a repeat report", async () => {
+    const s = setup();
+    const p = await s.held();
+    expect(s.started).toEqual([{ targetContactId: DANIEL }]);
+    expect(await s.verification.startForHeld(p)).toBeNull();
+  });
+
+  it("returns null from startForHeld for an organisation and for someone outside the circle", async () => {
+    const org = setup({ requester: { kind: "organisation", name: "PayPal" } });
+    await org.held();
+    expect(org.started).toEqual([null]);
+    const stranger = setup({ requester: { kind: "person", name: "Gareth" } });
+    await stranger.held();
+    expect(stranger.started).toEqual([null]);
   });
 
   it("releases the payment when the real person confirms", async () => {
@@ -245,6 +288,16 @@ describe("the challenge", () => {
     ).rejects.toBeInstanceOf(NotAllowedError);
     s.advance(REAL_PERSON_WAIT_MS);
     expect(await s.verification.stage({ paymentId: p.id, viewerId: MARGARET })).toMatchObject({ stage: "challenge", method: "memory_question" });
+  });
+
+  it("tells every circle member when the check fails", async () => {
+    const s = setup({ requester: { kind: "person", name: "nephew" } });
+    const p = await s.held();
+    await s.verification.challenge({ paymentId: p.id, senderId: MARGARET, method: "memory_question", outcome: "excuse" });
+    const base = { kind: "payment_update", paymentId: p.id, payload: { senderName: "Margaret", amountCents: 80000, payee: PAYEE, reason: "check_failed" } };
+    expect(s.alerts.notify.mock.calls.map((c) => c[0])).toEqual(
+      expect.arrayContaining([{ ...base, recipientId: SARAH }, { ...base, recipientId: DANIEL }]),
+    );
   });
 
   it("blocks the payment on an excuse", async () => {

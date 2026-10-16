@@ -45,7 +45,8 @@ export class PaymentPendingError extends Error {
 }
 
 export type PaymentServiceEvent = { type: "held"; payment: PaymentRecord } | { type: "medium_sent"; payment: PaymentRecord }
-  | { type: "blocked_by_contact"; payment: PaymentRecord; actorId: string };
+  | { type: "blocked_by_contact"; payment: PaymentRecord; actorId: string }
+  | { type: "cancelled_by_sender"; payment: PaymentRecord };
 
 type ExtraContext = Pick<SenderContext, "flaggedPayees" | "registry" | "circleLimitCents">;
 
@@ -298,7 +299,15 @@ export function createPaymentService(deps: {
     async senderCancel(a: { paymentId: string; senderId: string }) {
       const p = await mustGet(a.paymentId);
       if (p.senderId !== a.senderId) throw new NotAllowedError("Only the sender can cancel this payment.");
-      return blockHeld({ paymentId: p.id, actorId: a.senderId });
+      try {
+        const stopped = await blockHeld({ paymentId: p.id, actorId: a.senderId });
+        await emit({ type: "cancelled_by_sender", payment: stopped });
+        return stopped;
+      } catch (e) {
+        // The block was claimed; only the void is still finishing. The cancel still counts.
+        if (e instanceof PaymentPendingError) await emit({ type: "cancelled_by_sender", payment: p });
+        throw e;
+      }
     },
 
     async expireStale() {

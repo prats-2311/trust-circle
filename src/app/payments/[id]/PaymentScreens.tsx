@@ -13,7 +13,7 @@ import { ChatCircleTextIcon, CheckCircleIcon, CheckIcon, InfoIcon, LockSimpleIco
 import { Notice } from "@/ui/Notice";
 import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { useOnce } from "@/ui/useOnce";
-import { circleNamesText, screenCopy, type ScreenKind, type Stage } from "./screen";
+import { circleNamesText, screenCopy, toldLine, type ScreenKind, type Stage } from "./screen";
 
 export type PaymentView = {
   id: string;
@@ -252,7 +252,13 @@ export function PaymentScreens({ kind, p, stage, contactName, circleNames, reloa
       // sent, refunded, stopped_*, cancelled, hold_ended
       const safe = kind.startsWith("stopped_");
       const person = kind === "stopped_by_person";
+      // Only the people who were really sent an alert: the circle minus the one who answered, or the whole circle after a cancel.
+      // Without the answering contact's name we can't tell who that was, so no line is shown.
+      const told = person
+        ? contactName ? toldLine(circleNames.filter((n) => n !== contactName)) : null
+        : kind === "cancelled" ? toldLine(circleNames) : null;
       const next = [
+        ...(told ? [told] : []),
         ...(person ? ["This account is on the shared scam list now, so other families are warned."] : []),
         ...(kind === "stopped_by_check" ? ["The payment won't be sent."] : []),
       ];

@@ -823,6 +823,44 @@ describe("settleHeld and blockHeld", () => {
   });
 });
 
+describe("senderCancel events", () => {
+  function withEvents(level: "low" | "medium" | "high") {
+    const onEvent = vi.fn().mockResolvedValue(undefined);
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge: judgeSaying(level), onEvent });
+    return { service, onEvent };
+  }
+  it("emits cancelled_by_sender after the block succeeds", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await service.senderCancel({ paymentId: payment.id, senderId: SENDER });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "cancelled_by_sender", payment: { id: payment.id } });
+  });
+  it("still emits it on the 202 pending path", async () => {
+    const onEvent = vi.fn().mockResolvedValue(undefined);
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const gateway = fakeGateway({ voidAuthorization: vi.fn().mockRejectedValue(new PayPalError("void", 500, undefined, "d")) });
+    const service = createPaymentService({ repo, gateway, judge: judgeSaying("high"), onEvent });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "cancelled_by_sender" });
+  });
+  it("does not emit when the cancel is refused", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: CONTACT })).rejects.toBeInstanceOf(NotAllowedError);
+    expect(onEvent).not.toHaveBeenCalled();
+  });
+});
+
 describe("senderCancel", () => {
   it("lets the sender stop a held payment, voiding it and recording them as the actor", async () => {
     const { service, gateway, repo } = setup({ level: "high" });

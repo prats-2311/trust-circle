@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { circleNamesText, screenCopy, screenFor, type ScreenKind } from "./screen";
+import { circleNamesText, screenCopy, screenFor, toldLine, type ScreenKind } from "./screen";
 
 const held = { state: "held", outcome: null };
 describe("screenFor", () => {
@@ -89,4 +89,12 @@ describe("held copy", () => {
     );
     expect(screenCopy("held", { ...d, circleNames: ["Sarah"], coolingOffHours: 48 }).lead).toContain("after 48 hours");
   });
+});
+
+describe("toldLine", () => {
+  it.each([
+    [[], null],
+    [["Sarah"], "Sarah has been told."],
+    [["Sarah", "Daniel"], "Sarah and Daniel have been told."],
+  ] as const)("%j → %s", (names, line) => expect(toldLine([...names])).toBe(line));
 });

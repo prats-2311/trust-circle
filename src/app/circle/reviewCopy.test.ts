@@ -13,10 +13,10 @@ describe("decisionResultCopy", () => {
     expect(decisionResultCopy(decision, status, "Margaret")).toMatchObject({ tone, title });
   });
 
-  it("does not claim anyone was told when a contact blocks", () => {
-    const { lead } = decisionResultCopy("block", 200, "Margaret");
-    expect(lead).toBe("Margaret's money is safe, and this account is on the shared scam list now.");
-    expect(lead).not.toMatch(/told/i);
+  it("says the sender was told when a contact blocks", () => {
+    expect(decisionResultCopy("block", 200, "Margaret").lead).toBe(
+      "We've told Margaret. Their money is safe, and this account is on the shared scam list now.",
+    );
   });
 
   it("names the person the sender wanted to pay when approved", () => {

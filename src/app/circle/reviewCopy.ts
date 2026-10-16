@@ -19,7 +19,7 @@ export function decisionResultCopy(
     };
   }
   if (decision === "block") {
-    return { tone: "safe", title: "You stopped the payment", lead: `${senderName}'s money is safe, and this account is on the shared scam list now.` };
+    return { tone: "safe", title: "You stopped the payment", lead: `We've told ${senderName}. Their money is safe, and this account is on the shared scam list now.` };
   }
   return { tone: "safe", title: "Payment approved", lead: `It's on its way to the person ${senderName} wanted to pay.` };
 }

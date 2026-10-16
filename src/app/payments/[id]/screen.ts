@@ -55,6 +55,11 @@ export function circleNamesText(names: string[]): string {
   return names.length === 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.slice(-1).join("")}`;
 }
 
+/** "Sarah has been told." for the people who were really sent an alert. Null when there is no one to name. */
+export function toldLine(names: string[]): string | null {
+  return names.length === 0 ? null : `${circleNamesText(names)} ${names.length > 1 ? "have" : "has"} been told.`;
+}
+
 export function screenCopy(
   kind: ScreenKind,
   d: { amount: string; payee: string; contactName: string | null; requesterName?: string | null; circleNames: string[]; coolingOffHours: number },

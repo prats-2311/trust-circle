@@ -20,8 +20,8 @@ export function createAlertService(deps: {
   users: Pick<CircleRepo, "getUser">;
   email?: EmailSender;
   appUrl: string;
-  /** Whether a verify request can still be answered. Closed ones are left out of the list. */
-  isVerifyRequestOpen?: (a: { paymentId: string | null; verificationId: string | null }) => Promise<boolean>;
+  /** Whether an alert still needs attention (a verify request that can be answered, a hold that is still held). Closed ones are left out of the list. */
+  isAlertOpen?: (a: { kind: AlertKind; paymentId: string | null; verificationId: string | null }) => Promise<boolean>;
   now?: () => Date;
 }) {
   const now = deps.now ?? (() => new Date());
@@ -57,7 +57,7 @@ export function createAlertService(deps: {
       const rows = await deps.repo.listForRecipient(recipientId, 50);
       const visible: typeof rows = [];
       for (const r of rows) {
-        if (r.kind === "verify_request" && deps.isVerifyRequestOpen && !(await deps.isVerifyRequestOpen(r))) continue;
+        if ((r.kind === "verify_request" || r.kind === "payment_held") && deps.isAlertOpen && !(await deps.isAlertOpen(r))) continue;
         visible.push(r);
       }
       return visible.map((r) => ({
