@@ -1,9 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Preset } from "@/domain/types";
 import { homeFor, type Persona } from "@/server/demo";
-import { PRESETS } from "@/settings/presets";
 import { Button } from "@/ui/Button";
 import { EnableNotifications } from "@/ui/EnableNotifications";
 import { describedBy, Field, INPUT } from "@/ui/Field";
@@ -11,7 +10,7 @@ import { fetchJson } from "@/ui/fetchJson";
 import { LockSimpleIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
 import { PresetRadios } from "@/ui/PresetRadios";
-import { FinePrint, Lead, Title } from "@/ui/Screen";
+import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { useOnce } from "@/ui/useOnce";
@@ -59,6 +58,8 @@ export default function OnboardingPage() {
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { busy, run } = useOnce();
+  const [revisit, setRevisit] = useState(false);
+  const finishRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +69,7 @@ export default function OnboardingPage() {
       if (!r.ok) return setLoad(r.signedOut ? { kind: "signedOut" } : { kind: "error" });
       const asked = new URLSearchParams(window.location.search).get("step");
       setStep(isStep(asked) ? asked : firstUnfinished(r.data, readVisited()));
+      setRevisit(r.data.onboarded && isStep(asked));
       if (r.data.preset) setPreset(r.data.preset);
       setLoad({ kind: "ready", me: r.data });
     })();
@@ -83,6 +85,8 @@ export default function OnboardingPage() {
   };
   const advance = () => {
     markVisited(step);
+    // Someone who has finished setup and came for one step goes back to where they came from.
+    if (revisit) return router.push("/settings");
     const next = STEPS[STEPS.indexOf(step) + 1];
     if (next) goTo(next);
   };
@@ -99,7 +103,7 @@ export default function OnboardingPage() {
 
   if (load.kind !== "ready") {
     return (
-      <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
+      <Screen>
         {load.kind === "loading" && (
           <>
             <p role="status" className="sr-only">Loading…</p>
@@ -112,11 +116,10 @@ export default function OnboardingPage() {
             <Notice tone="error">We couldn&apos;t load setup. Please refresh.</Notice>
           </div>
         )}
-      </main>
+      </Screen>
     );
   }
   const me = load.me;
-  const chosen = PRESETS[preset];
   const n = stepNumber(step);
 
   const continuePreset = () =>
@@ -148,15 +151,13 @@ export default function OnboardingPage() {
       }
     });
 
-  // "you" would read as "you's circle", and demo personas who pick Just me still have a seeded circle.
-  const circleWord = me.persona ? (preset === "solo" ? "your" : `${chosen.circleWord}'s`) : null;
   const soloNoCircle = me.circle.length === 0;
   const mailto = `mailto:?subject=${encodeURIComponent("Join my Trust Circle")}&body=${encodeURIComponent(
     `I'm using Trust Circle to check risky payments before they go. Would you be part of my circle? ${window.location.origin}/`,
   )}`;
 
   const primary = (label: string, onClick: () => void) => (
-    <Button data-testid="onboarding-next" disabled={busy} onClick={onClick}>
+    <Button ref={finishRef} data-testid="onboarding-next" disabled={busy} onClick={onClick}>
       {label}
     </Button>
   );
@@ -166,8 +167,32 @@ export default function OnboardingPage() {
     </Button>
   );
 
+  const footer = (
+    <>
+        {step === "preset" && (
+          <>
+            {primary("Continue", continuePreset)}
+            {skip}
+          </>
+        )}
+        {step === "circle" && (
+          <>
+            {primary("Continue", advance)}
+            {skip}
+          </>
+        )}
+        {step === "safe_word" && (
+          <>
+            {primary("Save safe word", saveSafeWord)}
+            {skip}
+          </>
+        )}
+        {step === "alerts" && primary("Finish", finish)}
+    </>
+  );
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
+    <Screen footer={footer}>
       <div className="flex flex-col gap-2.5">
         <span className="text-[16px] font-bold text-ink-2">Step {n} of 4</span>
         <div
@@ -187,10 +212,10 @@ export default function OnboardingPage() {
       <div className="flex flex-1 flex-col">
         {step === "preset" && (
           <>
-            <Title>Who are you protecting?</Title>
+            <Title id="h-preset">Who are you protecting?</Title>
             <Lead>Pick the closest fit. You can change it later in Settings.</Lead>
             <div className="mt-6">
-              <PresetRadios value={preset} onChange={setPreset} disabled={busy} />
+              <PresetRadios labelledBy="h-preset" value={preset} onChange={setPreset} disabled={busy} />
             </div>
             <div className="mt-5">
               <FinePrint>You approve every payment in PayPal&apos;s own window. We never see your PayPal password.</FinePrint>
@@ -204,8 +229,8 @@ export default function OnboardingPage() {
             <Lead>
               {soloNoCircle
                 ? `You haven't added anyone. Risky payments wait ${me.coolingOffHours} hours so you have time to check.`
-                : circleWord
-                  ? `In this demo, ${circleWord} circle is already set up.`
+                : me.persona
+                  ? "In this demo, your circle is already set up."
                   : "These people check risky payments for you."}
             </Lead>
             {!soloNoCircle && (
@@ -272,7 +297,7 @@ export default function OnboardingPage() {
             <Title>Turn on alerts</Title>
             <Lead>So you hear straight away when a payment needs a look. You&apos;ll always see them in the app and by email too.</Lead>
             <div className="mt-6">
-              <EnableNotifications />
+              <EnableNotifications onDone={() => finishRef.current?.focus()} />
             </div>
           </>
         )}
@@ -283,27 +308,6 @@ export default function OnboardingPage() {
           <Notice tone="error">{saveError}</Notice>
         </div>
       )}
-      <div className="mt-8 flex flex-col gap-2.5">
-        {step === "preset" && (
-          <>
-            {primary("Continue", continuePreset)}
-            {skip}
-          </>
-        )}
-        {step === "circle" && (
-          <>
-            {primary("Continue", advance)}
-            {skip}
-          </>
-        )}
-        {step === "safe_word" && (
-          <>
-            {primary("Save safe word", saveSafeWord)}
-            {skip}
-          </>
-        )}
-        {step === "alerts" && primary("Finish", finish)}
-      </div>
-    </main>
+    </Screen>
   );
 }

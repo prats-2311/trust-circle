@@ -12,6 +12,7 @@ import { PresetRadios } from "@/ui/PresetRadios";
 import { Screen } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
+import { useOnce } from "@/ui/useOnce";
 
 type Prefs = { preset: Preset; coolingOffHours: number; circleLimitCents: number | null };
 type Load = { kind: "loading" } | { kind: "signedOut" } | { kind: "error" } | { kind: "ready"; prefs: Prefs; safeWordSet: boolean };
@@ -20,13 +21,13 @@ const SAVE_FAILED = "We couldn't save that just now. Please try again.";
 
 function limitLine(p: Prefs): string {
   const name = PRESETS[p.preset].label;
-  return p.circleLimitCents === null ? `No limit (${name})` : `${formatUsd(p.circleLimitCents)} or more (set by the ${name} preset).`;
+  return p.circleLimitCents === null ? `No limit (${name})` : `Over ${formatUsd(p.circleLimitCents)} (set by the ${name} preset).`;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
   return (
     <section className="mt-8 flex flex-col gap-3">
-      <h2 className="text-[20px] font-bold">{title}</h2>
+      <h2 id={id} className="text-[20px] font-bold">{title}</h2>
       {children}
     </section>
   );
@@ -34,7 +35,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const { busy, run } = useOnce();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,8 +53,9 @@ export default function SettingsPage() {
     };
   }, []);
 
-  const save = async (body: { preset: Preset } | { coolingOffHours: number }) => {
-    setSaved(false);
+  const save = (body: { preset: Preset } | { coolingOffHours: number }) => run(() => saveNow(body));
+  const saveNow = async (body: { preset: Preset } | { coolingOffHours: number }) => {
+    setSaved(null);
     setSaveError(null);
     const before = load.kind === "ready" ? load.prefs : null;
     // Show the choice straight away; it is put back below if the save fails.
@@ -61,7 +64,11 @@ export default function SettingsPage() {
     if (r.ok) {
       const { preset, coolingOffHours, circleLimitCents } = r.data;
       setLoad((l) => (l.kind === "ready" ? { ...l, prefs: { preset, coolingOffHours, circleLimitCents } } : l));
-      setSaved(true);
+      setSaved(
+        "preset" in body && coolingOffHours !== before?.coolingOffHours
+          ? `Saved. Held payments now wait ${coolingOffHours} hours, the ${PRESETS[preset].label} default.`
+          : "Saved.",
+      );
     } else if (r.signedOut) setLoad({ kind: "signedOut" });
     else {
       if (before) setLoad((l) => (l.kind === "ready" ? { ...l, prefs: before } : l));
@@ -86,16 +93,16 @@ export default function SettingsPage() {
       {load.kind === "ready" && (
         <>
           <div role="status" className="min-h-[24px] pt-3 text-[17px] font-bold text-evergreen">
-            {saved ? "Saved." : ""}
+            {saved ?? ""}
           </div>
           {saveError && <Notice tone="error">{saveError}</Notice>}
 
-          <Section title="Who you're protecting">
-            <PresetRadios value={load.prefs.preset} onChange={(p) => void save({ preset: p })} />
+          <Section title="Who you're protecting" id="h-preset">
+            <PresetRadios labelledBy="h-preset" disabled={busy} value={load.prefs.preset} onChange={(p) => void save({ preset: p })} />
           </Section>
 
-          <Section title="How long a held payment waits">
-            <div role="radiogroup" aria-label="How long a held payment waits" className="grid grid-cols-3 gap-3">
+          <Section title="How long a held payment waits" id="h-cooling">
+            <div role="radiogroup" aria-labelledby="h-cooling" className="grid grid-cols-3 gap-3">
               {COOLING_OFF_CHOICES.map((h) => (
                 <label
                   key={h}
@@ -106,6 +113,7 @@ export default function SettingsPage() {
                     name="cooling"
                     data-testid={`cooling-${h}`}
                     checked={load.prefs.coolingOffHours === h}
+                    disabled={busy}
                     onChange={() => void save({ coolingOffHours: h })}
                     className="h-5 w-5 accent-evergreen"
                   />

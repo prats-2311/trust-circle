@@ -25,8 +25,8 @@ export function Screen({ title, backHref, chip, children, footer }: { title?: st
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
-  return <h1 className="mt-5 [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{children}</h1>;
+export function Title({ children, id }: { children: ReactNode; id?: string }) {
+  return <h1 id={id} className="mt-5 [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{children}</h1>;
 }
 
 export function Lead({ children }: { children: ReactNode }) {

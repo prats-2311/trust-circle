@@ -6,9 +6,9 @@ const ICONS = { family: UsersThreeIcon, business: BriefcaseIcon, solo: UserIcon 
 const ORDER: Preset[] = ["family", "business", "solo"];
 
 /** Three large radio cards. Each is a real radio with a visible label, so it works with a keyboard and a screen reader. */
-export function PresetRadios({ value, onChange, disabled }: { value: Preset | null; onChange: (p: Preset) => void; disabled?: boolean }) {
+export function PresetRadios({ value, onChange, disabled, labelledBy }: { labelledBy: string; value: Preset | null; onChange: (p: Preset) => void; disabled?: boolean }) {
   return (
-    <div role="radiogroup" aria-label="Who are you protecting?" className="flex flex-col gap-3">
+    <div role="radiogroup" aria-labelledby={labelledBy} className="flex flex-col gap-3">
       {ORDER.map((p) => {
         const Icon = ICONS[p];
         return (
