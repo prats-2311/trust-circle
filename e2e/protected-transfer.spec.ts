@@ -14,8 +14,10 @@ test("a small payment to someone new is confirmed and paid out", async ({ page }
   await page.getByLabel("Who are you paying?").fill(GRANDSON);
   await page.getByLabel("How much?").fill("20");
   await page.getByTestId("check").click();
+  // Wait for a verdict first: checking visibility straight away races the check and skips the confirm.
+  await expect(page.locator('[data-testid^="risk-"]')).toBeVisible();
   const medium = page.getByTestId("confirm-medium");
-  if (await medium.isVisible().catch(() => false)) await medium.click();
+  if (await page.getByTestId("risk-medium").isVisible()) await medium.click();
   await approveInPayPal(page);
   await page.waitForURL("**/payments/**");
   await expect(page.getByTestId("payment-screen-sent")).toBeVisible({ timeout: 30_000 });
