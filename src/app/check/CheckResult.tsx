@@ -34,13 +34,14 @@ export function PreviewTile({ preview }: { preview: string | null }) {
 const excerpt = (t: string) => (t.length > 90 ? `${t.slice(0, 90).trimEnd()}…` : t);
 
 export function CheckResult({
-  check, preview, justNow, canRetry, onRetry,
+  check, preview, justNow, canRetry, onRetry, onNewCheck,
 }: {
   check: CheckResponse;
   preview: string | null;
   justNow: boolean;
   canRetry: boolean;
   onRetry: () => void;
+  onNewCheck: () => void;
 }) {
   const copy = resultCopy(check);
   const { busy, run } = useOnce();
@@ -77,11 +78,7 @@ export function CheckResult({
             </>
           )}
           {copy.kind === "not_checked" &&
-            (canRetry ? (
-              <Button onClick={onRetry}>Try again</Button>
-            ) : (
-              <ButtonLink href="/check">Try again</ButtonLink>
-            ))}
+            <Button onClick={canRetry ? onRetry : onNewCheck}>Try again</Button>}
           <ButtonLink href="/home" variant="secondary">
             Back to home
           </ButtonLink>

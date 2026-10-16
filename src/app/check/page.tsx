@@ -103,6 +103,10 @@ export default function CheckPage() {
         justNow={phase.justNow}
         canRetry={phase.retry !== null}
         onRetry={() => phase.retry && submit(phase.retry)}
+        onNewCheck={() => {
+          window.history.replaceState(null, "", "/check");
+          setPhase({ kind: "input" });
+        }}
       />
     );
   }
