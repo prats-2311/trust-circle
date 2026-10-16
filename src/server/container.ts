@@ -1,3 +1,8 @@
+import { createAftercareService } from "@/aftercare/aftercareService";
+import { runAftercareAgent } from "@/aftercare/aftercareAgent";
+import { createPayPalReadOnlyToolkit, createReadOnlyToolRunner } from "@/aftercare/tools";
+import { groqToolChat } from "@/ai/groqClient";
+import { keySet } from "@/domain/matchKeys";
 import { createAlertService, type AlertService } from "@/alerts/alertService";
 import { createDrizzleAlertRepo } from "@/alerts/drizzleAlertRepo";
 import { createResendEmailSender } from "@/alerts/emailSender";
@@ -53,6 +58,7 @@ type Container = {
   gateway: PayPalGateway;
   webhooks: WebhookService;
   webhookRepo: WebhookRepo;
+  aftercare: ReturnType<typeof createAftercareService>;
 };
 let container: Container | undefined;
 
@@ -159,6 +165,22 @@ export function getContainer(): Container {
       paymentId ? repo.audit({ paymentId, actorId: null, action, fromState: null, toState: null, detail }) : Promise.resolve(),
     paymentExists: async (id) => (await repo.get(id)) !== null,
   });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
+  // The toolkit is heavy, so it loads on the first review, not at boot.
+  const aftercare = createAftercareService({
+    payments: repo,
+    circle,
+    registryConfirmed: async () => keySet((await registryLists()).confirmed),
+    agent: async (input) =>
+      runAftercareAgent(
+        {
+          chat: groqToolChat,
+          apiKey: env.GROQ_API_KEY,
+          model: env.GROQ_TEXT_MODEL,
+          tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET })),
+        },
+        input,
+      ),
+  });
+  container = { aftercare, env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
   return container;
 }

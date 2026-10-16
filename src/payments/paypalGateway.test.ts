@@ -34,6 +34,13 @@ describe("paypal gateway", () => {
     });
   });
 
+  it("sets custom_id to the payment id so Transaction Search and webhooks can match it", async () => {
+    seen.length = 0;
+    server.use(token(), record("/v2/checkout/orders", () => HttpResponse.json({ id: "ORDER1", status: "CREATED" }, { status: 201 })));
+    await gw.createAuthorizeOrder({ paymentId: "p1", amountCents: 100 });
+    expect(seen[0]?.body).toMatchObject({ purchase_units: [{ reference_id: "p1", custom_id: "p1" }] });
+  });
+
   it("sets the PayPal experience context for the approval popup", async () => {
     seen.length = 0;
     server.use(token(), record("/v2/checkout/orders", () => HttpResponse.json({ id: "ORDER1", status: "CREATED" }, { status: 201 })));

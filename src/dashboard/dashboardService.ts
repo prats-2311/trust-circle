@@ -31,6 +31,7 @@ export function dashboardStatus(state: PaymentState, blocked: boolean): Dashboar
 export interface DashboardRow {
   id: string;
   createdAt: Date;
+  senderId: string;
   senderName: string;
   payee: string;
   amountCents: number;
@@ -79,6 +80,7 @@ export function createDashboardService(deps: {
         return {
           id: p.id,
           createdAt: p.createdAt,
+          senderId: p.senderId,
           senderName: names.get(p.senderId)!,
           payee: p.payee,
           amountCents: p.amountCents,

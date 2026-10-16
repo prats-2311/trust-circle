@@ -118,7 +118,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
           paypalRequestId: requestId(paymentId, "create"),
           body: {
             intent: CheckoutPaymentIntent.Authorize,
-            purchaseUnits: [{ referenceId: paymentId, amount: { currencyCode: "USD", value: centsToPayPalValue(amountCents) } }],
+            purchaseUnits: [{ referenceId: paymentId, customId: paymentId, amount: { currencyCode: "USD", value: centsToPayPalValue(amountCents) } }],
             paymentSource: {
               paypal: {
                 experienceContext: {
