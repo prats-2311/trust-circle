@@ -1,11 +1,11 @@
-import { maxLevel, type RiskLevel, type ScamType } from "@/domain/types";
+import { maxLevel, type Requester, type RiskLevel, type ScamType } from "@/domain/types";
 import { ruleLevel, type Signal } from "./signals";
 
 export interface AiJudgement {
   level: RiskLevel;
   scamType: ScamType;
   reasons: string[];
-  impersonatedRequester: { kind: "person" | "organisation"; name: string } | null;
+  impersonatedRequester: Requester | null;
 }
 
 export type AiOutcome = { ok: true; judgement: AiJudgement } | { ok: false; error: string };

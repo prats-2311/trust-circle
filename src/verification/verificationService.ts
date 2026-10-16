@@ -140,7 +140,9 @@ export function createVerificationService(deps: {
     }
     if (vs.some((v) => isChallenge(v) && v.status === "failed")) return { stage: "resolved", outcome: "failed" };
     const official = vs.find((v) => v.method === "official_routes");
-    if (official) return { stage: "official_routes", ...officialRouteFor(official.requesterName) };
+    if (official) {
+      return { stage: "official_routes", ...officialRouteFor(official.requesterName, { remoteAccess: p.impersonatedRequester?.remoteAccess === true }) };
+    }
     if (vs.some((v) => isChallenge(v) && v.status === "passed")) {
       return { stage: "challenge_passed" };
     }

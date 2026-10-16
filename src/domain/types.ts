@@ -59,4 +59,6 @@ export interface Identifier {
 export interface Requester {
   kind: "person" | "organisation";
   name: string;
+  /** The sender says this requester is connected to, or asked them to install an app to control, their device. */
+  remoteAccess?: boolean;
 }

@@ -259,6 +259,13 @@ describe("verify the real person", () => {
 });
 
 describe("organisations and people outside the circle", () => {
+  it("tells the sender to disconnect first when the caller was connected to their device", async () => {
+    const s = setup({ requester: { kind: "organisation", name: "bank fraud team", remoteAccess: true } });
+    const p = await s.held();
+    const stage = await s.verification.stage({ paymentId: p.id, viewerId: MARGARET });
+    expect(stage).toMatchObject({ stage: "official_routes", organisation: "bank fraud team" });
+    expect(stage.stage === "official_routes" && stage.steps[0]).toContain("switch off");
+  });
   it("shows official routes for an organisation and offers no challenge", async () => {
     const s = setup({ requester: { kind: "organisation", name: "PayPal support" } });
     const p = await s.held();

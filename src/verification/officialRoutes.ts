@@ -41,7 +41,11 @@ const DEFAULT_STEPS = [
   "Find the organisation's official contact details yourself, on its website or a letter you trust, and ask them directly.",
 ];
 
-export function officialRouteFor(name: string): OfficialRoute {
+const DISCONNECT_STEP =
+  "Hang up, and switch off the computer or phone they were connected to. Someone who controls your screen can show you a fake balance or a fake refund.";
+
+export function officialRouteFor(name: string, opts: { remoteAccess?: boolean } = {}): OfficialRoute {
   const route = ROUTES.find((r) => r.match.test(name));
-  return { organisation: name.trim(), steps: route ? route.steps : DEFAULT_STEPS };
+  const steps = route ? route.steps : DEFAULT_STEPS;
+  return { organisation: name.trim(), steps: opts.remoteAccess ? [DISCONNECT_STEP, ...steps] : steps };
 }
