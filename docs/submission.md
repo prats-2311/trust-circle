@@ -17,7 +17,7 @@ Scam detection alone is an arms race: every new script has to be recognised. We 
 
 ### What it does
 
-Trust Circle is a protected way to send money with PayPal, built as a proof of concept of a mode PayPal could offer natively. It runs in the PayPal sandbox.
+Trust Circle is a protected way to send money with PayPal. It's a working reference for a setting PayPal could offer on every account, built only on PayPal's public APIs and running in the sandbox.
 
 - **Check a message.** Paste a text or a screenshot. Groq judges it and explains, in plain words, what gave the scam away. Meta's Prompt Guard screens the text for instructions aimed at the AI first.
 - **Guarded send.** Each payment is assessed by rules in code and then by the AI. The AI can raise the risk level, never lower it, and if it's unavailable the payment is held. A high-risk payment can still go ahead, but it is only authorised in PayPal and held. The sender feels they've "done it", so the pressure is off, yet the money hasn't left.
@@ -59,11 +59,17 @@ Trust Circle is a protected way to send money with PayPal, built as a proof of c
 
 ### What's next
 
+Trust Circle is meant to become a setting, not another app. A scammer can always tell a victim to pay somewhere else, so protection has to live where people already pay. Everything here runs on PayPal's public APIs (authorise and hold, void, capture, Payouts and webhooks), so PayPal could offer it as a "Trusted Contact" option on any account: name someone you trust, and risky payments wait for them before the money leaves.
+
+The idea has precedent. In US brokerage, firms must make reasonable efforts to collect a trusted contact for each customer ([FINRA Rule 4512](https://www.finra.org/rules-guidance/rulebooks/finra-rules/4512)), and may place a temporary hold on a disbursement when they reasonably believe an adult 65 or older is being financially exploited, telling that trusted contact within two business days ([FINRA Rule 2165](https://www.finra.org/rules-guidance/rulebooks/finra-rules/2165)). Trust Circle brings the same protection to everyday payments, with AI deciding which payments need a second look.
+
+The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Tailoring it for businesses, such as checking new bank details with a supplier on a known number, is next.
+
 - A real sign-up flow with an emailed one-time code, in place of demo mode.
 - Reconciling more "already done" PayPal answers, and a clear path for payments that need a person's attention.
 - Link inspection in a sandboxed browser.
 - Tuning the scam patterns to cut false alarms on everyday payments.
-- Working with PayPal on a native protected mode, where holding funds is done under the right licence.
+- Working with PayPal on the native setting, so holds and reviews run under PayPal's own licence and dispute processes.
 
 ## Form answers
 

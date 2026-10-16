@@ -290,10 +290,18 @@ npx playwright test      # end to end; the PayPal stories need the SANDBOX_* val
 
 Render (web service), Neon (Postgres with pgvector) and GitHub Actions (schedules), all on free tiers. Step by step: [docs/deploy.md](docs/deploy.md).
 
+## Where this goes
+
+Trust Circle is meant to become a setting, not another app. A scammer can always tell a victim to pay somewhere else, so protection has to live where people already pay. Everything here uses PayPal's public APIs, so PayPal could offer it as a "Trusted Contact" option on any account: name someone you trust, and risky payments wait for them before the money leaves.
+
+US brokerage already works this way: firms must make reasonable efforts to collect a trusted contact ([FINRA Rule 4512](https://www.finra.org/rules-guidance/rulebooks/finra-rules/4512)) and may temporarily hold a disbursement when they reasonably believe an adult 65 or older is being financially exploited ([FINRA Rule 2165](https://www.finra.org/rules-guidance/rulebooks/finra-rules/2165)). Trust Circle brings that protection to everyday payments, with AI deciding which payments need a second look.
+
+The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Tailoring it for businesses, such as checking new bank details with a supplier on a known number, is next.
+
 ## Limits and honest notes
 
 - **Sandbox only.** No real money moves, and the code refuses a live PayPal URL.
-- **Holding funds for real needs a licence.** Trust Circle is a proof of concept of a protected mode PayPal could offer itself. It is a hackathon project, not a PayPal product.
+- **Holding funds for real needs a licence.** Trust Circle is a working reference for a protected mode PayPal could offer itself. It is a hackathon project, not a PayPal product.
 - **Demo mode has no sign-up.** The demo people are seeded, and one tap signs you in as any of them.
 - **Email alerts are off** unless Resend is configured. The demo uses in-app and push alerts.
 - **iPhone push** works only when the app is added to the Home Screen.
