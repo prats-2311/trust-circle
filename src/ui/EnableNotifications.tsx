@@ -31,7 +31,7 @@ function swReady(): Promise<ServiceWorkerRegistration> {
   ]);
 }
 
-type Loaded = { kind: "ok"; env: NotificationEnv; notice: string | null } | { kind: "config_error" } | { kind: "signed_out" };
+type Loaded = { kind: "ok"; env: NotificationEnv; notice: string | null; conflict: boolean } | { kind: "config_error" } | { kind: "signed_out" };
 
 async function readEnv(): Promise<Loaded> {
   const config = await fetchJson<{ publicKey: string | null }>("/api/push/config");
@@ -42,6 +42,7 @@ async function readEnv(): Promise<Loaded> {
   const hasPushManager = "PushManager" in window;
   let subscribed = false;
   let notice: string | null = null;
+  let conflict = false;
   if (hasServiceWorker && hasPushManager) {
     try {
       const sub = await (await swReady()).pushManager.getSubscription();
@@ -51,7 +52,10 @@ async function readEnv(): Promise<Loaded> {
         if (res.ok) subscribed = res.status === 201;
         else if (res.signedOut) return { kind: "signed_out" };
         else if (res.status === 503) publicKey = null;
-        else if (res.status === 409) notice = res.error;
+        else if (res.status === 409) {
+          notice = res.error;
+          conflict = true;
+        } else return { kind: "config_error" };
       }
     } catch {
       hasServiceWorker = false;
@@ -60,6 +64,7 @@ async function readEnv(): Promise<Loaded> {
   return {
     kind: "ok",
     notice,
+    conflict,
     env: {
       hasServiceWorker,
       hasPushManager,
@@ -76,6 +81,7 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [env, setEnv] = useState<NotificationEnv | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const { busy, run } = useOnce();
 
@@ -87,6 +93,7 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
       if (l.kind === "ok") {
         setEnv(l.env);
         setError(l.notice);
+        setConflict(l.conflict);
       }
     });
     return () => {
@@ -141,10 +148,16 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
         });
         const res = await fetchJson("/api/push/subscription", jsonBody(JSON.parse(JSON.stringify(sub))));
         if (!res.ok) {
+          if (res.status === 409) {
+            // The subscription may belong to another account on this device, so it is left alone.
+            setError(res.error);
+            setConflict(true);
+            return;
+          }
           // Don't keep a browser subscription the server refused.
           await sub.unsubscribe().catch(() => {});
           if (res.status === 503) setEnv({ ...env, publicKey: null });
-          else setError(res.status === 409 ? res.error : TURN_ON_FAILED);
+          else setError(TURN_ON_FAILED);
           return;
         }
         setEnv({ ...env, permission: "granted", subscribed: true });
@@ -185,7 +198,7 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
           </div>
         </div>
         {error && <Notice tone="error">{error}</Notice>}
-        {copy.action && (
+        {copy.action && !conflict && (
           <Button
             data-testid="notifications-action"
             variant={state === "on" ? "secondary" : "primary"}
