@@ -82,4 +82,11 @@ describe("ruleLevel", () => {
   it("treats hidden instructions as high on their own", () => {
     expect(ruleLevel([HIDDEN_INSTRUCTIONS_SIGNAL])).toBe("high");
   });
+  it("matches registry and flagged entries however the number was written", () => {
+    const input = { payee: "4155550199", amountCents: 1000 };
+    expect(computeSignals(input, ctx({ registry: { confirmed: ["+1 (415) 555-0199"], unconfirmed: [] } })).map((s) => s.code)).toContain(
+      "REGISTRY_CONFIRMED",
+    );
+    expect(computeSignals(input, ctx({ flaggedPayees: ["14155550199"] })).map((s) => s.code)).toContain("LINKED_SCAM_MESSAGE");
+  });
 });

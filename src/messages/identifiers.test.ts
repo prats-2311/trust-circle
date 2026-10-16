@@ -29,6 +29,17 @@ describe("extractIdentifiers", () => {
     const many = Array.from({ length: 30 }, (_, i) => `u${i}@x.example`).join(" ");
     expect(extractIdentifiers(many)).toHaveLength(20);
   });
+  it("finds bare short links and bare domains on common endings", () => {
+    expect(extractIdentifiers("Claim here: bit.ly/abc123 or visit medicare-update.example today")).toEqual([
+      { type: "url", value: "bit.ly/abc123" },
+      { type: "url", value: "medicare-update.example" },
+    ]);
+  });
+  it("does not read abbreviations or emails as links", () => {
+    expect(extractIdentifiers("Meet at Main St. at 3.30, Dr. Patel said e.g. bring a@b.example")).toEqual([
+      { type: "email", value: "a@b.example" },
+    ]);
+  });
 });
 
 describe("phoneVariants and matchKeys", () => {
