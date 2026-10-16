@@ -11,9 +11,17 @@ export interface UserRecord {
   safeWordHash: string | null;
 }
 
+export interface CircleSender {
+  senderId: string;
+  displayName: string;
+  relationship: string;
+}
+
 export interface CircleRepo {
   contactsOf(senderId: string): Promise<CircleMember[]>;
   getUser(id: string): Promise<UserRecord | null>;
+  getUserByEmail(email: string): Promise<UserRecord | null>;
+  sendersOf(contactId: string): Promise<CircleSender[]>;
   setSafeWordHash(userId: string, hash: string): Promise<void>;
 }
 
@@ -31,6 +39,15 @@ export function createMemoryCircleRepo(
     async getUser(id) {
       const u = users.get(id);
       return u ? { ...u } : null;
+    },
+    async getUserByEmail(email) {
+      const u = [...users.values()].find((x) => x.email.toLowerCase() === email.toLowerCase());
+      return u ? { ...u } : null;
+    },
+    async sendersOf(contactId) {
+      return links
+        .filter((l) => l.contactId === contactId)
+        .map((l) => ({ senderId: l.senderId, displayName: users.get(l.senderId)?.displayName ?? "", relationship: l.relationship }));
     },
     async setSafeWordHash(userId, hash) {
       const u = users.get(userId);

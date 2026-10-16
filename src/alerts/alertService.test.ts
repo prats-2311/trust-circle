@@ -40,6 +40,24 @@ describe("alert service", () => {
     expect(insert.mock.calls.map((c) => c[0].status)).toEqual(["sent", "failed"]);
   });
 
+  it("hides a verify request once its verification or its payment is no longer open", async () => {
+    const repo = createMemoryAlertRepo();
+    const open = new Set(["v-open"]);
+    const alerts = createAlertService({
+      repo, users, appUrl: "http://x",
+      isVerifyRequestOpen: async ({ verificationId }) => verificationId !== null && open.has(verificationId),
+    });
+    await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p1", verificationId: "v-open", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p2", verificationId: "v-done", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p2", payload });
+    const list = await alerts.list(SARAH);
+    expect(list.map((a) => [a.kind, a.verificationId])).toEqual(
+      expect.arrayContaining([["verify_request", "v-open"], ["payment_held", null]]),
+    );
+    expect(list.some((a) => a.verificationId === "v-done")).toBe(false);
+    expect(list).toHaveLength(2);
+  });
+
   it("marks only the recipient's own alerts as read", async () => {
     const repo = createMemoryAlertRepo();
     const alerts = createAlertService({ repo, users, appUrl: "http://x", now: () => at });

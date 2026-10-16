@@ -1,36 +1,87 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ground: #f4f6f4;
+  --color-surface: #ffffff;
+  --color-ink: #14201b;
+  --color-ink-2: #3f4b46;
+  --color-ink-3: #4a5651;
+  --color-line: #d9dfdb;
+  --color-line-strong: #7d8a84;
+  --color-evergreen: #1e5a47;
+  --color-evergreen-dark: #14402f;
+  --color-evergreen-tint: #e3ede8;
+  --color-held: #2c5c8f;
+  --color-held-ink: #24456b;
+  --color-held-tint: #e6eef7;
+  --color-held-track: #dce3ec;
+  --color-caution-tint: #fbf0dc;
+  --color-caution-ink: #6e4300;
+  --color-blocked: #a2302a;
+  --color-blocked-ink: #8a231e;
+  --color-blocked-tint: #f8e5e3;
+  --color-neutral-tint: #eef1ef;
+  --radius-control: 14px;
+  --radius-panel: 20px;
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1.4;
 }
 
-.tc-search:focus-visible {
-  outline: 3px solid #2c5c8f;
+:focus-visible {
+  outline: 3px solid var(--color-held);
   outline-offset: 3px;
 }
 
 .tc-skeleton {
   background: #e4e9e6;
-  border-radius: 20px;
+  border-radius: var(--radius-panel);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tc-ring-fill {
+    animation: tc-ring 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .tc-settle {
+    animation: tc-settle 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .tc-travel {
+    animation: tc-travel 2.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  }
+}
+
+@keyframes tc-ring {
+  from {
+    stroke-dashoffset: var(--tc-ring-length);
+  }
+}
+@keyframes tc-settle {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+@keyframes tc-travel {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(150px);
+    opacity: 0;
+  }
 }

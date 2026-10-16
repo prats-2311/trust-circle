@@ -17,6 +17,7 @@ const STATUS_STYLE: Record<DashboardStatus, { background: string; color: string 
   stopped: { background: "#F8E5E3", color: "#8A231E" },
   hold_ended: { background: "#EEF1EF", color: "#3F4B46" },
   refunded: { background: "#FBF0DC", color: "#6E4300" },
+  not_approved: { background: "#EEF1EF", color: "#3F4B46" },
   in_progress: { background: "#EEF1EF", color: "#3F4B46" },
 };
 
@@ -99,7 +100,6 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
       </label>
       <input
         id="grid-search"
-        className="tc-search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{ height: 48, fontSize: 16, padding: "0 14px", borderRadius: 14, border: "2px solid #D9DFDB", width: "100%", maxWidth: 420, marginBottom: 16, boxSizing: "border-box" }}

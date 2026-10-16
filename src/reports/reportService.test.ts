@@ -122,6 +122,13 @@ describe("report service", () => {
       expect(recorded(s)).toEqual([{ type: "url", value: "paypal.me/x" }, scam]);
     });
 
+    it("keeps a look-alike link whose query hides a trusted domain", async () => {
+      const lookalike = { type: "url" as const, value: "https://evil.example?@paypal.com" };
+      const s = await setup({ identifiers: [lookalike, scam] });
+      await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+      expect(recorded(s)).toEqual([lookalike, scam]);
+    });
+
     it("still records the scammer when the exclusion list cannot be built", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const s = await setup({ excludeKeys: async () => { throw new TypeError("db"); } });

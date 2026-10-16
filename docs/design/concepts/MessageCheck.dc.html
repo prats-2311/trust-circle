@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check a message</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+  <div style="display: flex; align-items: center; gap: 8px; height: 48px">
+    <button aria-label="Back" style="width: 44px; height: 44px; margin-left: -10px; border: 0; background: transparent; color: #14201B; display: flex; align-items: center; justify-content: center; border-radius: 12px">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <span style="font-size: 18px; font-weight: 700">Check a message</span>
+  </div>
+
+  <div style="margin-top: 14px; display: flex; gap: 16px; align-items: center">
+    <img src="/_blob/0d8430873e944181c49d9ac4fc08c4eb" alt="Your screenshot of a text message asking for $800 in gift cards" style="flex: none; width: 92px; height: 92px; object-fit: cover; object-position: center 35%; border-radius: 14px; border: 1px solid #D9DFDB; background: #FFFFFF">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div style="align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 10px; border-radius: 999px; background: #F8E5E3; color: #8A231E; font-size: 16px; font-weight: 700">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"></path><path d="M12 10v4"></path><path d="M12 17.2v.1"></path></svg>
+        Very likely a scam
+      </div>
+      <span style="font-size: 15px; color: #4A5651">Checked just now</span>
+    </div>
+  </div>
+
+  <h1 style="margin: 20px 0 0; font-size: 28px; line-height: 1.2; font-weight: 800; letter-spacing: -0.01em">Someone is pretending to be Daniel</h1>
+  <p style="margin: 10px 0 0; font-size: 18px; line-height: 1.45; color: #3F4B46">This is the grandchild-in-trouble scam. The sender wants money before you can check.</p>
+
+  <h2 style="margin: 24px 0 0; font-size: 19px; font-weight: 700">What gave it away</h2>
+  <ul style="list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; font-size: 17px; line-height: 1.4">
+    <li style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700">"I lost my phone"</span><span style="color: #4A5651">So you can't call him back to check.</span></li>
+    <li style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700">"$800 in gift cards today"</span><span style="color: #4A5651">Gift cards can't be traced or returned.</span></li>
+    <li style="display: flex; flex-direction: column; gap: 2px"><span style="font-weight: 700">"Don't tell mom"</span><span style="color: #4A5651">Secrecy keeps family from stepping in.</span></li>
+  </ul>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 58px; border: 0; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 19px; font-weight: 700">Check with the real Daniel</button>
+    <button style="height: 58px; border: 2px solid #14201B; border-radius: 14px; background: transparent; color: #14201B; font-size: 19px; font-weight: 700">Report this number</button>
+    <p style="margin: 2px 0 0; font-size: 15px; line-height: 1.4; color: #4A5651; text-align: center">Reporting tells PayPal and warns your circle about +1 (415) 555-0199.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1E5A47","options":["#1E5A47","#2C5C8F","#14201B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#1E5A47' };
+  }
+}
+</script>
+</body>
+</html>

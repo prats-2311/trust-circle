@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-const SARAH = process.env.NEXT_PUBLIC_DEMO_CONTACT_ID!;
-test.skip(!SARAH, "demo contact id not set");
-
 test.beforeEach(async ({ page }) => {
-  const r = await page.request.post("/api/demo/login", { data: { userId: SARAH } });
+  const r = await page.request.post("/api/demo/login", { data: { as: "sarah" } });
   expect(r.ok()).toBe(true);
 });
 

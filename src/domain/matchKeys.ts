@@ -18,10 +18,10 @@ export function matchKeys(value: string): string[] {
   if (/[a-z]/.test(v)) {
     return [
       v
+        .replace(/[?#\\].*$/, "")
         .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
         .replace(/^[^/@]*@/, "")
         .replace(/^www\./, "")
-        .replace(/[?#].*$/, "")
         .replace(/\/+$/, ""),
     ];
   }

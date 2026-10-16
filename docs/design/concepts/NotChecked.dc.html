@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Message not checked</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+  <div style="display: flex; align-items: center; gap: 8px; height: 48px">
+    <button aria-label="Back" style="width: 44px; height: 44px; margin-left: -10px; border: 0; background: transparent; color: #14201B; display: flex; align-items: center; justify-content: center; border-radius: 12px">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <span style="font-size: 18px; font-weight: 700">Check a message</span>
+  </div>
+
+  <span style="margin-top: 20px; align-self: flex-start; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 10px; border-radius: 999px; background: #EEF1EF; color: #3F4B46; font-size: 16px; font-weight: 700">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.1"></path></svg>
+    Not checked yet
+  </span>
+  <h1 style="margin: 16px 0 0; font-size: 30px; line-height: 1.18; font-weight: 800; letter-spacing: -0.01em">We couldn't check this message right now</h1>
+  <p style="margin: 10px 0 0; font-size: 19px; line-height: 1.45; color: #3F4B46">That isn't the same as safe. Please don't reply, click a link or pay until it has been checked.</p>
+
+  <div style="margin-top: 24px; background: #FFFFFF; border-radius: 20px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+    <span style="font-size: 15px; color: #4A5651">The message you pasted</span>
+    <span style="font-size: 17px; line-height: 1.45">"Hi Grandma it's me, I lost my phone so this is my new number…"</span>
+  </div>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 58px; border: 0; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 19px; font-weight: 700">Try again</button>
+    <button style="height: 58px; border: 2px solid #14201B; border-radius: 14px; background: transparent; color: #14201B; font-size: 19px; font-weight: 700">Ask Sarah to look at it</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1E5A47","options":["#1E5A47","#2C5C8F","#14201B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#1E5A47' };
+  }
+}
+</script>
+</body>
+</html>

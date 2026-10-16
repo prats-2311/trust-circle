@@ -18,7 +18,7 @@ export function currentUserId(req: Request): string | null {
   } catch {
     return null;
   }
-  return verifySession(decoded, getContainer().env.SESSION_SECRET);
+  return verifySession(decoded, getContainer().env.SESSION_SECRET, new Date());
 }
 
 export const BAD_BODY = "Please check the details and try again.";

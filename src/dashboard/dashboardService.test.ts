@@ -24,6 +24,7 @@ describe("dashboardStatus", () => {
     ["expired", false, "hold_ended"],
     ["refunded", false, "refunded"],
     ["payout_failed", false, "refunded"],
+    ["created", false, "not_approved"],
     ["captured", false, "in_progress"],
   ] as const)("%s (blocked=%s) is %s", (state, blocked, status) => {
     expect(dashboardStatus(state, blocked)).toBe(status);

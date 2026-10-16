@@ -16,6 +16,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "demo:reset": "tsx --env-file=.env.local scripts/demo-reset.ts",
     "seed:history": "tsx --env-file=.env.local scripts/seed-demo-history.ts",
     "seed:patterns": "tsx --env-file=.env.local scripts/seed-patterns.ts",
     "eval:live": "tsx --env-file=.env.local scripts/eval-live.ts"
@@ -23,6 +24,7 @@
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
     "@paypal/paypal-server-sdk": "^2.5.0",
+    "@phosphor-icons/react": "^2.1.10",
     "ag-charts-community": "^14.2.0",
     "ag-charts-react": "^14.2.0",
     "ag-grid-community": "^36.2.0",
