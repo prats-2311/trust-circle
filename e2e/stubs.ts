@@ -4,7 +4,9 @@ import type { Page } from "@playwright/test";
 
 export const PAYMENT_ID = "00000000-0000-4000-a000-000000000003";
 export const VERIFY_ID = "00000000-0000-4000-a000-0000000000aa";
-const PAYEE = "tc-daniel-2311@personal.example.com";
+/** An invented scam payee, the same one the README demo path uses. Stubs never reach PayPal, so it needn't be a sandbox account. */
+export const STUB_PAYEE = "daniel.newphone@example.com";
+const PAYEE = STUB_PAYEE;
 const iso = (hours: number) => new Date(Date.now() + hours * 3600e3).toISOString();
 
 export type PaymentKind =
@@ -103,5 +105,32 @@ export async function stubHighRiskPayment(page: Page) {
     r.request().method() === "POST"
       ? r.fulfill({ json: { paymentId: PAYMENT_ID, orderId: "STUB-ORDER", risk: { level: "high", reasons: ["Someone claiming to be family asked for money urgently.", "It asks you to keep this secret."] } } })
       : r.continue(),
+  );
+}
+
+/** Margaret's seeded payments that the stubbed aftercare findings point at (see seedDemoHistory in src/server/demoSeed.ts). */
+const SEEDED_VET_PAYMENT = "00000000-0000-4000-a000-000000000008";
+const SEEDED_LOTTO_PAYMENT = "00000000-0000-4000-a000-000000000007";
+
+/** A finished aftercare review, without calling Groq or PayPal. Same shape as AftercareReport. Sign in as sarah first. */
+export async function stubAftercare(page: Page) {
+  await page.route("**/api/circle/aftercare", (r) =>
+    r.fulfill({
+      json: {
+        summary: "Nothing went to an account on the scam list. One recent payment was larger than usual, and one earlier hold ended without anyone deciding.",
+        findings: [
+          {
+            paymentId: SEEDED_VET_PAYMENT, severity: "check", title: "A larger payment than usual",
+            detail: "This went through after a warning. If Margaret knows the vet clinic, there's nothing to do.",
+          },
+          {
+            paymentId: SEEDED_LOTTO_PAYMENT, severity: "info", title: "A held prize-fee payment ended on its own",
+            detail: "Nobody decided within 72 hours, so the hold ended and the money stayed in Margaret's account.",
+          },
+        ],
+        toolCalls: [{ name: "list_transactions", ok: true }],
+        usedPayPal: true,
+      },
+    }),
   );
 }

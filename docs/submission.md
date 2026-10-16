@@ -106,8 +106,8 @@ PayPal tools (all in the sandbox):
 
 AI tools:
 
-- **Groq text model (we used `qwen/qwen3.8-27b`):** judges each payment and message, names who is being impersonated, writes anonymised scam-pattern descriptions, and drives the aftercare tool loop. Output is JSON checked against a schema.
-- **Groq vision model (same model in our build):** reads screenshots of suspicious messages.
+- **Groq text model (`GROQ_TEXT_MODEL`; the evaluation used `qwen/qwen3.8-27b`):** judges each payment and message, names who is being impersonated, writes anonymised scam-pattern descriptions, and drives the aftercare tool loop. Output is JSON checked against a schema.
+- **Groq vision model (`GROQ_VISION_MODEL`):** reads screenshots of suspicious messages.
 - **Meta Prompt Guard 2 (`meta-llama/llama-prompt-guard-2-86m`, on Groq):** flags text that tries to instruct the AI, which makes the check high risk.
 - **`all-MiniLM-L6-v2` (local, via Transformers.js):** embeds anonymised scam scripts for meaning-based matching in Postgres pgvector, so reworded scams are caught.
 
@@ -120,14 +120,14 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 > No sign-up: the landing page signs you in as a demo person with one tap.
 >
 > 1. Tap **Try as Margaret**. Open **Check a message** and paste: "Hi Grandma it's me, I lost my phone so this is my new number. I need $800 in gift cards today. Please don't tell mom. Text me at +1 (415) 555-0199". You'll see why it's a scam.
-> 2. Back home, tap **Send money**. Pay `daniel.newphone@example.com` $800. For "Who asked you to make this payment, and why?", write "My grandson Daniel called crying, he's in jail and needs bail money today." Continue past the pause screen and approve in the PayPal sandbox window with this sandbox buyer login:
+> 2. Back home, tap **Send money**. Pay `daniel.newphone@example.com` $800. For "Who asked you to make this payment, and why?", write "My grandson Daniel called crying, he's in jail and needs bail money today." Tap **Continue, and let Sarah review it** on the pause screen and approve in the PayPal sandbox window with this sandbox buyer login:
 >    - Email: **USER TO FILL (privately, on Devpost only)**
 >    - Password: **USER TO FILL (privately, on Devpost only)**
 > 3. The payment is held. Sign out, open **Other demo accounts** and choose **Daniel, the grandson**. Open the request and tap **It wasn't me**.
 > 4. Sign in as Margaret again: "Payment stopped. Your money is safe."
 > 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts).
 >
-> Other accounts: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Solo, no circle).
+> Other accounts: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Just me, no circle).
 >
 > The shared demo resets every day at 09:00 UTC. Everything runs in the PayPal sandbox; no real money moves. Setup to run it yourself is in the README.
 

@@ -2,7 +2,14 @@
 
 **Scammers pretend to be someone you trust. So we ask that person.**
 
+<p align="center">
+  <img src="docs/images/verify-ask.png" alt="Daniel's screen: Did you just ask Margaret for $800? with It wasn't me and Yes, it was me" width="45%">
+  <img src="docs/images/payment-stopped.png" alt="Margaret's screen: Payment stopped. Your money is safe." width="45%">
+</p>
+
 Trust Circle holds a risky PayPal payment and checks with the person the scammer is pretending to be, and with the sender's family, before any money moves. It runs entirely in the PayPal sandbox. No real money moves.
+
+**Built with:** PayPal Orders v2 (authorize, capture, void), Payouts, verified Webhooks, Agent Toolkit · Groq · AG Grid / AG Charts · Render
 
 - Live demo: {{DEMO_URL}}
 - Video (under 3 minutes): {{VIDEO_URL}}
@@ -20,7 +27,7 @@ The landing page signs you in as a demo person with one tap. There is no sign-up
 | **Sarah** | Margaret's daughter, in her circle. Sees the dashboard, trends and aftercare. |
 | **Daniel** | Margaret's grandson, the real person a scammer pretends to be. |
 | **Priya** | A freelancer (Business preset). Her accountant **Tom** is her circle. |
-| **Robert** | Solo preset, no circle. |
+| **Robert** | Just me (no circle). |
 
 **As Margaret**
 
@@ -29,7 +36,7 @@ The landing page signs you in as a demo person with one tap. There is no sign-up
 
    You get "This message is very likely a scam" and what gave it away.
 2. Go back home and tap **Send money**. Pay `daniel.newphone@example.com` $800. When asked who asked you and why, write: *My grandson Daniel called crying, he's in jail and needs bail money today.*
-3. Trust Circle says "Let's pause before this goes". Continue, and approve in the PayPal sandbox window. **The PayPal sandbox buyer login for this step is in the Devpost testing instructions, not in this repo.**
+3. Trust Circle says "Let's pause before this goes". Tap **Continue, and let Sarah review it**, and approve in the PayPal sandbox window. **The PayPal sandbox buyer login for this step is in the Devpost testing instructions, not in this repo.**
 4. The payment is approved in PayPal but held: the money hasn't left Margaret's account. The screen tells her Trust Circle has asked Daniel whether it was really him.
 
 **As Daniel, then Sarah**
@@ -102,9 +109,11 @@ A reported scam adds its identifiers to a shared list as unconfirmed. An entry i
 
 ### 7. Aftercare
 
-<img src="docs/images/dashboard-aftercare.png" alt="Sarah's dashboard: money protected, scams stopped, the Aftercare card and the AG Grid table of payments" width="100%">
+<img src="docs/images/dashboard-aftercare.png" alt="Sarah's dashboard: money protected, scams stopped, an aftercare review with two findings and the list of tools the agent called, and the AG Grid table of payments" width="100%">
 
-From the dashboard, Sarah can ask an agent to review Margaret's recent payments for anything the earlier checks missed. The agent can only read: its PayPal tools are `list_transactions` and `get_order`, scoped in code to Margaret's own payments. If a completed payment went to an account that is now on the scam list, the finding says so and Sarah can copy a dispute draft. The app never sends it and never moves money.
+*The findings in this screenshot are a sample report in the app's real format, so the picture doesn't depend on a live model run.*
+
+From the dashboard, Sarah can ask an agent to review Margaret's recent payments for anything the earlier checks missed. The agent can only read: its PayPal tools are `list_transactions` and `get_order`, scoped in code to Margaret's own payments. Findings are graded "Needs action", "Worth a check" or "For information", and "What the agent checked" lists every tool call. If a completed payment went to an account that is now on the scam list, the finding says so and Sarah can copy a dispute draft. The app never sends it and never moves money.
 
 ## How PayPal is used
 
@@ -130,7 +139,7 @@ Every PayPal call carries a `PayPal-Request-Id` derived from the payment id, so 
 | Local MiniLM embedding (`Xenova/all-MiniLM-L6-v2`) | Turns anonymised scam scripts into vectors inside the server process, for pattern matching in pgvector (similarity threshold 0.35) | `src/patterns/embedder.ts`, `src/patterns/patternService.ts` |
 | Agent Toolkit tool loop | At most 4 model tool calls in 18 seconds, over a fixed read-only allow-list. Any other tool is refused and recorded. | `src/aftercare/aftercareAgent.ts`, `src/aftercare/tools.ts` |
 
-During the build both Groq model settings were set to `qwen/qwen3.8-27b`, which gave valid JSON fastest and read screenshot text exactly in our tests. The evaluation below used it.
+The text model used for the evaluation below was `qwen/qwen3.8-27b` (see [docs/eval/results.md](docs/eval/results.md)). The vision model is whatever `GROQ_VISION_MODEL` names.
 
 Two rules hold everywhere:
 
@@ -229,8 +238,6 @@ The lead-story sequence diagram, the payment state machine and the webhook and a
 - **AG Grid and AG Charts.** The circle dashboard's payment table is AG Grid (`src/app/circle/dashboard/DashboardGrid.tsx`), and the scam trends page uses AG Charts for the stacked bar chart and AG Grid for the table (`src/app/trends/TrendsView.tsx`).
 - **Render.** The app is hosted on a Render free web service, defined by the Blueprint in [`render.yaml`](render.yaml).
 
-The original plan used Elastic for pattern search. We replaced it with pgvector and a local MiniLM model, because a trial would have expired before judging. Link inspection with KERNEL was planned as a phase 2 and was not built.
-
 ## Run it locally
 
 **Prerequisites:** Node 22 (22.12 or later), Docker, a PayPal sandbox app (client id and secret) and a Groq API key.
@@ -244,7 +251,7 @@ npm run seed && npm run seed:patterns && npm run seed:history
 npm run dev                     # http://localhost:3000
 ```
 
-`seed:patterns` downloads the 23 MB embedding model the first time.
+`seed:patterns` downloads the embedding model the first time.
 
 | Variable | Required | What it is |
 |---|---|---|
@@ -253,7 +260,8 @@ npm run dev                     # http://localhost:3000
 | `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Yes | Same client id, for the browser |
 | `DATABASE_URL` | Yes | Local default in `.env.example` |
 | `GROQ_API_KEY` | Yes | Groq console |
-| `GROQ_TEXT_MODEL`, `GROQ_VISION_MODEL` | Yes | Groq model names (we used `qwen/qwen3.8-27b`) |
+| `GROQ_TEXT_MODEL` | Yes | Groq text model name (the evaluation used `qwen/qwen3.8-27b`) |
+| `GROQ_VISION_MODEL` | Yes | Groq vision model name, for screenshots |
 | `GROQ_GUARD_MODEL` | No | Defaults to `meta-llama/llama-prompt-guard-2-86m` |
 | `SESSION_SECRET` | Yes | At least 32 characters |
 | `CRON_SECRET` | Yes | At least 24 characters, for the cron routes |
@@ -293,6 +301,7 @@ Render (web service), Neon (Postgres with pgvector) and GitHub Actions (schedule
 - **Expiry runs on a GitHub Actions schedule**, which can run a few minutes late, so a hold can end a few minutes after 72 hours.
 - **Aftercare needs Transaction Search** switched on for the sandbox app. Sandbox data lags by about 3 hours, and older demo payments carry no `custom_id`, so the agent often falls back to Trust Circle's own records. It says so when it does.
 - **The pattern matcher costs false alarms** (see Accuracy).
+- **Elastic and KERNEL were not used.** The original plan used Elastic for pattern search. We replaced it with pgvector and a local MiniLM model, because a trial would have expired before judging. Link inspection with KERNEL was planned as a phase 2 and was not built.
 - Some edge cases are deferred and logged as retries, for example reconciling an order PayPal reports as already authorised.
 
 ## Licence
