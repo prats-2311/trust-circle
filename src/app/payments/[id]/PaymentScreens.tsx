@@ -1,7 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
-import { approvalErrorCopy } from "@/app/send/riskScreen";
+import { approvalErrorCopy, cancelErrorCopy } from "@/app/send/riskScreen";
 import { Button, ButtonLink } from "@/ui/Button";
 import { Card } from "@/ui/Card";
 import { Chip } from "@/ui/Chip";
@@ -65,7 +65,7 @@ function NoticeLine({ notice }: { notice: NoticeState | null }) {
 
 function CancelButton({ action }: { action: ReturnType<typeof useAction> & { id: string } }) {
   return (
-    <Button variant="secondary" data-testid="cancel" disabled={action.busy} onClick={() => action.post(`/api/payments/${action.id}/cancel`, undefined, approval)}>
+    <Button variant="secondary" data-testid="cancel" disabled={action.busy} onClick={() => action.post(`/api/payments/${action.id}/cancel`, undefined, cancelErrorCopy)}>
       Cancel this payment
     </Button>
   );

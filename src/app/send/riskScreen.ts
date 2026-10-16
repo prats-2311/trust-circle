@@ -20,6 +20,11 @@ export function riskScreen(level: "low" | "medium" | "high", opts: { circleName:
   };
 }
 
+/** Cancel failures. 409 is handled by the caller as "already dealt with". Server text is never shown for 0 or 5xx. */
+export function cancelErrorCopy(status: number, error: string): string {
+  return status === 0 || status >= 500 ? "We couldn't confirm the cancel just now. Please refresh to see where this payment is." : error;
+}
+
 /** A 202 is never an error: the caller goes to the payment page. A 409 means it was already decided. Server text is never shown for 0 or 5xx: it may say "nothing was sent". */
 export function approvalErrorCopy(status: number, error: string): { message: string; canRetry: boolean } {
   if (status === 409) return { message: "This payment has already been dealt with.", canRetry: false };

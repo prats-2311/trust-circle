@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalErrorCopy, riskScreen } from "./riskScreen";
+import { approvalErrorCopy, cancelErrorCopy, riskScreen } from "./riskScreen";
 
 describe("riskScreen", () => {
   it("explains a hold in terms of the circle", () => {
@@ -30,5 +30,15 @@ describe("approvalErrorCopy", () => {
   });
   it("keeps the server's message for other 4xx errors and allows a retry", () => {
     expect(approvalErrorCopy(400, "Please try again.")).toEqual({ message: "Please try again.", canRetry: true });
+  });
+});
+
+describe("cancelErrorCopy", () => {
+  it.each([0, 500, 503])("tells the sender to refresh, never to retry the approval, for status %d", (status) => {
+    const text = cancelErrorCopy(status, "Something went wrong. Nothing has been sent.");
+    expect(text).toBe("We couldn't confirm the cancel just now. Please refresh to see where this payment is.");
+  });
+  it("keeps the server's message for other 4xx errors", () => {
+    expect(cancelErrorCopy(400, "That can't be cancelled.")).toBe("That can't be cancelled.");
   });
 });

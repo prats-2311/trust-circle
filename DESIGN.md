@@ -29,7 +29,7 @@ Atkinson Hyperlegible Next (Braille Institute, designed for low-vision readers),
 | ink | #14201B | text, secondary button borders |
 | ink-2 | #3F4B46 | supporting text |
 | ink-3 | #4A5651 | captions, hints |
-| line / line-strong | #D9DFDB / #B9C4BE | dividers / input borders |
+| line / line-strong | #D9DFDB / #7D8A84 | dividers / input borders (line-strong is 3.6:1 on white, meeting the 3:1 non-text rule) |
 | evergreen (accent) | #1E5A47, dark #14402F, tint #E3EDE8 | primary actions, safe outcomes |
 | held | #2C5C8F, ink #24456B, tint #E6EEF7, track #DCE3EC | anything on hold |
 | caution | tint #FBF0DC, ink #6E4300 | warnings that ask for a pause |
