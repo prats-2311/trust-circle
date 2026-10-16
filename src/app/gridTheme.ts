@@ -4,7 +4,7 @@ import { themeQuartz } from "ag-grid-community";
 export const gridTheme = themeQuartz.withParams({
   fontFamily: "inherit",
   fontSize: 16,
-  headerFontSize: 15,
+  headerFontSize: 16,
   rowHeight: 56,
   headerHeight: 48,
   accentColor: "#1E5A47",

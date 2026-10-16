@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.tc-search:focus-visible {
+  outline: 3px solid #2c5c8f;
+  outline-offset: 3px;
+}
+
+.tc-skeleton {
+  background: #e4e9e6;
+  border-radius: 20px;
+}

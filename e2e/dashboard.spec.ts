@@ -17,6 +17,16 @@ test("the trusted contact sees protected money and stopped scams in the grid", a
   await expect(page.getByTestId("status-hold_ended")).toHaveCount(1);
 });
 
+test("a tapped row opens a details panel with every reason", async ({ page }) => {
+  await page.goto("/circle/dashboard");
+  await page.getByTestId("status-stopped").first().click();
+  const panel = page.getByTestId("payment-details");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Close" })).toBeVisible();
+  await panel.getByRole("button", { name: "Close" }).click();
+  await expect(panel).toHaveCount(0);
+});
+
 test("the trends page draws the chart and the totals table", async ({ page }) => {
   await page.goto("/trends");
   await expect(page.getByTestId("trends-chart").locator("canvas").first()).toBeVisible();

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { CircleDashboard } from "@/dashboard/dashboardService";
 import { SessionNotice } from "../../SessionNotice";
+import { Skeleton } from "../../Skeleton";
 import { DashboardGrid } from "./DashboardGrid";
 
 export default function CircleDashboardPage() {
@@ -29,6 +30,12 @@ export default function CircleDashboardPage() {
       <h1 style={{ fontSize: 32, fontWeight: 800 }}>Your circle&apos;s payments</h1>
       {signedOut && <SessionNotice />}
       {failed && !signedOut && <p role="alert">We couldn&apos;t load the dashboard. Please refresh.</p>}
+      {!data && !failed && !signedOut && (
+        <>
+          <p role="status">Loading your circle&apos;s payments…</p>
+          <Skeleton blocks={[72, 48, 56, 56, 56, 56]} />
+        </>
+      )}
       {data && (
         <>
           <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, margin: "24px 0" }}>
@@ -46,6 +53,7 @@ export default function CircleDashboardPage() {
             </div>
           </dl>
           {data.rows.length === 0 ? <p>No payments yet. When someone in your circle sends money, it shows here.</p> : <DashboardGrid rows={data.rows} />}
+          {data.rows.length > 0 && <p style={{ fontSize: 16, color: "#4A5651" }}>Includes example payments created for this demo.</p>}
         </>
       )}
     </main>

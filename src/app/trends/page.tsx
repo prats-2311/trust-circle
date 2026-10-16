@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { Trends } from "@/dashboard/dashboardService";
 import { SessionNotice } from "../SessionNotice";
+import { Skeleton } from "../Skeleton";
 import { TrendsView } from "./TrendsView";
 
 export default function TrendsPage() {
@@ -29,8 +30,14 @@ export default function TrendsPage() {
       <p style={{ fontSize: 18 }}>Reports to Trust Circle over the last 12 weeks, grouped by the kind of scam.</p>
       {signedOut && <SessionNotice />}
       {failed && !signedOut && <p role="alert">We couldn&apos;t load the trends. Please refresh.</p>}
+      {!trends && !failed && !signedOut && (
+        <>
+          <p role="status">Loading the latest reports…</p>
+          <Skeleton blocks={[420, 56, 56, 56]} />
+        </>
+      )}
       {trends && (trends.total === 0 ? <p>No reports yet.</p> : <TrendsView trends={trends} />)}
-      {trends && trends.total > 0 && <p style={{ fontSize: 15, color: "#4A5651" }}>Includes example reports created for this demo.</p>}
+      {trends && trends.total > 0 && <p style={{ fontSize: 16, color: "#4A5651" }}>Includes example reports created for this demo.</p>}
     </main>
   );
 }
