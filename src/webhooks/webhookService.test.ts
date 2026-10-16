@@ -92,6 +92,15 @@ describe("webhook service", () => {
     expect(t.repo.markProcessed).not.toHaveBeenCalled();
   });
 
+  it("keeps a handler's error message out of the thrown error", async () => {
+    const t = setup();
+    t.payments.payoutOutcome.mockRejectedValue(new Error("payout to someone@example.com failed"));
+    const err = (await t.service.handle(payoutEvent("PAYMENT.PAYOUTS-ITEM.RETURNED")).catch((e: unknown) => e)) as WebhookFailedError;
+    expect(err).toBeInstanceOf(WebhookFailedError);
+    expect(JSON.stringify({ message: err.message, name: err.name, errorName: err.errorName, stack: err.stack, cause: err.cause })).not.toContain("someone@example.com");
+    expect(JSON.stringify((t.repo.markFailed as ReturnType<typeof vi.fn>).mock.calls)).not.toContain("someone@example.com");
+  });
+
   it("treats a deferred outcome as not processed", async () => {
     const t = setup({ payoutOutcome: "deferred", attempts: 2 });
     expect(await t.service.handle(payoutEvent("PAYMENT.PAYOUTS-ITEM.RETURNED"))).toEqual({ result: "deferred", attempts: 2 });

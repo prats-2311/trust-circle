@@ -56,12 +56,16 @@ export async function POST(req: Request) {
   };
   try {
     const { result, attempts } = await webhooks.handle({ id, event_type: type, resource: event.resource });
-    if (result === "deferred") return retryOrGiveUp(attempts, "Deferred");
+    if (result === "deferred") {
+      // A deferral only waits for the sweep to settle the payout, so it is always redelivered (PayPal caps retries at 25 over 3 days).
+      console.info("paypal webhook", { type, id, result, attempts });
+      return Response.json({ error: "Try again." }, { status: 500 });
+    }
     console.info("paypal webhook", { type, id, result });
     return Response.json({ result });
   } catch (e) {
     if (e instanceof WebhookFailedError) return retryOrGiveUp(e.attempts, e.errorName);
-    // Nothing was claimed (the store itself failed), so a redelivery is safe.
+    // A plain error: the claim or the processed-mark failed in the store. The event is not marked processed, so a redelivery is safe.
     console.warn("paypal webhook failed", { type, id, errorName: e instanceof Error ? e.name : "unknown" });
     return Response.json({ error: "Try again." }, { status: 500 });
   }

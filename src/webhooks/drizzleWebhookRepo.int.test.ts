@@ -40,6 +40,14 @@ describe("drizzle webhook repo", () => {
     expect(await row("WH-1")).toMatchObject({ processedAt: later, result: "applied" });
   });
 
+  it("never un-processes an event: a later markFailed leaves it processed", async () => {
+    const repo = createDrizzleWebhookRepo(handle.db);
+    await repo.claim("WH-3", "T", at);
+    await repo.markProcessed("WH-3", later, "applied");
+    await repo.markFailed("WH-3", later, "Boom");
+    expect(await row("WH-3")).toMatchObject({ processedAt: later, result: "applied" });
+  });
+
   it("marks a failed event with the error name and leaves it unprocessed", async () => {
     const repo = createDrizzleWebhookRepo(handle.db);
     await repo.claim("WH-2", "T", at);

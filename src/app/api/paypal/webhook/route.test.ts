@@ -105,11 +105,11 @@ describe("POST /api/paypal/webhook", () => {
     expect((await post()).status).toBe(500);
   });
 
-  it("answers 500 for a deferred outcome below the cap and 200 at it", async () => {
+  it("answers 500 for a deferred outcome at any attempt count", async () => {
     handle.mockResolvedValue({ result: "deferred", attempts: 2 });
     expect((await post()).status).toBe(500);
     handle.mockResolvedValue({ result: "deferred", attempts: 5 });
-    expect((await post()).status).toBe(200);
+    expect((await post()).status).toBe(500);
   });
 
   it("answers 200 for a duplicate", async () => {
@@ -122,7 +122,9 @@ describe("POST /api/paypal/webhook", () => {
   it("never logs the error message or body when handling fails", async () => {
     handle.mockRejectedValue(new WebhookFailedError(1, "Boom"));
     await post();
-    expect(JSON.stringify((console.warn as ReturnType<typeof vi.fn>).mock.calls)).not.toContain("resource");
+    const logged = JSON.stringify([...(console.warn as ReturnType<typeof vi.fn>).mock.calls, ...(console.info as ReturnType<typeof vi.fn>).mock.calls]);
+    expect(logged).not.toContain("resource");
+    expect(logged).not.toContain("someone@example.com");
   });
 
   it("answers 413 for a body over 256 KB without verifying", async () => {
