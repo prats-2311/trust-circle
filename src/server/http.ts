@@ -1,7 +1,9 @@
 import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
+import { MessageInputError } from "@/messages/messageService";
 import { PayPalError } from "@/payments/paypalGateway";
+import { VerificationClosedError, VerificationInputError } from "@/verification/verificationService";
 import { getContainer } from "./container";
 import { verifySession } from "./session";
 
@@ -35,6 +37,9 @@ export function badBody(): Response {
 }
 
 export function errorResponse(e: unknown): Response {
+  if (e instanceof MessageInputError) return Response.json({ error: e.message, field: e.field }, { status: 400 });
+  if (e instanceof VerificationInputError) return Response.json({ error: e.message }, { status: 400 });
+  if (e instanceof VerificationClosedError) return Response.json({ error: e.message }, { status: 409 });
   if (e instanceof PaymentInputError) return Response.json({ error: e.message, field: e.field }, { status: 400 });
   if (e instanceof NotAllowedError) return Response.json({ error: e.message }, { status: 403 });
   if (e instanceof ConcurrentUpdateError || e instanceof InvalidTransitionError) {

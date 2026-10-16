@@ -3,6 +3,8 @@ import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
+import { MessageInputError } from "@/messages/messageService";
+import { VerificationClosedError, VerificationInputError } from "@/verification/verificationService";
 import { errorResponse, readJsonObject } from "./http";
 
 vi.spyOn(console, "error").mockImplementation(() => {});
@@ -22,6 +24,17 @@ describe("errorResponse", () => {
       paymentId: "p1",
     });
     expect(body.error).not.toContain("Nothing has been sent");
+  });
+  it("maps message input errors to 400 with the field", async () => {
+    const r = errorResponse(new MessageInputError("image", "Please add a screenshot of the message."));
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ error: "Please add a screenshot of the message.", field: "image" });
+  });
+  it("maps verification errors", async () => {
+    expect(errorResponse(new VerificationInputError("Please type what the caller said.")).status).toBe(400);
+    const closed = errorResponse(new VerificationClosedError());
+    expect(closed.status).toBe(409);
+    expect(await closed.json()).toEqual({ error: "This has already been answered." });
   });
   it("maps not-allowed to 403", () => {
     expect(errorResponse(new NotAllowedError("No.")).status).toBe(403);
