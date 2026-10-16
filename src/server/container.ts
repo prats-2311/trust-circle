@@ -12,7 +12,7 @@ import { createGroqPatternDescriber } from "@/ai/patternDescriber";
 import { createPromptGuard } from "@/ai/promptGuard";
 import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
 import { loadEnvSafe, type Env } from "@/config/env";
-import { createDb } from "@/db/client";
+import { createDb, type Db } from "@/db/client";
 import { createDashboardService, type DashboardService } from "@/dashboard/dashboardService";
 import { createDrizzleMessageRepo } from "@/messages/drizzleMessageRepo";
 import { createMessageService, type MessageService } from "@/messages/messageService";
@@ -43,6 +43,7 @@ import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
   env: Env;
+  db: Db;
   repo: PaymentRepo;
   circle: CircleRepo;
   service: PaymentService;
@@ -184,6 +185,6 @@ export function getContainer(): Container {
         input,
       ),
   });
-  container = { aftercare, env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
+  container = { aftercare, env, db, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
   return container;
 }

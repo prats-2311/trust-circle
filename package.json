@@ -9,6 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:prod": "node scripts/migrate.mjs && next start -p ${PORT:-3000}",
+    "postbuild": "node scripts/prefetch-model.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --project unit",
@@ -24,6 +26,7 @@
     "demo:reset": "tsx --env-file=.env.local scripts/demo-reset.ts",
     "seed:history": "tsx --env-file=.env.local scripts/seed-demo-history.ts",
     "seed:patterns": "tsx --env-file=.env.local scripts/seed-patterns.ts",
+    "deploy:seed": "tsx scripts/deploy-seed.ts",
     "eval:live": "tsx --env-file=.env.local scripts/eval-live.ts"
   },
   "dependencies": {

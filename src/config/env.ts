@@ -5,6 +5,9 @@ const withDefault = (d: string, schema: z.ZodString = z.string().min(1)) =>
   z.preprocess((v) => (v === "" ? undefined : v), schema.default(d));
 const optionalString = z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).optional());
 
+// Opt-in flag: only the exact value "1" turns it on; anything else is treated as off.
+const oneFlag = z.preprocess((v) => (v === "1" ? v : undefined), z.literal("1").optional());
+
 const EnvSchema = z.object({
   PAYPAL_CLIENT_ID: z.string().min(1),
   PAYPAL_CLIENT_SECRET: z.string().min(1),
@@ -23,6 +26,7 @@ const EnvSchema = z.object({
   VAPID_PRIVATE_KEY: optionalString,
   VAPID_SUBJECT: withDefault("mailto:alerts@trustcircle.example", z.string().regex(/^(mailto:|https:)/)),
   PAYPAL_WEBHOOK_ID: optionalString,
+  DEMO_DAILY_RESET: oneFlag,
   APP_URL: withDefault("http://localhost:3000", z.string().url()),
 });
 

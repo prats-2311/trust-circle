@@ -111,3 +111,10 @@ describe("loadEnvSafe", () => {
     expect(r.warnings.join(" ")).not.toContain("bad\n");
   });
 });
+
+describe("DEMO_DAILY_RESET", () => {
+  it("is on only for the exact value 1", () => {
+    expect(loadEnv({ ...valid, DEMO_DAILY_RESET: "1" }).DEMO_DAILY_RESET).toBe("1");
+    for (const v of [undefined, "", "0", "true", "yes"]) expect(loadEnv({ ...valid, DEMO_DAILY_RESET: v }).DEMO_DAILY_RESET).toBeUndefined();
+  });
+});

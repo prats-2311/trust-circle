@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: trust-circle
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:prod
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22.12.0"
+      - key: PAYPAL_ENV
+        value: sandbox
+      - { key: DATABASE_URL, sync: false }
+      - { key: PAYPAL_CLIENT_ID, sync: false }
+      - { key: PAYPAL_CLIENT_SECRET, sync: false }
+      - { key: NEXT_PUBLIC_PAYPAL_CLIENT_ID, sync: false }
+      - { key: PAYPAL_WEBHOOK_ID, sync: false }
+      - { key: GROQ_API_KEY, sync: false }
+      - { key: GROQ_TEXT_MODEL, sync: false }
+      - { key: GROQ_VISION_MODEL, sync: false }
+      - { key: SESSION_SECRET, generateValue: true }
+      - { key: CRON_SECRET, sync: false }
+      - { key: NEXT_PUBLIC_VAPID_PUBLIC_KEY, sync: false }
+      - { key: VAPID_PRIVATE_KEY, sync: false }
+      - { key: VAPID_SUBJECT, sync: false }
+      - { key: APP_URL, sync: false }
+      - { key: DEMO_DAILY_RESET, value: "1" }
