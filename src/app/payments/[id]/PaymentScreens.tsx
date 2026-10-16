@@ -110,7 +110,7 @@ export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: 
           {root(
             <>
               <div className="mt-4"><HoldRing fractionUsed={prog.fractionUsed} amountCents={p.amountCents} label={`Hold time used: ${usedHours} of ${spanHours} hours`} /></div>
-              <h1 className="mt-5 text-center text-[28px] font-extrabold leading-tight tracking-[-0.01em]">{copy.title}</h1>
+              <h1 className="mt-5 text-center [overflow-wrap:anywhere] text-[28px] font-extrabold leading-tight tracking-[-0.01em]">{copy.title}</h1>
               <p className="mx-auto mt-2.5 max-w-[320px] text-center text-[18px] leading-relaxed text-ink-2">{copy.lead}</p>
               <ol className="mt-7 flex list-none flex-col p-0">
                 <TimelineItem filled title="Held in PayPal" sub={authorised ? weekdayTime(authorised) : undefined} />
@@ -271,7 +271,7 @@ export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: 
               <div aria-hidden="true" className={`tc-settle mx-auto mt-6 flex h-[88px] w-[88px] items-center justify-center rounded-full ${tone}`}>
                 <Icon size={44} weight="bold" />
               </div>
-              <h1 className="mt-6 text-center text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{copy.title}</h1>
+              <h1 className="mt-6 text-center [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{copy.title}</h1>
               <p className="mt-2.5 text-center text-[18px] leading-relaxed text-ink-2">{copy.lead}</p>
               {next.length > 0 && (
                 <Card className="mt-7">

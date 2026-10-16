@@ -1,50 +1,51 @@
+import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
+import { approveInPayPal, signInAs } from "./helpers";
 
-const BUYER_EMAIL = process.env.SANDBOX_SENIOR_EMAIL!;
-const BUYER_PASSWORD = process.env.SANDBOX_SENIOR_PASSWORD!;
 const GRANDSON = process.env.SANDBOX_GRANDSON_EMAIL!;
+test.skip(!process.env.SANDBOX_SENIOR_EMAIL || !process.env.SANDBOX_SENIOR_PASSWORD || !GRANDSON, "sandbox credentials not set");
 
-test.skip(!BUYER_EMAIL || !BUYER_PASSWORD || !GRANDSON, "sandbox credentials not set");
+// The first story reports the grandson's account to the shared scam list; a clean slate keeps the second story independent of it.
+test.beforeEach(() => {
+  execSync("npm run demo:reset", { stdio: "ignore" });
+});
 
-async function approveInPayPal(page: import("@playwright/test").Page) {
-  const popupPromise = page.waitForEvent("popup");
-  await page.getByTestId("paypal-button").click();
-  const popup = await popupPromise;
-  await popup.getByRole("textbox", { name: /email or mobile number/i }).fill(BUYER_EMAIL);
-  await popup.getByRole("button", { name: /^next$/i }).click();
-  await popup.locator("#password").fill(BUYER_PASSWORD);
-  await popup.getByRole("button", { name: /log in/i }).click();
-  await popup.getByRole("button", { name: /(complete purchase|continue)/i }).click();
-  await popup.waitForEvent("close");
-}
-
-test("a scam payment is held and the trusted contact blocks it", async ({ page }) => {
-  await page.goto("/demo");
-  await page.getByTestId("demo-send").click();
-  await page.getByTestId("payee").fill(GRANDSON);
-  await page.getByTestId("amount").fill("800");
-  await page.getByTestId("answer").fill("My grandson called crying, he's in jail and needs bail money today. He said not to tell his mum.");
+test("a grandson scam is held, the real Daniel says it wasn't him, and the money is safe", async ({ page, browser }) => {
+  await page.goto("/");
+  await page.getByTestId("try-margaret").click();
+  await page.waitForURL("**/home");
+  await page.getByTestId("home-send").click();
+  await page.getByLabel("Who are you paying?").fill(GRANDSON);
+  await page.getByLabel("How much?").fill("800");
+  await page.getByLabel("Who asked you to make this payment, and why?").fill(
+    "My grandson Daniel called crying, he's in jail and needs bail money today. He said not to tell his mum.",
+  );
   await page.getByTestId("check").click();
   await expect(page.getByTestId("risk-high")).toBeVisible();
   await approveInPayPal(page);
-  await expect(page.getByTestId("payment-state")).toHaveText("held");
+  await page.waitForURL("**/payments/**");
+  await expect(page.locator("[data-testid=payment-screen-waiting], [data-testid=payment-screen-held]")).toBeVisible();
 
-  await page.goto("/demo");
-  await page.getByTestId("demo-circle").click();
-  await expect(page.getByTestId("held-payment").first()).toBeVisible();
-  await page.getByTestId("block").first().click();
-  await expect(page.getByTestId("decision-result")).toHaveText("Payment voided");
+  const daniel = await browser.newPage();
+  await signInAs(daniel, "daniel");
+  await daniel.goto("/circle");
+  await daniel.getByTestId("answer-verification").first().click();
+  await daniel.getByTestId("not-me").click();
+  await expect(daniel.getByRole("heading", { name: /We stopped it/ })).toBeVisible();
+
+  await expect(page.getByTestId("payment-screen-stopped_by_person")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "Payment stopped. Your money is safe." })).toBeVisible();
 });
 
-test("a small payment with no warning signs is paid out", async ({ page }) => {
-  await page.goto("/demo");
-  await page.getByTestId("demo-send").click();
-  await page.getByTestId("payee").fill(GRANDSON);
-  await page.getByTestId("amount").fill("20");
+test("a small payment to someone new is confirmed and paid out", async ({ page }) => {
+  await signInAs(page, "margaret");
+  await page.goto("/send");
+  await page.getByLabel("Who are you paying?").fill(GRANDSON);
+  await page.getByLabel("How much?").fill("20");
   await page.getByTestId("check").click();
-  // A first payment to a new payee can be rated medium; the sender confirms and it still pays out.
-  await expect(page.getByTestId("risk-low").or(page.getByTestId("risk-medium"))).toBeVisible();
-  if (await page.getByTestId("confirm-medium").isVisible()) await page.getByTestId("confirm-medium").click();
+  const medium = page.getByTestId("confirm-medium");
+  if (await medium.isVisible().catch(() => false)) await medium.click();
   await approveInPayPal(page);
-  await expect(page.getByTestId("payment-state")).toHaveText("paid_out", { timeout: 60_000 });
+  await page.waitForURL("**/payments/**");
+  await expect(page.getByTestId("payment-screen-sent")).toBeVisible({ timeout: 30_000 });
 });
