@@ -11,8 +11,9 @@ export interface ScamReportRecord {
 }
 
 export interface ScamReportRepo {
-  /** Idempotent on messageCheckId: a second insert returns the first report. */
-  insert(r: Omit<ScamReportRecord, "id" | "createdAt">): Promise<ScamReportRecord>;
+  /** Idempotent on messageCheckId: a second insert returns the first report with created: false. */
+  insert(r: Omit<ScamReportRecord, "id" | "createdAt">): Promise<{ record: ScamReportRecord; created: boolean }>;
+  setPattern(id: string, patternId: string): Promise<void>;
   findByCheck(messageCheckId: string): Promise<ScamReportRecord | null>;
 }
 
@@ -21,10 +22,14 @@ export function createMemoryScamReportRepo(): ScamReportRepo {
   return {
     async insert(r) {
       const existing = rows.find((x) => x.messageCheckId === r.messageCheckId);
-      if (existing) return { ...existing };
+      if (existing) return { record: { ...existing }, created: false };
       const row = { ...r, id: randomUUID(), createdAt: new Date() };
       rows.push(row);
-      return { ...row };
+      return { record: { ...row }, created: true };
+    },
+    async setPattern(id, patternId) {
+      const r = rows.find((x) => x.id === id);
+      if (r) r.patternId = patternId;
     },
     async findByCheck(messageCheckId) {
       const r = rows.find((x) => x.messageCheckId === messageCheckId);

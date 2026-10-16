@@ -16,7 +16,8 @@ export function draftReport(c: Pick<MessageCheckRecord, "scamType" | "reasons" |
   if (c.reasons.length) lines.push("", "Why it looks like a scam:", ...c.reasons.map((r) => `- ${r}`));
   if (c.identifiers.length) lines.push("", "Contact details in the message:", ...c.identifiers.map((i) => `- ${IDENTIFIER_LABELS[i.type]}: ${i.value}`));
   if (c.text) {
-    const excerpt = c.text.length > MESSAGE_EXCERPT ? `${c.text.slice(0, MESSAGE_EXCERPT)}…` : c.text;
+    const chars = Array.from(c.text);
+    const excerpt = chars.length > MESSAGE_EXCERPT ? `${chars.slice(0, MESSAGE_EXCERPT).join("")}…` : c.text;
     lines.push("", "The message:", `"${excerpt}"`);
   }
   lines.push("", "Reported with Trust Circle.");
@@ -26,7 +27,12 @@ export function draftReport(c: Pick<MessageCheckRecord, "scamType" | "reasons" |
 /** A link that opens the user's own email app with the report filled in; the app never sends it. */
 export function mailtoFor(d: { subject: string; body: string }): string {
   const build = (body: string) => `mailto:${PAYPAL_PHISHING_ADDRESS}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(body)}`;
+  // Trim by code points so an emoji is never cut in half (encodeURIComponent throws on a lone surrogate).
+  let chars = Array.from(d.body);
   let body = d.body;
-  while (build(body).length > MAX_MAILTO && body.length > 0) body = body.slice(0, Math.floor(body.length * 0.9));
+  while (build(body).length > MAX_MAILTO && chars.length > 0) {
+    chars = chars.slice(0, Math.floor(chars.length * 0.9));
+    body = chars.join("");
+  }
   return build(body);
 }

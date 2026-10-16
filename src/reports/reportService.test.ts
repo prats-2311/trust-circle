@@ -53,6 +53,25 @@ describe("report service", () => {
     expect((await s.reports.findByCheck(s.check.id))!.patternId).toBeNull();
   });
 
+  it("counts two concurrent reports of the same check once", async () => {
+    const s = await setup();
+    const [a, b] = await Promise.all([
+      s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER }),
+      s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER }),
+    ]);
+    expect(s.registry.record).toHaveBeenCalledTimes(1);
+    expect(s.patterns.add).toHaveBeenCalledTimes(1);
+    expect([a.alreadyReported, b.alreadyReported].sort()).toEqual([false, true]);
+  });
+
+  it("still reports when the registry is unavailable", async () => {
+    const s = await setup();
+    s.registry.record.mockRejectedValue(new Error("down"));
+    const r = await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+    expect(r.alreadyReported).toBe(false);
+    expect(r.mailtoUrl.startsWith("mailto:")).toBe(true);
+  });
+
   it("refuses someone else's check, and checks that are low or unchecked", async () => {
     const s = await setup();
     await expect(s.service.reportCheck({ checkId: s.check.id, reporterId: OTHER })).rejects.toBeInstanceOf(NotAllowedError);

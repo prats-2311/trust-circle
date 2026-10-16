@@ -44,19 +44,27 @@ export function createReportService(deps: {
       if (existing) return toResult(existing, true);
       if (!check.checked || check.level === "low") throw new ReportError("Only a message that looks like a scam can be reported.");
 
-      await deps.registry.record({ reporterId: a.reporterId, identifiers: check.identifiers, scamType: check.scamType, source: "message_report" });
+      const { record, created } = await deps.reports.insert({ reporterId: a.reporterId, messageCheckId: check.id, patternId: null, ...draftReport(check) });
+      // Claimed first: a concurrent second call sees created: false and changes nothing.
+      if (!created) return toResult(record, true);
+
+      try {
+        await deps.registry.record({ reporterId: a.reporterId, identifiers: check.identifiers, scamType: check.scamType, source: "message_report" });
+      } catch (e) {
+        console.warn("registry record failed", { error: e instanceof Error ? e.name : "unknown" });
+      }
       // Only an anonymised script is shared; when none can be written safely, the report goes ahead without one.
-      let patternId: string | null = null;
       const description = await deps.describe({ text: check.text, scamType: check.scamType }).catch(() => null);
+      let patternId: string | null = null;
       if (description) {
         try {
           patternId = (await deps.patterns.add({ description, scamType: check.scamType })).id;
+          await deps.reports.setPattern(record.id, patternId);
         } catch (e) {
           console.warn("pattern store failed", { error: e instanceof Error ? e.name : "unknown" });
         }
       }
-      const saved = await deps.reports.insert({ reporterId: a.reporterId, messageCheckId: check.id, patternId, ...draftReport(check) });
-      return toResult(saved, false);
+      return toResult({ ...record, patternId }, false);
     },
   };
 }

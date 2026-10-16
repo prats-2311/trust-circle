@@ -12,8 +12,13 @@ export function createDrizzleScamReportRepo(db: Db): ScamReportRepo {
   };
   return {
     async insert(r) {
-      await db.insert(scamReports).values(r).onConflictDoNothing({ target: scamReports.messageCheckId });
-      return (await findByCheck(r.messageCheckId))!;
+      const [row] = await db.insert(scamReports).values(r).onConflictDoNothing({ target: scamReports.messageCheckId }).returning();
+      if (row) return { record: row, created: true };
+      return { record: (await findByCheck(r.messageCheckId))!, created: false };
+    },
+    async setPattern(id, patternId) {
+      if (!isUuid(id)) return;
+      await db.update(scamReports).set({ patternId }).where(eq(scamReports.id, id));
     },
     findByCheck,
   };

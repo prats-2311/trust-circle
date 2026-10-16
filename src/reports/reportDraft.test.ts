@@ -20,6 +20,14 @@ describe("draftReport", () => {
     expect(d.body).toContain("- Link: bit.ly/abc123");
     expect(d.body).toContain(`"${check.text}"`);
   });
+  it("does not cut an emoji in half in the excerpt or the mailto", () => {
+    const text = "a".repeat(1199) + "😀".repeat(50);
+    const d = draftReport({ ...check, text });
+    expect(() => encodeURIComponent(d.body)).not.toThrow();
+    const url = mailtoFor({ subject: d.subject, body: "😀".repeat(3000) });
+    expect(url.length).toBeLessThanOrEqual(1800);
+    expect(() => decodeURIComponent(url)).not.toThrow();
+  });
   it("builds a mailto link to PayPal's phishing address within 1,800 characters", () => {
     const url = mailtoFor(draftReport({ ...check, text: "x".repeat(5000) }));
     expect(url.startsWith(`mailto:${PAYPAL_PHISHING_ADDRESS}?subject=`)).toBe(true);
