@@ -38,6 +38,12 @@ describe("registry service", () => {
     expect(entry!.scamType).toBe("invoice");
   });
 
+  it("skips identifiers with no usable key", async () => {
+    const registry = createRegistryService({ repo: createMemoryRegistryRepo() });
+    expect(await registry.record({ reporterId: A, identifiers: [{ type: "phone", value: "---" }], scamType: "other", source: "message_report" })).toEqual([]);
+    expect(await registry.lists()).toEqual({ confirmed: [], unconfirmed: [] });
+  });
+
   it("maps payees to identifiers", () => {
     expect(identifierForPayee("a@b.example")).toEqual({ type: "email", value: "a@b.example" });
     expect(identifierForPayee("+14155550199")).toEqual({ type: "phone", value: "+14155550199" });

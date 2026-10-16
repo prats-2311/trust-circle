@@ -14,11 +14,12 @@ export function phoneVariants(normalised: string): string[] {
 /** Comparable keys for an email, link or phone number, however it was written. */
 export function matchKeys(value: string): string[] {
   const v = value.trim().toLowerCase();
-  if (v.includes("@")) return [v];
+  if (v.includes("@") && !/[/:]/.test(v)) return [v];
   if (/[a-z]/.test(v)) {
     return [
       v
         .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+        .replace(/^[^/@]*@/, "")
         .replace(/^www\./, "")
         .replace(/[?#].*$/, "")
         .replace(/\/+$/, ""),

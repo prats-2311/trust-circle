@@ -21,4 +21,9 @@ describe("match keys", () => {
     expect(sharesKey("a@b.example", "c@b.example")).toBe(false);
     expect(keySet(["+1 415 555 0199"]).has("4155550199")).toBe(true);
   });
+  it("treats an @ inside a link as part of the link, not an email", () => {
+    expect(matchKeys("http://paypal.com@Evil.example/x")).toEqual(["evil.example/x"]);
+    expect(matchKeys("https://x.example/unsub?e=a@b.com")).toEqual(["x.example/unsub"]);
+    expect(matchKeys("A@B.example")).toEqual(["a@b.example"]);
+  });
 });

@@ -14,7 +14,9 @@ export function createRegistryService(deps: { repo: RegistryRepo; now?: () => Da
     async record(a: { reporterId: string; identifiers: Identifier[]; scamType: ScamType; source: RegistrySource }): Promise<RegistryEntry[]> {
       const out: RegistryEntry[] = [];
       for (const id of a.identifiers) {
-        const entry = await deps.repo.upsertEntry({ identifierType: id.type, key: canonicalKey(id.value), scamType: a.scamType });
+        const key = canonicalKey(id.value);
+        if (key === "") continue;
+        const entry = await deps.repo.upsertEntry({ identifierType: id.type, key, scamType: a.scamType });
         await deps.repo.addReport({ entryId: entry.id, reporterId: a.reporterId, source: a.source, at: now() });
         const status = statusFor(await deps.repo.reportsFor(entry.id));
         if (status !== entry.status) await deps.repo.setStatus(entry.id, status, now());
