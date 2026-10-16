@@ -17,7 +17,7 @@ import { createPaymentService, type PaymentService, type PaymentServiceEvent } f
 import { createPayPalGateway } from "@/payments/paypalGateway";
 import { createDrizzleVerificationRepo } from "@/verification/drizzleVerificationRepo";
 import { createVerificationService, type VerificationService } from "@/verification/verificationService";
-import { createLocalEmbedder } from "@/patterns/embedder";
+import { getEmbedder } from "@/patterns/embedder";
 import { createDrizzlePatternRepo } from "@/patterns/drizzlePatternRepo";
 import { createPatternService, type PatternService } from "@/patterns/patternService";
 import { createDrizzleRegistryRepo } from "@/registry/drizzleRegistryRepo";
@@ -58,7 +58,7 @@ export function getContainer(): Container {
       console.warn("registry unavailable", { error: e instanceof Error ? e.name : "unknown" });
       return { confirmed: [] as string[], unconfirmed: [] as string[] };
     });
-  const patterns = createPatternService({ repo: createDrizzlePatternRepo(db), embed: createLocalEmbedder() });
+  const patterns = createPatternService({ repo: createDrizzlePatternRepo(db), embed: getEmbedder() });
   const messages = createMessageService({
     repo: messageRepo,
     registry: () => registryLists(),
@@ -84,7 +84,9 @@ export function getContainer(): Container {
     extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists() }),
     onEvent: (e) => onEvent(e),
   });
-  const verification = createVerificationService({ verifications: createDrizzleVerificationRepo(db), payments: repo,
+  const verification = createVerificationService({
+    verifications: createDrizzleVerificationRepo(db),
+    payments: repo,
     paymentOps: service,
     circle,
     alerts,
@@ -96,6 +98,15 @@ export function getContainer(): Container {
     registry,
     patterns,
     describe: createGroqPatternDescriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
+    appUrl: env.APP_URL,
+    // Contact details of the reporter and the people they know are never a scammer's.
+    excludeKeys: async (reporterId) => {
+      const emailOf = async (id: string) => (await circle.getUser(id))?.email;
+      const members = await circle.contactsOf(reporterId);
+      const emails = await Promise.all([reporterId, ...members.map((m) => m.contactId)].map(emailOf));
+      const { previousPayees } = await repo.senderContextFacts(reporterId, new Date());
+      return [...emails.filter((e): e is string => Boolean(e)), ...previousPayees];
+    },
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });

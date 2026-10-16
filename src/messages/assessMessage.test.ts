@@ -60,6 +60,14 @@ describe("assessMessage", () => {
     expect(r.identifiers).toEqual([{ type: "phone", value: "+14155550199" }]);
   });
 
+  it("keeps the matched pattern's scam type when it raised the level", async () => {
+    const judge = vi.fn().mockResolvedValue(ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null }));
+    const patterns = vi.fn().mockResolvedValue({ patternId: "p1", scamType: "impersonation_family", similarity: 0.5 });
+    const r = await assessMessage({ kind: "text", text: scamText }, empty, { judge, patterns });
+    expect(r.level).toBe("medium");
+    expect(r.scamType).toBe("impersonation_family");
+  });
+
   it("marks the result unchecked when the AI fails, and never reports a confident low", async () => {
     const judge = vi.fn().mockResolvedValue({ ok: false, error: "groq http 503" });
     const r = await assessMessage({ kind: "text", text: "See you at dinner" }, empty, { judge });

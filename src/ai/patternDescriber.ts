@@ -20,6 +20,8 @@ const DescriptionSchema = z.object({ description: z.string() });
 export function isAnonymous(description: string): boolean {
   if (description.length < 20 || description.length > 240) return false;
   if (/\d{3,}/.test(description) || /[@$]/.test(description) || /https?:|www\./i.test(description)) return false;
+  // A capitalised word after the first is a name or a company; neither belongs in a shared list.
+  if (/\s[A-Z][a-z]/.test(description)) return false;
   return extractIdentifiers(description).length === 0;
 }
 

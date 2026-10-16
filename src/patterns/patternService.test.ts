@@ -19,6 +19,18 @@ async function seeded() {
   return { repo, service };
 }
 
+describe("pattern service timeout", () => {
+  it("returns null when the embedder never answers", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const service = createPatternService({ repo: createMemoryPatternRepo(), embed: () => new Promise(() => {}), timeoutMs: 20 });
+    const started = Date.now();
+    expect(await service.match("Grandma it's me")).toBeNull();
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(warn).toHaveBeenCalledWith("pattern match unavailable", { error: "Timeout" });
+    warn.mockRestore();
+  });
+});
+
 describe("pattern service", () => {
   it("matches a reworded scam above the threshold", async () => {
     const { service } = await seeded();

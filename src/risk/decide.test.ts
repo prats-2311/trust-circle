@@ -25,6 +25,13 @@ describe("decide", () => {
     expect(decide([first, unusual], ai("low")).level).toBe("medium");
   });
 
+  it("keeps the pattern's scam type when the pattern caused the raise", () => {
+    const low: AiOutcome = { ok: true, judgement: { level: "low", scamType: "other", reasons: [], impersonatedRequester: null } };
+    const sig: Signal = { code: "KNOWN_SCAM_PATTERN", detail: "Matches a known scam." };
+    expect(decide([sig], low, "impersonation_family").scamType).toBe("impersonation_family");
+    expect(decide([sig], low).scamType).toBe("unknown");
+  });
+
   it("caps reasons at three", () => {
     expect(decide([], ai("medium", ["a", "b", "c", "d", "e"])).reasons).toEqual(["a", "b", "c"]);
   });

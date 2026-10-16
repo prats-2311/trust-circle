@@ -8,18 +8,26 @@ const SENDER = "00000000-0000-4000-8000-000000000001";
 const OTHER = "00000000-0000-4000-8000-000000000002";
 const DESCRIPTION = "Caller claims to be a grandchild in custody and asks for bail money to be sent urgently and kept secret.";
 
-async function setup(over: { level?: "low" | "medium" | "high"; checked?: boolean; describe?: string | null } = {}) {
+async function setup(
+  over: {
+    level?: "low" | "medium" | "high";
+    checked?: boolean;
+    describe?: string | null;
+    identifiers?: { type: "phone" | "email" | "url"; value: string }[];
+    excludeKeys?: (id: string) => Promise<string[]>;
+  } = {},
+) {
   const messages = createMemoryMessageRepo();
   const check = await messages.insert({
     senderId: SENDER, source: "text", text: "Grandma it's me, call +1 415 555 0199", checked: over.checked ?? true,
     level: over.level ?? "high", scamType: "impersonation_family", reasons: ["Asks for secrecy."],
-    identifiers: [{ type: "phone", value: "+14155550199" }],
+    identifiers: over.identifiers ?? [{ type: "phone", value: "+14155550199" }],
   });
   const registry = { record: vi.fn().mockResolvedValue([]) };
   const patterns = { add: vi.fn().mockResolvedValue({ id: "pat1", description: DESCRIPTION, scamType: "impersonation_family", reportCount: 1 }) };
   const describe = vi.fn().mockResolvedValue(over.describe === undefined ? DESCRIPTION : over.describe);
   const reports = createMemoryScamReportRepo();
-  const service = createReportService({ messages, reports, registry, patterns, describe });
+  const service = createReportService({ messages, reports, registry, patterns, describe, excludeKeys: over.excludeKeys, appUrl: "https://trustcircle.example" });
   return { check, registry, patterns, describe, reports, service };
 }
 
@@ -81,5 +89,54 @@ describe("report service", () => {
       await expect(t.service.reportCheck({ checkId: t.check.id, reporterId: SENDER })).rejects.toBeInstanceOf(ReportError);
       expect(t.registry.record).not.toHaveBeenCalled();
     }
+  });
+
+  describe("keeping non-scammers out of the registry", () => {
+    const scam = { type: "phone" as const, value: "+14155550199" };
+    const recorded = (s: Awaited<ReturnType<typeof setup>>) => s.registry.record.mock.calls[0]![0].identifiers;
+
+    it("drops the reporter's own email, circle emails and previous payees written another way", async () => {
+      const s = await setup({
+        identifiers: [
+          scam,
+          { type: "email", value: "Margaret@Example.com" },
+          { type: "email", value: "daughter@example.com" },
+          { type: "phone", value: "+1 (415) 555-0123" },
+        ],
+        excludeKeys: async () => ["margaret@example.com", "daughter@example.com", "415-555-0123"],
+      });
+      await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+      expect(recorded(s)).toEqual([scam]);
+    });
+
+    it("drops a bare well-known domain but keeps one with a path", async () => {
+      const s = await setup({
+        identifiers: [
+          { type: "url", value: "https://www.paypal.com" },
+          { type: "url", value: "trustcircle.example/" },
+          { type: "url", value: "paypal.me/x" },
+          scam,
+        ],
+      });
+      await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+      expect(recorded(s)).toEqual([{ type: "url", value: "paypal.me/x" }, scam]);
+    });
+
+    it("still records the scammer when the exclusion list cannot be built", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const s = await setup({ excludeKeys: async () => { throw new TypeError("db"); } });
+      const r = await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+      expect(r.alreadyReported).toBe(false);
+      expect(recorded(s)).toEqual([scam]);
+      expect(warn).toHaveBeenCalledWith("report exclusions unavailable", { error: "TypeError" });
+      warn.mockRestore();
+    });
+  });
+
+  it("does not store a description that names anyone", async () => {
+    const s = await setup({ describe: "Caller claims to be Josh, a grandchild in custody, and asks for bail money." });
+    const r = await s.service.reportCheck({ checkId: s.check.id, reporterId: SENDER });
+    expect(s.patterns.add).not.toHaveBeenCalled();
+    expect(r.alreadyReported).toBe(false);
   });
 });

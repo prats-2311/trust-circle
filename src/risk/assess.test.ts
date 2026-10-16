@@ -103,6 +103,14 @@ describe("assessPayment with known scam patterns", () => {
   const known = { ...ctx, previousPayees: ["known@example.com"] };
   const match = { patternId: "p1", scamType: "impersonation_family" as const, similarity: 0.44 };
 
+  it("keeps the matched pattern's scam type when it raised the level", async () => {
+    const d = await assessPayment(
+      { payee: "known@example.com", amountCents: 1000, linkedMessage: "Grandma I'm in jail" },
+      known, lowJudge(), undefined, vi.fn().mockResolvedValue(match),
+    );
+    expect(d.scamType).toBe("impersonation_family");
+  });
+
   it("adds KNOWN_SCAM_PATTERN and reaches medium even when the AI says low", async () => {
     const patterns = vi.fn().mockResolvedValue(match);
     const d = await assessPayment(

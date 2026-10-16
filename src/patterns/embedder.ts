@@ -32,3 +32,13 @@ export function createLocalEmbedder(opts: { model?: string } = {}): Embedder {
     }
   };
 }
+
+declare global {
+  var __tcEmbedder: Embedder | undefined;
+}
+
+/** One embedder per process, so the model loads once however many times the container is built. */
+export function getEmbedder(): Embedder {
+  globalThis.__tcEmbedder ??= createLocalEmbedder();
+  return globalThis.__tcEmbedder;
+}

@@ -2,7 +2,7 @@ import type { MessageAiOutcome, MessageInput, MessageJudge } from "@/ai/groqMess
 import { INJECTION_THRESHOLD, type PromptGuard } from "@/ai/promptGuard";
 import type { Identifier, Requester, RiskLevel, ScamType } from "@/domain/types";
 import { decide } from "@/risk/decide";
-import type { PatternMatcher } from "@/patterns/patternService";
+import type { PatternMatch, PatternMatcher } from "@/patterns/patternService";
 import { HIDDEN_INSTRUCTIONS_SIGNAL, KNOWN_PATTERN_SIGNAL, type Signal } from "@/risk/signals";
 import { extractIdentifiers, matchKeys } from "./identifiers";
 
@@ -46,12 +46,12 @@ async function injectionSignals(guard: PromptGuard | undefined, text: string): P
   }
 }
 
-async function patternSignals(patterns: PatternMatcher | undefined, text: string): Promise<Signal[]> {
-  if (!patterns || !text) return [];
+async function patternMatch(patterns: PatternMatcher | undefined, text: string): Promise<PatternMatch | null> {
+  if (!patterns || !text) return null;
   try {
-    return (await patterns(text)) ? [KNOWN_PATTERN_SIGNAL] : [];
+    return await patterns(text);
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -71,9 +71,9 @@ export async function assessMessage(
   // A screenshot's words only exist once the vision model has read them.
   const text = input.kind === "image" ? (ai.ok ? ai.judgement.transcript.trim() : "") : pasted;
   const identifiers = extractIdentifiers(text);
-  const [injection, pattern] = await Promise.all([injectionSignals(deps.guard, text), patternSignals(deps.patterns, text)]);
-  const signals = [...messageSignals(identifiers, ctx.registry), ...injection, ...pattern];
-  const d = decide(signals, ai);
+  const [injection, pattern] = await Promise.all([injectionSignals(deps.guard, text), patternMatch(deps.patterns, text)]);
+  const signals = [...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
+  const d = decide(signals, ai, pattern?.scamType);
   return {
     checked: ai.ok,
     level: d.level,

@@ -16,6 +16,8 @@ describe("isAnonymous", () => {
     "Email from help@bank.example says the account is locked and must be verified.",
     "Message links to paypal-verify.example/login and asks for a password today.",
     "Asks for $800 in gift cards for a grandson who is in jail right now.",
+    "Caller claims to be Josh, a grandchild in custody, and asks for bail money urgently.",
+    "Message pretends to be from PayPal and says the account is locked and must be verified.",
     "Too short.",
     "x".repeat(241),
   ])("rejects %s", (d) => expect(isAnonymous(d)).toBe(false));

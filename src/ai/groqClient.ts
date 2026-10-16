@@ -16,6 +16,13 @@ export async function groqChat(opts: {
   timeoutMs: number;
   fetchImpl?: typeof fetch;
 }): Promise<ChatResult> {
+  const started = Date.now();
+  const result = await call(opts);
+  console.info("groq call", { model: opts.model, ms: Date.now() - started, ok: result.ok });
+  return result;
+}
+
+async function call(opts: Parameters<typeof groqChat>[0]): Promise<ChatResult> {
   try {
     const res = await (opts.fetchImpl ?? fetch)(GROQ_URL, {
       method: "POST",
