@@ -1,0 +1,34 @@
+export const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
+export const EMBEDDING_DIMS = 384;
+
+/** Turns texts into unit-length meaning-vectors, one per text. */
+export type Embedder = (texts: string[]) => Promise<number[][]>;
+
+type FeatureExtractor = (
+  texts: string[],
+  opts: { pooling: "mean"; normalize: boolean },
+) => Promise<{ tolist(): number[][] }>;
+
+/**
+ * Runs the model inside this process: no external service. The first call downloads (23 MB, cached)
+ * and loads it, which takes a few seconds; later calls take milliseconds.
+ */
+export function createLocalEmbedder(opts: { model?: string } = {}): Embedder {
+  let extractor: Promise<FeatureExtractor> | undefined;
+  const load = () => {
+    extractor ??= import("@huggingface/transformers").then(
+      ({ pipeline }) => pipeline("feature-extraction", opts.model ?? EMBEDDING_MODEL, { dtype: "q8" }) as unknown as Promise<FeatureExtractor>,
+    );
+    return extractor;
+  };
+  return async (texts) => {
+    if (texts.length === 0) return [];
+    try {
+      const fe = await load();
+      return (await fe(texts, { pooling: "mean", normalize: true })).tolist();
+    } catch (e) {
+      extractor = undefined; // retry the load next time
+      throw e;
+    }
+  };
+}
