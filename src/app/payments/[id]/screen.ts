@@ -80,7 +80,12 @@ export function screenCopy(
     case "official_routes":
       return held("Check with them yourself", "Reach them through their official app or website, never through the message.");
     case "held":
-      return held("Your money hasn't left your account", `${circleNamesText(d.circleNames)} can approve or stop this payment. If nobody decides, you can release it yourself after ${d.coolingOffHours} hours.`);
+      return held(
+        "Your money hasn't left your account",
+        d.circleNames.length === 0
+          ? `You can cancel any time, or release it yourself after ${d.coolingOffHours} hours.`
+          : `${circleNamesText(d.circleNames)} can approve or stop this payment. If nobody decides, you can release it yourself after ${d.coolingOffHours} hours.`,
+      );
     case "sent":
       return { chipTone: "safe", chip: "Sent", title: `${d.amount} sent to ${d.payee}`, lead: "The payment went through PayPal." };
     case "refunded":

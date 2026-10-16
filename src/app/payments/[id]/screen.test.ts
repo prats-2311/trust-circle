@@ -34,6 +34,10 @@ describe("screenCopy", () => {
     "not_approved", "pending", "waiting", "challenge_memory", "challenge_safe_word", "official_routes", "held", "sent", "refunded", "returning",
     "stopped_by_person", "stopped_by_check", "stopped_by_circle", "cancelled", "hold_ended",
   ];
+  it("a held payment with no circle does not claim anyone can approve or stop it", () => {
+    expect(screenCopy("held", { ...d, circleNames: [] }).lead).toBe("You can cancel any time, or release it yourself after 24 hours.");
+    expect(screenCopy("held", d).lead).toContain("Daniel can approve or stop this payment.");
+  });
   it("only says 'Nothing has been sent' when no money can have moved", () => {
     for (const k of ALL) {
       const text = `${screenCopy(k, d).title} ${screenCopy(k, d).lead}`;
@@ -67,7 +71,6 @@ describe("screenCopy", () => {
   });
   it("falls back when no contact is known", () => {
     expect(screenCopy("waiting", { ...d, contactName: null }).title).toBe("We've asked the real person if it was really them");
-    expect(screenCopy("held", { ...d, circleNames: [] }).lead).toBe("Your circle can approve or stop this payment. If nobody decides, you can release it yourself after 24 hours.");
     expect(screenCopy("sent", d).title).toBe("$800 sent to dhill@x.example");
   });
 });

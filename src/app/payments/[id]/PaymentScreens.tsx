@@ -118,7 +118,9 @@ export function PaymentScreens({ kind, p, stage, contactName, circleNames, reloa
               <p className="mx-auto mt-2.5 max-w-[320px] text-center text-[18px] leading-relaxed text-ink-2">{copy.lead}</p>
               <ol className="mt-7 flex list-none flex-col p-0">
                 <TimelineItem filled title="Held in PayPal" sub={authorised ? weekdayTime(authorised) : undefined} />
-                <TimelineItem filled title={`${circleNamesText(circleNames)} ${circleNames.length > 1 ? "have" : "has"} been asked`} sub="They can approve or stop it" />
+                {circleNames.length > 0 && (
+                  <TimelineItem filled title={`${circleNamesText(circleNames)} ${circleNames.length > 1 ? "have" : "has"} been asked`} sub="They can approve or stop it" />
+                )}
                 <TimelineItem
                   title={authorised ? `If no one decides by ${weekdayTime(new Date(authorised.getTime() + 72 * HOUR))}` : "If no one decides in time"}
                   sub="The hold ends and the money stays yours"
