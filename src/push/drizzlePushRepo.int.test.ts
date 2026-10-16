@@ -7,7 +7,7 @@ let handle: Awaited<ReturnType<typeof freshTestDb>>;
 let a: string;
 let b: string;
 const at = new Date("2026-11-01T10:00:00Z");
-const sub = (n: number) => ({ endpoint: `https://push.example/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
+const sub = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
 
 beforeEach(async () => {
   if (handle) await handle.close();

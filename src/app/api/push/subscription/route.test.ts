@@ -6,7 +6,7 @@ const SECRET = "test-secret";
 const U = "11111111-1111-4111-8111-111111111111";
 const V = "22222222-2222-4222-8222-222222222222";
 const at = new Date("2026-11-01T10:00:00Z");
-const sub = (n: number) => ({ endpoint: `https://push.example/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
+const sub = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
 
 let push: PushRepo;
 let vapid: Record<string, string> = {};

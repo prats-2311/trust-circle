@@ -87,7 +87,7 @@ describe("alert service", () => {
   });
 
   describe("push channel", () => {
-    const sub = (n: number) => ({ endpoint: `https://push.example/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
+    const sub = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
     const at0 = new Date("2026-11-01T10:00:00Z");
     const setup = async (opts: { send: (s: ReturnType<typeof sub>, p: string) => Promise<void>; email?: () => Promise<void>; devices?: number; push?: boolean }) => {
       const repo = createMemoryAlertRepo();

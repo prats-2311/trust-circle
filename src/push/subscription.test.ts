@@ -17,13 +17,32 @@ describe("parsePushSub", () => {
     expect(parsePushSub({ ...good, endpoint: "http://fcm.googleapis.com/x" })).toBeNull();
     expect(parsePushSub({ ...good, endpoint: "not a url" })).toBeNull();
   });
+  it.each([
+    "https://fcm.googleapis.com/fcm/send/x",
+    "https://updates.push.services.mozilla.com/wpush/v2/x",
+    "https://web.push.apple.com/x",
+    "https://api.push.apple.com/x",
+    "https://wns2-par02p.notify.windows.com/x",
+  ])("accepts the push service %s", (endpoint) => {
+    expect(parsePushSub({ ...good, endpoint })).toEqual({ ...good, endpoint });
+  });
+  it.each([
+    "https://evil.example/x",
+    "https://fcm.googleapis.com.evil.example/x",
+    "https://evilpush.apple.com.example/x",
+    "https://notnotify.windows.com/x",
+    "https://localhost/x",
+    "https://10.0.0.1/x",
+  ])("rejects the unknown host %s", (endpoint) => {
+    expect(parsePushSub({ ...good, endpoint })).toBeNull();
+  });
   it("rejects a missing or non-base64url key", () => {
     expect(parsePushSub({ ...good, keys: { p256dh: good.keys.p256dh } })).toBeNull();
     expect(parsePushSub({ ...good, keys: { ...good.keys, auth: "has spaces!" } })).toBeNull();
     expect(parsePushSub({ ...good, keys: { ...good.keys, auth: "" } })).toBeNull();
   });
   it("rejects an endpoint over 2048 characters and keys over 256", () => {
-    expect(parsePushSub({ ...good, endpoint: `https://x.example/${"a".repeat(2040)}` })).toBeNull();
+    expect(parsePushSub({ ...good, endpoint: `https://fcm.googleapis.com/${"a".repeat(2040)}` })).toBeNull();
     expect(parsePushSub({ ...good, keys: { ...good.keys, p256dh: "a".repeat(257) } })).toBeNull();
   });
   it("rejects non-objects and wrong nesting", () => {
