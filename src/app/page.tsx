@@ -32,7 +32,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex justify-center">
-            <div className="flex w-[320px] max-w-full flex-col items-center gap-3.5 rounded-[40px] bg-surface px-6 pb-[30px] pt-7 shadow-[0_30px_60px_-30px_rgba(20,32,27,0.35)]">
+            <div className="flex w-[320px] max-w-full flex-col items-center gap-3.5 rounded-[40px] bg-surface px-6 pb-[30px] pt-7 shadow-phone">
               <HoldRing fractionUsed={0.125} amountCents={80000} label="Payment on hold, 3 of 24 hours used" />
               <span className="text-center text-[20px] font-extrabold leading-tight">Your money hasn&apos;t left your account</span>
               <span className="text-center text-[16px] leading-snug text-ink-2">We&apos;ve asked Daniel if it was really him.</span>
@@ -56,9 +56,23 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto grid max-w-[1200px] items-start gap-10 px-6 py-16 md:grid-cols-2">
-          <p className="text-[clamp(28px,3.4vw,40px)] font-extrabold leading-[1.2] tracking-[-0.01em]">
-            Older adults lose billions of dollars to scams every year.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-[clamp(28px,3.4vw,40px)] font-extrabold leading-[1.2] tracking-[-0.01em]">
+              In 2025, people 60 and over reported losing $7.7 billion to online fraud.
+            </p>
+            <p className="text-[16px] text-ink-2">
+              201,266 complaints to the FBI.{" "}
+              <a
+                href="https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf"
+                target="_blank"
+                rel="noopener"
+                aria-label="FBI IC3 2025 Internet Crime Report, opens in a new tab"
+                className="inline-block min-h-[44px] py-2.5 font-bold text-evergreen underline underline-offset-4"
+              >
+                FBI IC3 2025 Internet Crime Report
+              </a>
+            </p>
+          </div>
           <p className="text-[19px] leading-[1.55] text-ink-2">
             Most scams work by borrowing someone&apos;s trust: a grandchild, a bank, PayPal itself. Trust Circle doesn&apos;t try to out-guess every new script. It
             goes to the person being impersonated and lets them say no.

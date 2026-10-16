@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --shadow-phone: 0 30px 60px -30px rgba(20, 32, 27, 0.35);
   --color-ground: #f4f6f4;
   --color-surface: #ffffff;
   --color-ink: #14201b;
