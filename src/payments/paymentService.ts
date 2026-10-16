@@ -190,6 +190,7 @@ export function createPaymentService(deps: {
         id, senderId: a.senderId, payee, amountCents: a.amountCents,
         note: a.note ?? null, senderAnswer: a.senderAnswer ?? null, state: "created",
         riskLevel: decision.level, scamType: decision.scamType, reasons: decision.reasons,
+        impersonatedRequester: decision.impersonatedRequester,
         paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null,
         authorisedAt: null, coolingOffUntil: null,
       });

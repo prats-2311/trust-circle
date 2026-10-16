@@ -6,7 +6,11 @@ import type { ScamType } from "@/domain/types";
 import { ConcurrentUpdateError, type PaymentRecord, type PaymentRepo } from "./paymentRepo";
 
 type Row = typeof payments.$inferSelect;
-const toRecord = (r: Row): PaymentRecord => ({ ...r, scamType: r.scamType as ScamType });
+const toRecord = (r: Row): PaymentRecord => ({
+  ...r,
+  scamType: r.scamType as ScamType,
+  impersonatedRequester: r.impersonatedRequester ?? null,
+});
 
 export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
   return {

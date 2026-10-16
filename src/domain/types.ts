@@ -47,3 +47,16 @@ export type PaymentEventType =
   | "VOID"
   | "PAYOUT_FAIL"
   | "REFUND";
+
+export type Preset = "family" | "business" | "solo";
+
+export type IdentifierType = "email" | "phone" | "url";
+export interface Identifier {
+  type: IdentifierType;
+  value: string;
+}
+
+export interface Requester {
+  kind: "person" | "organisation";
+  name: string;
+}

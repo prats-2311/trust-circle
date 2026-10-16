@@ -1,5 +1,6 @@
-import { check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { Identifier, Requester } from "@/domain/types";
 
 export const presetEnum = pgEnum("preset", ["family", "business", "solo"]);
 export const paymentStateEnum = pgEnum("payment_state", [
@@ -13,6 +14,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   displayName: text("display_name").notNull(),
   preset: presetEnum("preset").notNull().default("family"),
+  safeWordHash: text("safe_word_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -42,6 +44,7 @@ export const payments = pgTable("payments", {
   riskLevel: riskLevelEnum("risk_level").notNull(),
   scamType: text("scam_type").notNull(),
   reasons: jsonb("reasons").$type<string[]>().notNull(),
+  impersonatedRequester: jsonb("impersonated_requester").$type<Requester>(),
   paypalOrderId: text("paypal_order_id"),
   authorizationId: text("authorization_id"),
   captureId: text("capture_id"),
@@ -63,4 +66,46 @@ export const auditLog = pgTable("audit_log", {
   toState: paymentStateEnum("to_state"),
   detail: jsonb("detail").$type<Record<string, unknown>>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const verificationMethodEnum = pgEnum("verification_method", ["real_person", "official_routes", "safe_word", "memory_question"]);
+export const verificationStatusEnum = pgEnum("verification_status", ["pending", "confirmed", "denied", "passed", "failed"]);
+export const alertChannelEnum = pgEnum("alert_channel", ["in_app", "email"]);
+export const alertStatusEnum = pgEnum("alert_status", ["sent", "skipped", "failed"]);
+
+export const messageChecks = pgTable("message_checks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  senderId: uuid("sender_id").notNull().references(() => users.id),
+  source: text("source").$type<"text" | "image">().notNull(),
+  text: text("text").notNull(),
+  checked: boolean("checked").notNull(),
+  level: riskLevelEnum("level").notNull(),
+  scamType: text("scam_type").notNull(),
+  reasons: jsonb("reasons").$type<string[]>().notNull(),
+  identifiers: jsonb("identifiers").$type<Identifier[]>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const verifications = pgTable("verifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  paymentId: uuid("payment_id").notNull().references(() => payments.id),
+  method: verificationMethodEnum("method").notNull(),
+  status: verificationStatusEnum("status").notNull(),
+  targetContactId: uuid("target_contact_id").references(() => users.id),
+  requesterName: text("requester_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+});
+
+export const alerts = pgTable("alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recipientId: uuid("recipient_id").notNull().references(() => users.id),
+  kind: text("kind").notNull(),
+  paymentId: uuid("payment_id").references(() => payments.id),
+  verificationId: uuid("verification_id").references(() => verifications.id),
+  channel: alertChannelEnum("channel").notNull(),
+  status: alertStatusEnum("status").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  readAt: timestamp("read_at", { withTimezone: true }),
 });

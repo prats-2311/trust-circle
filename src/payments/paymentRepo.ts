@@ -1,4 +1,4 @@
-import type { PaymentState, RiskLevel, ScamType } from "@/domain/types";
+import type { PaymentState, Requester, RiskLevel, ScamType } from "@/domain/types";
 
 export interface PaymentRecord {
   id: string;
@@ -11,6 +11,7 @@ export interface PaymentRecord {
   riskLevel: RiskLevel;
   scamType: ScamType;
   reasons: string[];
+  impersonatedRequester: Requester | null;
   paypalOrderId: string | null;
   authorizationId: string | null;
   captureId: string | null;

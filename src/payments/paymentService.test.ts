@@ -37,6 +37,17 @@ function setup(opts: { level?: "low" | "medium" | "high"; gateway?: Partial<PayP
 const send = { senderId: SENDER, payee: "Grandson@Example.com", amountCents: 80000, senderAnswer: "my grandson" };
 
 describe("start", () => {
+  it("stores who the AI thinks is being impersonated", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const judge = vi.fn().mockResolvedValue({
+      ok: true,
+      judgement: { level: "high", scamType: "impersonation_family", reasons: ["r"], impersonatedRequester: { kind: "person", name: "grandson" } },
+    });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge });
+    const { payment } = await service.start(send);
+    expect(payment.impersonatedRequester).toEqual({ kind: "person", name: "grandson" });
+  });
+
   it.each([
     [{ amountCents: 0 }, "amountCents"],
     [{ amountCents: -100 }, "amountCents"],

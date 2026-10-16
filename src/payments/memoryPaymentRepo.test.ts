@@ -4,7 +4,7 @@ import { ConcurrentUpdateError, type NewPayment } from "./paymentRepo";
 
 const base = (over: Partial<NewPayment> = {}): NewPayment => ({
   id: "p1", senderId: "s1", payee: "grandson@example.com", amountCents: 80000, note: null, senderAnswer: null,
-  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"],
+  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"], impersonatedRequester: null,
   paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null,
   authorisedAt: null, coolingOffUntil: null, ...over,
 });
