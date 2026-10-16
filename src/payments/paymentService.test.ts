@@ -16,6 +16,7 @@ function fakeGateway(over: Partial<PayPalGateway> = {}): PayPalGateway {
     voidAuthorization: vi.fn().mockResolvedValue(undefined),
     sendPayout: vi.fn().mockResolvedValue({ payoutBatchId: "BATCH1" }),
     refundCapture: vi.fn().mockResolvedValue({ refundId: "REF1" }),
+    verifyWebhookSignature: vi.fn().mockResolvedValue(true),
     ...over,
   };
 }
@@ -884,5 +885,65 @@ describe("senderCancel", () => {
     const { payment } = await service.start(send);
     await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
     await expect(service.senderCancel({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+  });
+});
+
+describe("payoutOutcome", () => {
+  async function paidOut(level: "low" | "medium" | "high" = "low") {
+    const ctx = setup({ level });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    const done = await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(done.state).toBe("paid_out");
+    return { ...ctx, id: payment.id };
+  }
+
+  it("moves a returned payout to payout_failed once, with an audit row, and the sweep then refunds", async () => {
+    const ctx = await paidOut();
+    expect(await ctx.service.payoutOutcome({ paymentId: ctx.id, outcome: "failed", eventId: "WH-1", eventType: "PAYMENT.PAYOUTS-ITEM.RETURNED" })).toBe("applied");
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("payout_failed");
+    const audit = (await ctx.repo.auditFor(ctx.id)).find((a) => a.action === "PAYOUT_FAIL");
+    expect(audit).toMatchObject({ fromState: "paid_out", toState: "payout_failed", actorId: null });
+    expect(audit?.detail).toEqual({ eventId: "WH-1", eventType: "PAYMENT.PAYOUTS-ITEM.RETURNED" });
+    ctx.advance(STALE_MS + 1000);
+    const out = await ctx.service.expireStale();
+    expect(out.refundRetried).toEqual([ctx.id]);
+    expect((await ctx.repo.get(ctx.id))?.state).toBe("refunded");
+    expect(ctx.gateway.refundCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a second failed outcome for the same payment", async () => {
+    const ctx = await paidOut();
+    await ctx.service.payoutOutcome({ paymentId: ctx.id, outcome: "failed", eventId: "WH-1" });
+    const before = await ctx.repo.get(ctx.id);
+    const auditsBefore = (await ctx.repo.auditFor(ctx.id)).length;
+    expect(await ctx.service.payoutOutcome({ paymentId: ctx.id, outcome: "failed", eventId: "WH-2" })).toBe("ignored");
+    expect(await ctx.repo.get(ctx.id)).toEqual(before);
+    expect((await ctx.repo.auditFor(ctx.id)).length).toBe(auditsBefore);
+  });
+
+  it("ignores a failed outcome for a payment that is not paid out", async () => {
+    const ctx = setup({ level: "high" });
+    const { payment } = await ctx.service.start(send);
+    const held = await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(held.state).toBe("held");
+    expect(await ctx.service.payoutOutcome({ paymentId: payment.id, outcome: "failed", eventId: "WH-1" })).toBe("ignored");
+    expect((await ctx.repo.get(payment.id))?.state).toBe("held");
+  });
+
+  it("ignores a payment that does not exist", async () => {
+    const ctx = setup();
+    expect(await ctx.service.payoutOutcome({ paymentId: "00000000-0000-4000-8000-0000000000ff", outcome: "failed", eventId: "WH-1" })).toBe("ignored");
+  });
+
+  it.each([
+    ["unclaimed", "payout_unclaimed"],
+    ["succeeded", "payout_confirmed"],
+  ] as const)("records %s as an audit row and changes no state", async (outcome, action) => {
+    const ctx = await paidOut();
+    const before = await ctx.repo.get(ctx.id);
+    expect(await ctx.service.payoutOutcome({ paymentId: ctx.id, outcome, eventId: "WH-1" })).toBe("applied");
+    expect(await ctx.repo.get(ctx.id)).toEqual(before);
+    const row = (await ctx.repo.auditFor(ctx.id)).find((a) => a.action === action);
+    expect(row).toMatchObject({ fromState: "paid_out", toState: "paid_out", actorId: null, detail: { eventId: "WH-1" } });
   });
 });

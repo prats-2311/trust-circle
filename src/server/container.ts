@@ -15,7 +15,7 @@ import { createDrizzlePaymentRepo } from "@/payments/drizzlePaymentRepo";
 import type { CircleRepo } from "@/circle/circleRepo";
 import type { PaymentRepo } from "@/payments/paymentRepo";
 import { createPaymentService, type PaymentService, type PaymentServiceEvent } from "@/payments/paymentService";
-import { createPayPalGateway } from "@/payments/paypalGateway";
+import { createPayPalGateway, type PayPalGateway } from "@/payments/paypalGateway";
 import { createDrizzleVerificationRepo } from "@/verification/drizzleVerificationRepo";
 import { createVerificationService, type VerificationService } from "@/verification/verificationService";
 import { getEmbedder } from "@/patterns/embedder";
@@ -31,6 +31,9 @@ import { createSettingsService, type SettingsService } from "@/settings/settings
 import { createDrizzlePushRepo } from "@/push/drizzlePushRepo";
 import type { PushRepo } from "@/push/pushRepo";
 import { createWebPushSender } from "@/push/pushSender";
+import { createDrizzleWebhookRepo } from "@/webhooks/drizzleWebhookRepo";
+import type { WebhookRepo } from "@/webhooks/webhookRepo";
+import { createWebhookService, type WebhookService } from "@/webhooks/webhookService";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -47,6 +50,9 @@ type Container = {
   dashboard: DashboardService;
   settings: SettingsService;
   push: PushRepo;
+  gateway: PayPalGateway;
+  webhooks: WebhookService;
+  webhookRepo: WebhookRepo;
 };
 let container: Container | undefined;
 
@@ -105,9 +111,10 @@ export function getContainer(): Container {
   });
   // Payments and verification depend on each other through events, so the handler is bound once both exist.
   let onEvent: (e: PaymentServiceEvent) => Promise<void> = async () => {};
+  const gateway = createPayPalGateway({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET });
   const service = createPaymentService({
     repo,
-    gateway: createPayPalGateway({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }),
+    gateway,
     judge: createGroqJudge({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
     guard,
     linkedMessage: messages.linkedMessage,
@@ -144,6 +151,14 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo };
+  const webhookRepo = createDrizzleWebhookRepo(db);
+  const webhooks = createWebhookService({
+    repo: webhookRepo,
+    payments: service,
+    audit: ({ paymentId, action, detail }) =>
+      paymentId ? repo.audit({ paymentId, actorId: null, action, fromState: null, toState: null, detail }) : Promise.resolve(),
+    paymentExists: async (id) => (await repo.get(id)) !== null,
+  });
+  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
   return container;
 }

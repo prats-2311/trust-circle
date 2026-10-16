@@ -180,6 +180,14 @@ export const scamReports = pgTable(
   (t) => [uniqueIndex("scam_reports_check").on(t.messageCheckId)],
 );
 
+export const webhookEvents = pgTable("webhook_events", {
+  id: text("id").primaryKey(), // PayPal event id
+  type: text("type").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  result: text("result"), // "applied" | "ignored" | "failed:<ErrorName>"
+});
+
 export const pushSubscriptions = pgTable("push_subscriptions", {
   endpoint: text("endpoint").primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

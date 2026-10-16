@@ -50,6 +50,13 @@
       "when": 1792149196842,
       "tag": "0006_skinny_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792162492975,
+      "tag": "0007_strong_dark_beast",
+      "breakpoints": true
     }
   ]
 }

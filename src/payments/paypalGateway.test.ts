@@ -213,4 +213,56 @@ describe("paypal gateway", () => {
       expect(e).toBeInstanceOf(PayPalError);
     });
   });
+
+  describe("verifyWebhookSignature", () => {
+    const headers = {
+      "paypal-auth-algo": "SHA256withRSA",
+      "paypal-cert-url": "https://api.paypal.com/v1/notifications/certs/CERT-1",
+      "paypal-transmission-id": "tid-1",
+      "paypal-transmission-sig": "sig+/=",
+      "paypal-transmission-time": "2026-10-16T10:00:00Z",
+    };
+    // Spacing and key order that JSON.stringify would not reproduce.
+    const rawBody = '{ "id":"WH-1",  "event_type":"PAYMENT.PAYOUTS-ITEM.RETURNED", "resource":{"amount":1.10} }';
+    let sent = "";
+    let auth: string | null = null;
+    const verifyReply = (status: string | null, httpStatus = 200) =>
+      http.post(`${BASE}/v1/notifications/verify-webhook-signature`, async ({ request }) => {
+        sent = await request.text();
+        auth = request.headers.get("authorization");
+        return status === null ? new HttpResponse("nope", { status: httpStatus }) : HttpResponse.json({ verification_status: status }, { status: httpStatus });
+      });
+
+    it("splices the raw body in byte for byte and is true only on SUCCESS", async () => {
+      server.use(token(), verifyReply("SUCCESS"));
+      expect(await gw.verifyWebhookSignature({ headers, rawBody, webhookId: "WID1" })).toBe(true);
+      expect(sent.endsWith(`,"webhook_event":${rawBody}}`)).toBe(true);
+      expect(auth).toBe("Bearer tok");
+      expect(JSON.parse(sent)).toEqual({
+        auth_algo: "SHA256withRSA",
+        cert_url: headers["paypal-cert-url"],
+        transmission_id: "tid-1",
+        transmission_sig: "sig+/=",
+        transmission_time: "2026-10-16T10:00:00Z",
+        webhook_id: "WID1",
+        webhook_event: JSON.parse(rawBody),
+      });
+    });
+
+    it("is false on FAILURE, any other status, or a non-2xx answer", async () => {
+      server.use(token(), verifyReply("FAILURE"));
+      expect(await gw.verifyWebhookSignature({ headers, rawBody, webhookId: "WID1" })).toBe(false);
+      server.use(verifyReply("PENDING"));
+      expect(await gw.verifyWebhookSignature({ headers, rawBody, webhookId: "WID1" })).toBe(false);
+      server.use(verifyReply(null, 500));
+      expect(await gw.verifyWebhookSignature({ headers, rawBody, webhookId: "WID1" })).toBe(false);
+    });
+
+    it("is false without calling PayPal when a signature header is missing", async () => {
+      sent = "";
+      server.use(token(), verifyReply("SUCCESS"));
+      expect(await gw.verifyWebhookSignature({ headers: { ...headers, "paypal-transmission-sig": null }, rawBody, webhookId: "WID1" })).toBe(false);
+      expect(sent).toBe("");
+    });
+  });
 });

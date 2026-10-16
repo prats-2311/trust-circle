@@ -22,6 +22,7 @@ const EnvSchema = z.object({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: optionalString,
   VAPID_PRIVATE_KEY: optionalString,
   VAPID_SUBJECT: withDefault("mailto:alerts@trustcircle.example", z.string().regex(/^(mailto:|https:)/)),
+  PAYPAL_WEBHOOK_ID: optionalString,
   APP_URL: withDefault("http://localhost:3000", z.string().url()),
 });
 

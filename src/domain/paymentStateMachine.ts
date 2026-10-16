@@ -10,7 +10,7 @@ const TRANSITIONS: Record<PaymentState, Partial<Record<PaymentEventType, Payment
   blocked: { VOID: "voided" },
   expired: { VOID: "voided" },
   payout_failed: { REFUND: "refunded" },
-  paid_out: {},
+  paid_out: { PAYOUT_FAIL: "payout_failed" },
   voided: {},
   refunded: {},
 };

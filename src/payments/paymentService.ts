@@ -75,9 +75,10 @@ export function createPaymentService(deps: {
     event: PaymentEventType,
     actorId: string | null,
     patch: Omit<TransitionPatch, "state"> = {},
+    detail?: Record<string, unknown>,
   ): Promise<PaymentRecord> {
     const to = nextState(p.state, event);
-    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event });
+    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event, ...(detail ? { detail } : {}) });
   }
 
   async function mustGet(id: string): Promise<PaymentRecord> {
@@ -277,6 +278,36 @@ export function createPaymentService(deps: {
         if (e instanceof PaymentPendingError) await emit({ type: "blocked_by_contact", payment: p, actorId: a.contactId });
         throw e;
       }
+    },
+
+    /**
+     * A PayPal payout item webhook reports what happened after the payout was sent. A failed, returned or
+     * blocked payout moves paid_out to payout_failed (once: the state check and the transition are atomic),
+     * and the sweep then refunds it. Unclaimed and succeeded only leave an audit row. Never moves money itself.
+     */
+    async payoutOutcome(a: {
+      paymentId: string;
+      outcome: "failed" | "unclaimed" | "succeeded";
+      eventId: string;
+      eventType?: string;
+    }): Promise<"applied" | "ignored"> {
+      const p = await repo.get(a.paymentId);
+      if (!p || p.state !== "paid_out") return "ignored";
+      if (a.outcome === "failed") {
+        try {
+          await step(p, "PAYOUT_FAIL", null, {}, { eventId: a.eventId, ...(a.eventType ? { eventType: a.eventType } : {}) });
+        } catch (e) {
+          // Another delivery or the sweep got there first: the outcome is already recorded.
+          if (e instanceof ConcurrentUpdateError) return "ignored";
+          throw e;
+        }
+        return "applied";
+      }
+      await repo.audit({
+        paymentId: p.id, actorId: null, action: a.outcome === "succeeded" ? "payout_confirmed" : "payout_unclaimed",
+        fromState: p.state, toState: p.state, detail: { eventId: a.eventId },
+      });
+      return "applied";
     },
 
     /** For callers that have already checked who may act (a trusted contact, the real person). */
