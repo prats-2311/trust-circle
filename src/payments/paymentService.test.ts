@@ -957,3 +957,32 @@ describe("payoutOutcome", () => {
     expect(await ctx.service.payoutOutcome({ paymentId: payment.id, outcome: "succeeded", eventId: "WH-2" })).toBe("ignored");
   });
 });
+
+describe("systemVoidHeld", () => {
+  it("blocks a held payment, voids the authorisation and records demo_reset_void with no actor", async () => {
+    const { service, gateway, repo } = setup({ level: "high" });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    const done = await service.systemVoidHeld(payment.id);
+    expect(done.state).toBe("voided");
+    expect(gateway.voidAuthorization).toHaveBeenCalledWith({ paymentId: payment.id, authorizationId: "AUTH1" });
+    const audit = await repo.auditFor(payment.id);
+    expect(audit.map((a) => a.action)).toEqual(expect.arrayContaining(["BLOCK", "demo_reset_void", "VOID"]));
+    expect(audit.filter((a) => ["BLOCK", "demo_reset_void", "VOID"].includes(a.action)).every((a) => a.actorId === null)).toBe(true);
+  });
+
+  it("refuses a payment that is not held, without touching PayPal", async () => {
+    const { service, gateway } = setup({ level: "low" });
+    const { payment } = await service.start({ ...send, amountCents: 1000 });
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    await expect(service.systemVoidHeld(payment.id)).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    expect(gateway.voidAuthorization).not.toHaveBeenCalled();
+  });
+
+  it("answers pending when the void fails after the claim", async () => {
+    const { service } = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValue(new Error("boom")) } });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    await expect(service.systemVoidHeld(payment.id)).rejects.toBeInstanceOf(PaymentPendingError);
+  });
+});

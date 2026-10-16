@@ -51,6 +51,22 @@ describe("resetDemo", () => {
     expect(left).toEqual([good]);
   });
 
+  it("rolls everything back when a step fails part-way", async () => {
+    const { db } = handle;
+    await seedBaseDemo(db);
+    const [margaret] = await db.select().from(users).where(eq(users.email, "margaret.demo@trustcircle.example"));
+    await db.insert(payments).values({ id: "11111111-1111-4111-a111-111111111111", senderId: margaret!.id, payee: "stranger@example.com", amountCents: 100, state: "held", riskLevel: "low", scamType: "none", reasons: [] });
+    await db.update(users).set({ onboardedAt: new Date() }).where(eq(users.id, margaret!.id));
+
+    // The log callback runs between steps; failing after "People reset" is a failure mid-reset.
+    await expect(resetDemo(db, { log: (s) => { if (s === "People reset") throw new Error("boom"); } })).rejects.toThrow("boom");
+
+    const rows = await db.select().from(payments);
+    expect(rows.map((p) => p.payee)).toEqual(["stranger@example.com"]);
+    const [after] = await db.select().from(users).where(eq(users.id, margaret!.id));
+    expect(after!.onboardedAt).not.toBeNull();
+  });
+
   it("logs each step through opts.log", async () => {
     await seedBaseDemo(handle.db);
     const lines: string[] = [];

@@ -318,6 +318,21 @@ export function createPaymentService(deps: {
     /** For callers that have already checked who may act. */
     blockHeld,
 
+    /**
+     * The daily demo reset voids a held authorisation before it wipes anything. Same claim-then-void path as a
+     * block (no actor), with an audit row that says why.
+     */
+    async systemVoidHeld(paymentId: string): Promise<PaymentRecord> {
+      const p = await mustGet(paymentId);
+      if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
+      const stopped = await step(p, "BLOCK", null);
+      return afterClaim(p.id, async () => {
+        await repo.audit({ paymentId: p.id, actorId: null, action: "demo_reset_void", fromState: "held", toState: stopped.state, detail: {} });
+        await gateway.voidAuthorization({ paymentId: stopped.id, authorizationId: stopped.authorizationId! });
+        return step(stopped, "VOID", null);
+      });
+    },
+
     async senderRelease(a: { paymentId: string; senderId: string }) {
       const p = await mustGet(a.paymentId);
       if (p.senderId !== a.senderId) throw new NotAllowedError("Only the sender can release this payment.");
