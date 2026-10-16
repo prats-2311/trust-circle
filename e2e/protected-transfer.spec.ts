@@ -1,13 +1,24 @@
-import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { approveInPayPal, signInAs } from "./helpers";
 
 const GRANDSON = process.env.SANDBOX_GRANDSON_EMAIL!;
 test.skip(!process.env.SANDBOX_SENIOR_EMAIL || !process.env.SANDBOX_SENIOR_PASSWORD || !GRANDSON, "sandbox credentials not set");
 
-// The first story reports the grandson's account to the shared scam list; a clean slate keeps the second story independent of it.
-test.beforeEach(() => {
-  execSync("npm run demo:reset", { stdio: "ignore" });
+// Serial and in this order on purpose: the scam story reports the shared sandbox payee to the scam
+// registry, so any payment to that payee after it is held instead of sent.
+test.describe.configure({ mode: "serial" });
+
+test("a small payment to someone new is confirmed and paid out", async ({ page }) => {
+  await signInAs(page, "margaret");
+  await page.goto("/send");
+  await page.getByLabel("Who are you paying?").fill(GRANDSON);
+  await page.getByLabel("How much?").fill("20");
+  await page.getByTestId("check").click();
+  const medium = page.getByTestId("confirm-medium");
+  if (await medium.isVisible().catch(() => false)) await medium.click();
+  await approveInPayPal(page);
+  await page.waitForURL("**/payments/**");
+  await expect(page.getByTestId("payment-screen-sent")).toBeVisible({ timeout: 30_000 });
 });
 
 test("a grandson scam is held, the real Daniel says it wasn't him, and the money is safe", async ({ page, browser }) => {
@@ -35,17 +46,4 @@ test("a grandson scam is held, the real Daniel says it wasn't him, and the money
 
   await expect(page.getByTestId("payment-screen-stopped_by_person")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("heading", { name: "Payment stopped. Your money is safe." })).toBeVisible();
-});
-
-test("a small payment to someone new is confirmed and paid out", async ({ page }) => {
-  await signInAs(page, "margaret");
-  await page.goto("/send");
-  await page.getByLabel("Who are you paying?").fill(GRANDSON);
-  await page.getByLabel("How much?").fill("20");
-  await page.getByTestId("check").click();
-  const medium = page.getByTestId("confirm-medium");
-  if (await medium.isVisible().catch(() => false)) await medium.click();
-  await approveInPayPal(page);
-  await page.waitForURL("**/payments/**");
-  await expect(page.getByTestId("payment-screen-sent")).toBeVisible({ timeout: 30_000 });
 });
