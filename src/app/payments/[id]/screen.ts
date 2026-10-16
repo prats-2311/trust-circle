@@ -7,7 +7,8 @@ export type Stage =
   | { stage: "official_routes"; organisation: string; steps: string[] }
   | { stage: "challenge"; method: "safe_word" | "memory_question"; requesterName: string; guidance: string[] }
   | { stage: "challenge_passed" }
-  | { stage: "resolved"; outcome: "confirmed" | "denied" | "failed" };
+  | { stage: "resolved"; outcome: "confirmed" | "denied"; contactName: string | null }
+  | { stage: "resolved"; outcome: "failed" };
 
 export type ScreenKind =
   | "not_approved" | "pending" | "waiting" | "challenge_memory" | "challenge_safe_word" | "official_routes" | "held"
@@ -45,7 +46,7 @@ export function screenFor(p: { state: string; outcome: Outcome }, stage: Stage |
 
 type Copy = { chipTone: ChipTone; chip: string; title: string; lead: string };
 
-export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string; contactName: string | null }): Copy {
+export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string; contactName: string | null; requesterName?: string | null }): Copy {
   const held = (title: string, lead: string, chip = "On hold"): Copy => ({ chipTone: "held", chip, title, lead });
   const stopped = (lead: string): Copy => ({ chipTone: "safe", chip: "Stopped", title: "Payment stopped. Your money is safe.", lead });
   switch (kind) {
@@ -56,7 +57,7 @@ export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string;
     case "waiting":
       return held(`We've asked ${d.contactName ?? "the real person"} if it was really them`, "Someone pretending to be them can't answer from there.");
     case "challenge_memory":
-      return held(`Ask the caller something only ${d.contactName ?? "they"} would know`, "Let's check another way while we wait.");
+      return held(`Ask the caller something only ${d.requesterName ?? "they"} would know`, "Let's check another way while we wait.");
     case "challenge_safe_word":
       return held("Ask the caller for your family's safe word", "Don't say it first or give any hints. Type exactly what they say.");
     case "official_routes":

@@ -44,7 +44,8 @@ export type VerificationStage =
   | { stage: "official_routes"; organisation: string; steps: string[] }
   | { stage: "challenge"; method: ChallengeMethod; requesterName: string; guidance: string[] }
   | { stage: "challenge_passed" }
-  | { stage: "resolved"; outcome: "confirmed" | "denied" | "failed" };
+  | { stage: "resolved"; outcome: "confirmed" | "denied"; contactName: string | null }
+  | { stage: "resolved"; outcome: "failed" };
 
 export type ChallengeRequest =
   | { paymentId: string; senderId: string; method: "safe_word"; said: string }
@@ -114,7 +115,11 @@ export function createVerificationService(deps: {
     const vs = await verifications.listForPayment(p.id);
     if (p.state !== "held") {
       const decided = [...vs].reverse().find((v) => v.status === "confirmed" || v.status === "denied" || v.status === "failed");
-      return decided ? { stage: "resolved", outcome: decided.status as "confirmed" | "denied" | "failed" } : { stage: "none" };
+      if (!decided) return { stage: "none" };
+      if (decided.status === "failed") return { stage: "resolved", outcome: "failed" };
+      // The contact who answered, so the screen names the right person.
+      const contact = decided.targetContactId ? await circle.getUser(decided.targetContactId) : null;
+      return { stage: "resolved", outcome: decided.status as "confirmed" | "denied", contactName: contact?.displayName ?? null };
     }
     if (vs.some((v) => isChallenge(v) && v.status === "failed")) return { stage: "resolved", outcome: "failed" };
     const official = vs.find((v) => v.method === "official_routes");

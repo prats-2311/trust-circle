@@ -71,7 +71,10 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   }, [polling, load]);
 
   if (state.kind === "ready" && kind) {
-    const contactName = state.stage?.stage === "waiting_for_person" ? state.stage.contactName : state.circleFirst;
+    const st = state.stage;
+    // Name the person who actually answered; a decided check never falls back to the first circle member (that could name the wrong person).
+    const contactName =
+      st?.stage === "waiting_for_person" ? st.contactName : st?.stage === "resolved" && st.outcome !== "failed" ? st.contactName : state.circleFirst;
     return <PaymentScreens kind={kind} p={state.p} stage={state.stage} contactName={contactName} reload={() => load(true)} />;
   }
   if (state.kind === "loading") {

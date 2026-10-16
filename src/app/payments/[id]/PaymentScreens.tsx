@@ -73,7 +73,8 @@ function CancelButton({ action }: { action: ReturnType<typeof useAction> & { id:
 
 export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: ScreenKind; p: PaymentView; stage: Stage | null; contactName: string | null; reload: () => Promise<void> }) {
   const action = { ...useAction(reload), id: p.id };
-  const copy = screenCopy(kind, { amount: formatUsd(p.amountCents), payee: p.payee, contactName });
+  const requesterName = stage?.stage === "challenge" ? stage.requesterName : null;
+  const copy = screenCopy(kind, { amount: formatUsd(p.amountCents), payee: p.payee, contactName, requesterName });
   const chip = <Chip tone={copy.chipTone}>{copy.chip}</Chip>;
   const screenProps = { backHref: "/home" };
   const holdChip = <Chip tone="held">{formatUsd(p.amountCents)} on hold</Chip>;
@@ -253,7 +254,7 @@ export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: 
       const safe = kind.startsWith("stopped_");
       const person = kind === "stopped_by_person";
       const next = [
-        ...(person ? [`${contactName ?? "Your circle"} has been told.`, "This account is on the shared scam list now, so other families are warned."] : []),
+        ...(person ? ["This account is on the shared scam list now, so other families are warned."] : []),
         ...(kind === "stopped_by_check" ? ["The payment won't be sent."] : []),
       ];
       const Icon = safe ? ShieldCheckIcon : kind === "sent" ? CheckCircleIcon : InfoIcon;

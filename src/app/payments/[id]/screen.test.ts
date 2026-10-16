@@ -15,11 +15,11 @@ describe("screenFor", () => {
     [held, { stage: "challenge", method: "safe_word", requesterName: "grandson", guidance: [] }, "challenge_safe_word"],
     [held, { stage: "official_routes", organisation: "PayPal", steps: [] }, "official_routes"],
     [held, { stage: "resolved", outcome: "failed" }, "stopped_by_check"],
-    [held, { stage: "resolved", outcome: "denied" }, "stopped_by_person"],
+    [held, { stage: "resolved", outcome: "denied", contactName: "Daniel" }, "stopped_by_person"],
     [held, { stage: "challenge_passed" }, "held"],
     [held, { stage: "none" }, "held"],
     [held, null, "held"],
-    [{ state: "voided", outcome: null }, { stage: "resolved", outcome: "denied" }, "stopped_by_person"],
+    [{ state: "voided", outcome: null }, { stage: "resolved", outcome: "denied", contactName: "Daniel" }, "stopped_by_person"],
     [{ state: "blocked", outcome: "circle" }, { stage: "resolved", outcome: "failed" }, "stopped_by_check"],
     [{ state: "voided", outcome: "circle" }, { stage: "none" }, "stopped_by_circle"],
     [{ state: "voided", outcome: "sender" }, { stage: "none" }, "cancelled"],
@@ -46,6 +46,10 @@ describe("screenCopy", () => {
       title: "Payment stopped. Your money is safe.",
       lead: "Daniel told us they didn't ask for this money. The $800 was never sent.",
     });
+  });
+  it("names who the caller claims to be, not the circle member, on the memory question", () => {
+    expect(screenCopy("challenge_memory", { ...d, contactName: "Sarah", requesterName: "Daniel" }).title).toBe("Ask the caller something only Daniel would know");
+    expect(screenCopy("challenge_memory", { ...d, contactName: "Sarah" }).title).toBe("Ask the caller something only they would know");
   });
   it("falls back when no contact is known", () => {
     expect(screenCopy("waiting", { ...d, contactName: null }).title).toBe("We've asked the real person if it was really them");
