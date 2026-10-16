@@ -11,7 +11,12 @@ const send = createWebPushSender({ publicKey: "pub", privateKey: "priv", subject
 describe("createWebPushSender", () => {
   beforeEach(() => sendNotification.mockReset().mockResolvedValue(undefined));
 
-  it.each(["https://evil.example;.push.apple.com/x", "https://localhost%E3%80%82push.apple.com/x", "https://evil.example/x"])(
+  it.each([
+    "https://evil.example;.push.apple.com/x",
+    "https://localhost%E3%80%82push.apple.com/x",
+    "https://evil.example/x",
+    `https://${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(49)}.push.apple.com/x`, // 256-char host
+  ])(
     "refuses the disallowed stored endpoint %s with a 410 and never sends",
     async (endpoint) => {
       await expect(send({ endpoint, keys }, "{}")).rejects.toMatchObject({ statusCode: 410 });

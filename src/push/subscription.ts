@@ -14,7 +14,8 @@ function isPushHost(host: string): boolean {
   return PUSH_HOSTS.has(host) || PUSH_DOMAINS.some((d) => host.endsWith(`.${d}`));
 }
 
-const PLAIN_HOSTNAME = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+// At most 253 characters and 63 per label. url.parse reads a host over 255 characters as "".
+const PLAIN_HOSTNAME = /^(?=.{1,253}$)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 
 /**
  * True only for a canonical https URL on a known push service: no credentials, no port, a plain
