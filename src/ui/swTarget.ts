@@ -8,7 +8,9 @@ export function safeTarget(url: unknown, origin: string): string {
   try {
     const u = new URL(url, origin);
     if (u.origin !== origin) return "/";
-    return u.pathname + u.search + u.hash;
+    const path = u.pathname + u.search + u.hash;
+    // "//host" would be read as another site, so only a single leading slash is allowed.
+    return path.startsWith("//") ? "/" : path;
   } catch {
     return "/";
   }

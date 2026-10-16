@@ -10,7 +10,9 @@ function safeTarget(url, origin) {
   try {
     const u = new URL(url, origin);
     if (u.origin !== origin) return "/";
-    return u.pathname + u.search + u.hash;
+    const path = u.pathname + u.search + u.hash;
+    // "//host" would be read as another site, so only a single leading slash is allowed.
+    return path.startsWith("//") ? "/" : path;
   } catch {
     return "/";
   }
@@ -42,7 +44,7 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((all) => {
       const open = all.find((c) => new URL(c.url).origin === self.location.origin);
-      if (open && "navigate" in open) return open.navigate(target).then((c) => (c || open).focus());
+      if (open && "navigate" in open) return open.navigate(target).then((c) => (c || open).focus()).catch(() => self.clients.openWindow(target));
       return self.clients.openWindow(target);
     }),
   );

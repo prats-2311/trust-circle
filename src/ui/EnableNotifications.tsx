@@ -5,6 +5,7 @@ import { Card } from "./Card";
 import { fetchJson, jsonBody } from "./fetchJson";
 import { BellIcon, InfoIcon } from "./icons";
 import { Notice } from "./Notice";
+import { SignedOut } from "./SignedOut";
 import { notificationCopy, notificationState, type NotificationEnv, type NotificationState } from "./notificationSupport";
 import { useOnce } from "./useOnce";
 
@@ -20,44 +21,99 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-async function readEnv(): Promise<NotificationEnv> {
+const READY_TIMEOUT_MS = 5000;
+
+/** `navigator.serviceWorker.ready` never settles when no worker can install, so it is raced against a timeout. */
+function swReady(): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("service worker not ready")), READY_TIMEOUT_MS)),
+  ]);
+}
+
+type Loaded = { kind: "ok"; env: NotificationEnv; notice: string | null } | { kind: "config_error" } | { kind: "signed_out" };
+
+async function readEnv(): Promise<Loaded> {
   const config = await fetchJson<{ publicKey: string | null }>("/api/push/config");
-  const publicKey = config.ok ? config.data.publicKey : null;
-  const hasServiceWorker = "serviceWorker" in navigator;
+  if (!config.ok) return config.signedOut ? { kind: "signed_out" } : { kind: "config_error" };
+  let publicKey = config.data.publicKey;
+
+  let hasServiceWorker = "serviceWorker" in navigator;
   const hasPushManager = "PushManager" in window;
   let subscribed = false;
+  let notice: string | null = null;
   if (hasServiceWorker && hasPushManager) {
     try {
-      subscribed = Boolean(await (await navigator.serviceWorker.ready).pushManager.getSubscription());
+      const sub = await (await swReady()).pushManager.getSubscription();
+      if (sub && publicKey) {
+        // "On" means the server accepted this device for this account, not just that the browser has a subscription.
+        const res = await fetchJson("/api/push/subscription", jsonBody(JSON.parse(JSON.stringify(sub))));
+        if (res.ok) subscribed = res.status === 201;
+        else if (res.signedOut) return { kind: "signed_out" };
+        else if (res.status === 503) publicKey = null;
+        else if (res.status === 409) notice = res.error;
+      }
     } catch {
-      subscribed = false;
+      hasServiceWorker = false;
     }
   }
   return {
-    hasServiceWorker,
-    hasPushManager,
-    isIos: /iPad|iPhone|iPod/.test(navigator.userAgent),
-    isStandalone: window.matchMedia("(display-mode: standalone)").matches,
-    permission: typeof Notification === "undefined" ? "default" : Notification.permission,
-    publicKey,
-    subscribed,
+    kind: "ok",
+    notice,
+    env: {
+      hasServiceWorker,
+      hasPushManager,
+      isIos: /iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1),
+      isStandalone: window.matchMedia("(display-mode: standalone)").matches,
+      permission: typeof Notification === "undefined" ? "default" : Notification.permission,
+      publicKey,
+      subscribed,
+    },
   };
 }
 
 export function EnableNotifications({ onDone }: { onDone?: () => void }) {
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [env, setEnv] = useState<NotificationEnv | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const { busy, run } = useOnce();
 
   useEffect(() => {
     let live = true;
-    readEnv().then((e) => {
-      if (live) setEnv(e);
+    readEnv().then((l) => {
+      if (!live) return;
+      setLoaded(l);
+      if (l.kind === "ok") {
+        setEnv(l.env);
+        setError(l.notice);
+      }
     });
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
+
+  if (loaded?.kind === "signed_out") return <SignedOut />;
+  if (loaded?.kind === "config_error") {
+    return (
+      <Card>
+        <div data-testid="notifications" data-state="config_error" className="space-y-4">
+          <Notice tone="error">We couldn&apos;t check alerts just now.</Notice>
+          <Button
+            data-testid="notifications-retry"
+            variant="secondary"
+            onClick={() => {
+              setLoaded(null);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      </Card>
+    );
+  }
 
   if (!env) {
     return (
@@ -78,7 +134,7 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
     run(async () => {
       setError(null);
       try {
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await swReady();
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(env.publicKey!),
@@ -87,7 +143,8 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
         if (!res.ok) {
           // Don't keep a browser subscription the server refused.
           await sub.unsubscribe().catch(() => {});
-          setError(res.status === 409 || res.status === 503 ? res.error : TURN_ON_FAILED);
+          if (res.status === 503) setEnv({ ...env, publicKey: null });
+          else setError(res.status === 409 ? res.error : TURN_ON_FAILED);
           return;
         }
         setEnv({ ...env, permission: "granted", subscribed: true });
@@ -105,7 +162,7 @@ export function EnableNotifications({ onDone }: { onDone?: () => void }) {
     run(async () => {
       setError(null);
       try {
-        const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+        const sub = await (await swReady()).pushManager.getSubscription();
         if (sub) {
           const endpoint = sub.endpoint;
           await sub.unsubscribe();

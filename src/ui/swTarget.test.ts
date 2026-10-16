@@ -14,8 +14,15 @@ describe("safeTarget", () => {
     ["javascript:alert(1)", "/"],
     [42, "/"],
     ["/\\evil", "/"],
+    ["https://app.example//evil.example", "/"],
+    ["/.//evil.example", "/"],
+    ["/a/..//evil.example", "/"],
+    ["https://app.example/\\\\evil.example", "/"],
   ])("%j opens %j", (input, expected) => {
-    expect(safeTarget(input, ORIGIN)).toBe(expected);
+    const out = safeTarget(input, ORIGIN);
+    expect(out).toBe(expected);
+    expect(out.startsWith("//")).toBe(false);
+    expect(new URL(out, ORIGIN).origin).toBe(ORIGIN);
   });
 });
 

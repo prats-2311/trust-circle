@@ -20,6 +20,8 @@ test("sw.js is never cached", async ({ request }) => {
   const res = await request.get("/sw.js");
   expect(res.ok()).toBe(true);
   expect(res.headers()["cache-control"]).toContain("no-store");
+  expect(res.headers()["content-type"]).toContain("application/javascript");
+  expect(res.headers()["content-security-policy"]).toBe("default-src 'self'; script-src 'self'");
 });
 
 test("the service worker registers", async ({ page }) => {

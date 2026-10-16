@@ -13,6 +13,7 @@ export type NotificationEnv = {
   isStandalone: boolean;
   permission: "default" | "denied" | "granted";
   publicKey: string | null;
+  /** True only when the server accepted this device for this account, not merely when the browser holds a subscription. */
   subscribed: boolean;
 };
 
