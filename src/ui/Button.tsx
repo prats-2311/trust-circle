@@ -15,9 +15,9 @@ export function Button({ variant = "primary", className = "", ...props }: Button
   return <button type="button" {...props} className={`${BASE} ${VARIANTS[variant]} ${className}`} />;
 }
 
-export function ButtonLink({ href, variant = "primary", children, className = "" }: { href: string; variant?: ButtonVariant; children: ReactNode; className?: string }) {
+export function ButtonLink({ href, variant = "primary", children, className = "", "data-testid": testId }: { href: string; variant?: ButtonVariant; children: ReactNode; className?: string; "data-testid"?: string }) {
   return (
-    <Link href={href} className={`${BASE} ${VARIANTS[variant]} no-underline ${className}`}>
+    <Link href={href} data-testid={testId} className={`${BASE} ${VARIANTS[variant]} no-underline ${className}`}>
       {children}
     </Link>
   );

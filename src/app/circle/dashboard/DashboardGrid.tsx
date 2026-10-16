@@ -99,7 +99,6 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
       </label>
       <input
         id="grid-search"
-        className="tc-search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{ height: 48, fontSize: 16, padding: "0 14px", borderRadius: 14, border: "2px solid #D9DFDB", width: "100%", maxWidth: 420, marginBottom: 16, boxSizing: "border-box" }}
