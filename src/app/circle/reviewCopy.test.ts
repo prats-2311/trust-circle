@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decisionResultCopy, verificationNotice } from "./reviewCopy";
+import { closedCopy, decisionResultCopy, verificationNotice } from "./reviewCopy";
 
 describe("decisionResultCopy", () => {
   it.each([
@@ -44,5 +44,34 @@ describe("verificationNotice", () => {
     expect(verificationNotice(null, "Margaret")).toBeNull();
     expect(verificationNotice({ stage: "none" }, "Margaret")).toBeNull();
     expect(verificationNotice({ stage: "resolved", outcome: "denied", contactName: "Daniel" }, "Margaret")).toBeNull();
+  });
+});
+
+describe("closedCopy", () => {
+  const title = "This payment is no longer waiting for a decision";
+  it("says the caller failed the check", () => {
+    expect(closedCopy("blocked", { stage: "resolved", outcome: "failed" }, "Margaret")).toEqual({
+      title, lead: "The caller couldn't pass the check, so the payment was stopped.",
+    });
+  });
+  it("names the real person who denied it, or falls back", () => {
+    expect(closedCopy("blocked", { stage: "resolved", outcome: "denied", contactName: "Daniel" }, "Margaret").lead).toBe(
+      "Daniel said they didn't ask for this money, so the payment was stopped.",
+    );
+    expect(closedCopy("blocked", { stage: "resolved", outcome: "denied", contactName: null }, "Margaret").lead).toBe(
+      "The real person said they didn't ask for this money, so the payment was stopped.",
+    );
+  });
+  it.each(["paid_out", "released", "captured"])("says %s has gone through", (state) => {
+    expect(closedCopy(state, null, "Margaret").lead).toBe("This payment has already gone through.");
+  });
+  it("says it has gone through when the real person confirmed", () => {
+    expect(closedCopy("blocked", { stage: "resolved", outcome: "confirmed", contactName: "Daniel" }, "Margaret").lead).toBe("This payment has already gone through.");
+  });
+  it.each(["blocked", "voided", "expired"])("says %s was stopped, with the money kept", (state) => {
+    expect(closedCopy(state, { stage: "none" }, "Margaret").lead).toBe("It was stopped, and the money stayed in Margaret's account.");
+  });
+  it("never uses the someone-else-answered line", () => {
+    expect(closedCopy("voided", null, "Margaret").lead).not.toMatch(/Someone else/);
   });
 });

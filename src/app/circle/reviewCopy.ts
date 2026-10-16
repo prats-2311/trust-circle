@@ -34,3 +34,18 @@ export function verificationNotice(stage: Stage | null, senderName: string): str
   if (stage.stage === "resolved" && stage.outcome === "failed") return "The caller couldn't pass the check, so the payment is being stopped.";
   return null;
 }
+
+/** Shown when the payment loads in a state other than held. A real 409 from the decision POST uses decisionResultCopy instead. */
+export function closedCopy(paymentState: string, stage: Stage | null, senderName: string): { title: string; lead: string } {
+  const title = "This payment is no longer waiting for a decision";
+  if (stage?.stage === "resolved" && stage.outcome === "failed") {
+    return { title, lead: "The caller couldn't pass the check, so the payment was stopped." };
+  }
+  if (stage?.stage === "resolved" && stage.outcome === "denied") {
+    return { title, lead: `${stage.contactName ?? "The real person"} said they didn't ask for this money, so the payment was stopped.` };
+  }
+  if ((stage?.stage === "resolved" && stage.outcome === "confirmed") || ["paid_out", "released", "captured"].includes(paymentState)) {
+    return { title, lead: "This payment has already gone through." };
+  }
+  return { title, lead: `It was stopped, and the money stayed in ${senderName}'s account.` };
+}

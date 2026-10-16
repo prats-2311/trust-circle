@@ -13,7 +13,7 @@ import { Screen, Title } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { useOnce } from "@/ui/useOnce";
-import { decisionResultCopy, verificationNotice, type DecisionTone } from "../../reviewCopy";
+import { closedCopy, decisionResultCopy, verificationNotice, type DecisionTone } from "../../reviewCopy";
 
 type Payment = {
   id: string;
@@ -101,7 +101,7 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const held = p.state === "held";
   const left = timeLeftText(holdProgress({ authorisedAt: p.authorisedAt, coolingOffUntil: p.coolingOffUntil, now: new Date() }).msLeft);
   const done = result && "decision" in result ? decisionResultCopy(result.decision, result.status, senderName) : null;
-  const closed = !held && !done ? decisionResultCopy("block", 409, senderName) : null;
+  const closed = !held && !done ? { tone: "info" as const, ...closedCopy(p.state, stage, senderName) } : null;
   const shown = done ?? closed;
   const notice = held ? verificationNotice(stage, senderName) : null;
 
