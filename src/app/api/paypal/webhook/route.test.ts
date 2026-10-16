@@ -133,6 +133,37 @@ describe("POST /api/paypal/webhook", () => {
     expect(verify).not.toHaveBeenCalled();
   });
 
+  it("answers 413 for a chunked body with no content-length, and stops reading once past the cap", async () => {
+    const chunk = new Uint8Array(64 * 1024).fill(120);
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++;
+        controller.enqueue(chunk);
+      },
+    });
+    const req = new Request("http://x/api/paypal/webhook", { method: "POST", headers: goodHeaders, body: stream, duplex: "half" } as RequestInit);
+    expect(req.headers.get("content-length")).toBeNull();
+    const res = await POST(req);
+    expect(res.status).toBe(413);
+    expect(pulled).toBeLessThan(10);
+    expect(verify).not.toHaveBeenCalled();
+  });
+
+  it("still reads a normal chunked body", async () => {
+    const bytes = new TextEncoder().encode(body);
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(bytes.slice(0, 10));
+        c.enqueue(bytes.slice(10));
+        c.close();
+      },
+    });
+    const res = await POST(new Request("http://x/api/paypal/webhook", { method: "POST", headers: goodHeaders, body: stream, duplex: "half" } as RequestInit));
+    expect(res.status).toBe(200);
+    expect(verify.mock.calls[0]![0].rawBody).toBe(body);
+  });
+
   it("answers 200 ignored for a verified body that is not an event", async () => {
     const res = await post("[1,2]");
     expect(res.status).toBe(200);

@@ -12,6 +12,25 @@ const SIGNATURE_HEADERS = [
   "paypal-transmission-time",
 ] as const;
 
+/** Reads the body in chunks and gives up as soon as it passes the cap, whatever the headers claim. Null means too large. */
+async function readCapped(req: Request): Promise<string | null> {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 const invalid = () => Response.json({ error: "Invalid signature." }, { status: 400 });
 
 export async function POST(req: Request) {
@@ -21,8 +40,8 @@ export async function POST(req: Request) {
 
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > MAX_BODY_BYTES) return Response.json({ error: "Too large." }, { status: 413 });
-  const rawBody = await req.text();
-  if (Buffer.byteLength(rawBody) > MAX_BODY_BYTES) return Response.json({ error: "Too large." }, { status: 413 });
+  const rawBody = await readCapped(req);
+  if (rawBody === null) return Response.json({ error: "Too large." }, { status: 413 });
 
   const headers: Record<string, string | null> = {};
   for (const name of SIGNATURE_HEADERS) headers[name] = req.headers.get(name);
