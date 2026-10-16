@@ -143,4 +143,16 @@ describe("drizzle payment repo", () => {
     const p = await repo.insert(base({ reasons: ["First reason.", "Second, with \"quotes\"."] }));
     expect((await repo.get(p.id))!.reasons).toEqual(["First reason.", "Second, with \"quotes\"."]);
   });
+
+  it("lists the circle's payments newest first and finds blocked ones", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    const older = await repo.insert(base({ state: "held" }));
+    const newer = await repo.insert(base({ state: "held" }));
+    await repo.transition(newer.id, "held", { state: "blocked" }, undefined, { actorId: contactId, action: "BLOCK" });
+    const listed = await repo.listForCircle(contactId, 10);
+    expect(listed.map((p) => p.id)).toEqual([newer.id, older.id]);
+    expect(await repo.listForCircle(senderId, 10)).toEqual([]);
+    expect(await repo.blockedPaymentIds([older.id, newer.id])).toEqual([newer.id]);
+    expect(await repo.blockedPaymentIds([])).toEqual([]);
+  });
 });

@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { auditLog, payments, trustLinks, users } from "@/db/schema";
 import { isUuid } from "@/domain/ids";
@@ -97,6 +97,26 @@ export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
       return rows.map(({ paymentId, actorId, action, fromState, toState, detail }) => ({
         paymentId, actorId, action, fromState, toState, detail,
       }));
+    },
+    async listForCircle(contactId, limit) {
+      if (!isUuid(contactId)) return [];
+      const rows = await db
+        .select({ p: payments })
+        .from(payments)
+        .innerJoin(trustLinks, eq(trustLinks.senderId, payments.senderId))
+        .where(eq(trustLinks.contactId, contactId))
+        .orderBy(desc(payments.createdAt))
+        .limit(limit);
+      return rows.map((r) => toRecord(r.p));
+    },
+    async blockedPaymentIds(ids) {
+      if (ids.length === 0) return [];
+      const rows = await db
+        .selectDistinct({ id: auditLog.paymentId })
+        .from(auditLog)
+        .where(and(inArray(auditLog.paymentId, ids), eq(auditLog.action, "BLOCK")));
+      const blocked = new Set(rows.map((r) => r.id));
+      return ids.filter((id) => blocked.has(id));
     },
   };
 }
