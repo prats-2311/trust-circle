@@ -16,7 +16,7 @@ export default function LandingPage() {
         <span className="text-[16px] text-ink-2">Runs in the PayPal sandbox. No real money moves.</span>
       </header>
 
-      <main>
+      <main id="main" tabIndex={-1} className="focus:outline-none">
         <section className="mx-auto grid max-w-[1200px] items-center gap-14 px-6 pb-[72px] pt-14 md:grid-cols-2">
           <div className="flex flex-col gap-[22px]">
             <h1 className="text-[clamp(40px,5.2vw,68px)] font-extrabold leading-[1.04] tracking-[-0.025em]">
@@ -74,7 +74,7 @@ export default function LandingPage() {
             </p>
           </div>
           <p className="text-[19px] leading-[1.55] text-ink-2">
-            Most scams work by borrowing someone&apos;s trust: a grandchild, a bank, PayPal itself. Trust Circle doesn&apos;t try to out-guess every new script. It
+            Many scams work by borrowing someone&apos;s trust: a grandchild, a bank, PayPal itself. Trust Circle doesn&apos;t try to out-guess every new script. It
             goes to the person being impersonated and lets them say no.
           </p>
         </section>

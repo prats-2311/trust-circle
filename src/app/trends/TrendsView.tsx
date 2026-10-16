@@ -57,7 +57,7 @@ export function TrendsView({ trends }: { trends: Trends }) {
   const summary = `Bar chart of scam reports per week for the last 12 weeks.${top ? ` Most reported: ${top.label}, ${top.total} reports.` : ""}`;
   return (
     <>
-      <div ref={ref} data-testid="trends-chart" role="img" aria-label={summary} style={{ height: 420, borderRadius: 20, overflow: "hidden", background: "#FFFFFF" }}>
+      <div ref={ref} data-testid="trends-chart" role="group" aria-label={summary} style={{ height: 420, borderRadius: 20, overflow: "hidden", background: "#FFFFFF" }}>
         <AgCharts options={options} style={{ height: "100%", width: "100%" }} />
       </div>
       <div style={{ marginTop: 24 }}>

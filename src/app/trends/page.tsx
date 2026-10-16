@@ -28,7 +28,7 @@ export default function TrendsPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-4 pb-10 pt-4 md:px-6">
+    <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-[1200px] px-4 pb-10 pt-4 md:px-6">
       <Link href="/circle" className="-ml-2.5 inline-flex min-h-11 items-center gap-2 rounded-xl px-2.5 text-[18px] font-bold text-ink no-underline">
         <ArrowLeftIcon aria-hidden="true" size={24} />
         Your circle

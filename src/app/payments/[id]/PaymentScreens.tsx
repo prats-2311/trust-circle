@@ -61,7 +61,11 @@ const approval = (status: number, error: string) => approvalErrorCopy(status, er
 const challenge = (status: number, error: string) => (status === 0 || status >= 500 ? CHALLENGE_FAILED_TO_SAVE : error);
 
 function NoticeLine({ notice }: { notice: NoticeState | null }) {
-  return notice ? <div className="mt-5"><Notice tone={notice.tone}>{notice.text}</Notice></div> : null;
+  return (
+    <div className={notice ? "mt-5" : undefined}>
+      <Notice tone={notice?.tone ?? "info"}>{notice?.text}</Notice>
+    </div>
+  );
 }
 
 function CancelButton({ action }: { action: ReturnType<typeof useAction> & { id: string } }) {

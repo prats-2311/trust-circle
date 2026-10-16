@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/ui/Button";
-import { describedBy, Field, INPUT } from "@/ui/Field";
+import { Field, INPUT } from "@/ui/Field";
 import { FinePrint, Screen, Title } from "@/ui/Screen";
 
 export function CheckForm({
@@ -38,8 +38,6 @@ export function CheckForm({
             value={text}
             disabled={file !== null}
             onChange={(e) => onText(e.target.value)}
-            aria-describedby={describedBy("message", hint, error)}
-            aria-invalid={error ? true : undefined}
             className={`${INPUT} py-3.5`}
           />
         </Field>

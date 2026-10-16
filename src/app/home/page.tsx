@@ -44,7 +44,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
+    <main id="main" tabIndex={-1} className="focus:outline-none mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
       <div className="flex items-center justify-between">
         <span className="text-[17px] font-bold text-evergreen">Trust Circle</span>
         <div className="flex items-center">
@@ -52,6 +52,7 @@ export default function HomePage() {
           <SignOutButton />
         </div>
       </div>
+      {(state.kind === "loading" || state.kind === "error") && <h1 className="sr-only">Home</h1>}
       {state.kind === "loading" && (
         <>
           <p role="status" className="sr-only">

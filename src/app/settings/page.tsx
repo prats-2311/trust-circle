@@ -95,7 +95,7 @@ export default function SettingsPage() {
           <div role="status" className="min-h-[24px] pt-3 text-[17px] font-bold text-evergreen">
             {saved ?? ""}
           </div>
-          {saveError && <Notice tone="error">{saveError}</Notice>}
+          <Notice tone="error">{saveError}</Notice>
 
           <Section title="Who you're protecting" id="h-preset">
             <PresetRadios labelledBy="h-preset" disabled={busy} value={load.prefs.preset} onChange={(p) => void save({ preset: p })} />

@@ -5,7 +5,7 @@ import type { Preset } from "@/domain/types";
 import { homeFor, type Persona } from "@/server/demo";
 import { Button } from "@/ui/Button";
 import { EnableNotifications } from "@/ui/EnableNotifications";
-import { describedBy, Field, INPUT } from "@/ui/Field";
+import { Field, INPUT } from "@/ui/Field";
 import { fetchJson } from "@/ui/fetchJson";
 import { LockSimpleIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
@@ -279,8 +279,6 @@ export default function OnboardingPage() {
                   autoComplete="off"
                   value={safeWord}
                   onChange={(e) => setSafeWord(e.target.value)}
-                  aria-invalid={fieldError ? true : undefined}
-                  aria-describedby={describedBy("word", "hint", fieldError)}
                   className={`${INPUT} text-[20px]`}
                 />
               </Field>
@@ -303,11 +301,9 @@ export default function OnboardingPage() {
         )}
       </div>
 
-      {saveError && (
-        <div className="mt-5">
-          <Notice tone="error">{saveError}</Notice>
-        </div>
-      )}
+      <div className={saveError ? "mt-5" : undefined}>
+        <Notice tone="error">{saveError}</Notice>
+      </div>
     </Screen>
   );
 }
