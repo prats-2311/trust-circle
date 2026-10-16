@@ -5,8 +5,9 @@ import { errorResponse } from "@/server/http";
 import type { PaymentState } from "@/domain/types";
 
 // Money may still be moving or authorised in these states, so the reset must not wipe the rows.
-// blocked and expired are included: their PayPal authorisation is only voided once they reach voided.
-const IN_FLIGHT = ["approved", "authorised", "released", "captured", "payout_failed", "blocked", "expired"] as PaymentState[];
+// held, blocked and expired are included: their PayPal authorisation is only voided once they reach voided.
+// held covers a void that failed before it started.
+const IN_FLIGHT = ["held", "approved", "authorised", "released", "captured", "payout_failed", "blocked", "expired"] as PaymentState[];
 
 function digest(value: string): Buffer {
   return createHash("sha256").update(value).digest();

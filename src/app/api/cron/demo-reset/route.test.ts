@@ -83,6 +83,14 @@ describe("POST /api/cron/demo-reset", () => {
     expect(resetDemo).not.toHaveBeenCalled();
   });
 
+  it("skips when a void fails before it starts and the payment is still held", async () => {
+    systemVoidHeld.mockRejectedValue(new Error("network"));
+    listByStates.mockImplementation(async (states: string[]) => (states.includes("held") ? [{ id: "h1", state: "held" }] : []));
+    const res = await post("s".repeat(24));
+    expect(await res.json()).toEqual({ ok: true, skipped: "in-flight" });
+    expect(resetDemo).not.toHaveBeenCalled();
+  });
+
   it("does not sweep or reset on a bad token", async () => {
     await post("wrong");
     expect(expireStale).not.toHaveBeenCalled();

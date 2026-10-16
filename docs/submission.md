@@ -133,7 +133,7 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 
 ### 28791: Why (rating feedback), draft for the user to edit
 
-> Authorize-then-capture was a natural fit for holding a risky payment, and the sandbox let us test the full lifecycle (authorize, capture, void, payouts, refunds and webhooks) without real money. The JavaScript SDK v6 approval flow was simple to embed. Request ids made retries safe, which mattered a lot for a money-safety product. Friction points: Transaction Search has to be switched on for the app and its sandbox data lags by about 3 hours, so the aftercare agent often fell back to our own records; webhook simulator events can't be verified online, so webhook handling was verified online with PayPal's verify-webhook-signature API; and the Agent Toolkit keeps its access token for the life of the instance, so we rebuild it every hour.
+> Authorize-then-capture was a natural fit for holding a risky payment, and the sandbox let us test the full lifecycle (authorize, capture, void, payouts, refunds and webhooks) without real money. The JavaScript SDK v6 approval flow was simple to embed. Request ids made retries safe, which mattered a lot for a money-safety product. Friction points: Transaction Search has to be switched on for the app and its sandbox data lags by about 3 hours, so the aftercare agent often fell back to our own records; webhook simulator events can't be verified online, so we verify every real event with PayPal's verify-webhook-signature API; and the Agent Toolkit keeps its access token for the life of the instance, so we rebuild it every hour.
 
 ### 28799: AG Grid experience
 
