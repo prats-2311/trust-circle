@@ -37,4 +37,10 @@ describe("drizzle message repo", () => {
   it("returns nothing for a non-uuid sender", async () => {
     expect(await createDrizzleMessageRepo(handle.db).listBySender("nope", 10)).toEqual([]);
   });
+  it("gets a check by id and tolerates bad ids", async () => {
+    const repo = createDrizzleMessageRepo(handle.db);
+    const saved = await repo.insert(check());
+    expect(await repo.get(saved.id)).toEqual(saved);
+    expect(await repo.get("not-a-uuid")).toBeNull();
+  });
 });

@@ -14,6 +14,11 @@ export function createDrizzleMessageRepo(db: Db): MessageRepo {
       const [row] = await db.insert(messageChecks).values(c).returning();
       return toRecord(row!);
     },
+    async get(id) {
+      if (!isUuid(id)) return null;
+      const [row] = await db.select().from(messageChecks).where(eq(messageChecks.id, id));
+      return row ? toRecord(row) : null;
+    },
     async listBySender(senderId, limit) {
       if (!isUuid(senderId)) return [];
       const rows = await db
