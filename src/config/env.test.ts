@@ -9,6 +9,7 @@ const valid = {
   DATABASE_URL: "postgres://u:p@localhost:5433/db",
   GROQ_API_KEY: "gsk_x",
   GROQ_TEXT_MODEL: "openai/gpt-oss-120b",
+  GROQ_VISION_MODEL: "v",
   SESSION_SECRET: "x".repeat(32),
   CRON_SECRET: "y".repeat(24),
 };
@@ -34,6 +35,13 @@ describe("loadEnv", () => {
     expect(message).toMatch(/PAYPAL_CLIENT_SECRET/);
     expect(message).toMatch(/GROQ_API_KEY/);
     expect(message).not.toMatch(/secret"/);
+  });
+
+  it("requires the vision model and defaults the guard model", () => {
+    const missing: Record<string, string | undefined> = { ...valid };
+    delete missing.GROQ_VISION_MODEL;
+    expect(() => loadEnv(missing)).toThrow(/GROQ_VISION_MODEL/);
+    expect(loadEnv({ ...valid, GROQ_VISION_MODEL: "v" }).GROQ_GUARD_MODEL).toBe("meta-llama/llama-prompt-guard-2-86m");
   });
 
   it("requires a session secret of at least 32 characters", () => {

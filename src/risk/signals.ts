@@ -23,7 +23,8 @@ export type SignalCode =
   | "FIRST_TIME_PAYEE"
   | "UNUSUAL_AMOUNT"
   | "OVER_CIRCLE_LIMIT"
-  | "RAPID_REPEAT";
+  | "RAPID_REPEAT"
+  | "HIDDEN_INSTRUCTIONS";
 
 export interface Signal {
   code: SignalCode;
@@ -79,9 +80,14 @@ export function computeSignals(input: PaymentRiskInput, ctx: SenderContext): Sig
   return signals;
 }
 
+export const HIDDEN_INSTRUCTIONS_SIGNAL: Signal = {
+  code: "HIDDEN_INSTRUCTIONS",
+  detail: "This contains hidden instructions meant to trick safety checks, which is a common scam trick.",
+};
+
 export function ruleLevel(signals: Signal[]): RiskLevel {
   const has = (c: SignalCode) => signals.some((s) => s.code === c);
-  if (has("REGISTRY_CONFIRMED") || has("LINKED_SCAM_MESSAGE")) return "high";
+  if (has("REGISTRY_CONFIRMED") || has("LINKED_SCAM_MESSAGE") || has("HIDDEN_INSTRUCTIONS")) return "high";
   const contributing = signals.filter((s) => CONTRIBUTING.includes(s.code)).length;
   let level: RiskLevel = contributing >= 3 ? "high" : contributing === 2 ? "medium" : "low";
   if (has("REGISTRY_UNCONFIRMED") || has("OVER_CIRCLE_LIMIT")) level = maxLevel(level, "medium");

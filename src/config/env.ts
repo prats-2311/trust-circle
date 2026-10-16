@@ -8,6 +8,8 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   GROQ_API_KEY: z.string().min(1),
   GROQ_TEXT_MODEL: z.string().min(1),
+  GROQ_VISION_MODEL: z.string().min(1),
+  GROQ_GUARD_MODEL: z.string().min(1).default("meta-llama/llama-prompt-guard-2-86m"),
   SESSION_SECRET: z.string().min(32),
   CRON_SECRET: z.string().min(24),
 });

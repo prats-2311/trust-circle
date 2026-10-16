@@ -37,6 +37,14 @@ function setup(opts: { level?: "low" | "medium" | "high"; gateway?: Partial<PayP
 const send = { senderId: SENDER, payee: "Grandson@Example.com", amountCents: 80000, senderAnswer: "my grandson" };
 
 describe("start", () => {
+  it("uses the prompt guard when one is configured", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const guard = vi.fn().mockResolvedValue(0.99);
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge: judgeSaying("low"), guard });
+    const { decision } = await service.start(send);
+    expect(guard).toHaveBeenCalledWith("my grandson");
+    expect(decision.level).toBe("high");
+  });
   it("stores who the AI thinks is being impersonated", async () => {
     const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
     const judge = vi.fn().mockResolvedValue({

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PaymentJudge } from "@/ai/groqJudge";
+import type { PromptGuard } from "@/ai/promptGuard";
 import { nextState } from "@/domain/paymentStateMachine";
 import type { PaymentEventType } from "@/domain/types";
 import { assessPayment } from "@/risk/assess";
@@ -48,6 +49,7 @@ export function createPaymentService(deps: {
   repo: PaymentRepo;
   gateway: PayPalGateway;
   judge: PaymentJudge;
+  guard?: PromptGuard;
   now?: () => Date;
   newId?: () => string;
   extraContext?: (senderId: string) => Promise<ExtraContext>;
@@ -184,6 +186,7 @@ export function createPaymentService(deps: {
         { payee, amountCents: a.amountCents, note: a.note, senderAnswer: a.senderAnswer },
         { ...facts, ...(await extra(a.senderId)) },
         judge,
+        deps.guard,
       );
       const id = newId();
       let payment = await repo.insert({

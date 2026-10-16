@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeSignals, normalisePayee, ruleLevel, type SenderContext } from "./signals";
+import { computeSignals, HIDDEN_INSTRUCTIONS_SIGNAL, normalisePayee, ruleLevel, type SenderContext } from "./signals";
 
 const ctx = (over: Partial<SenderContext> = {}): SenderContext => ({
   previousPayees: ["sarah@example.com"],
@@ -78,5 +78,8 @@ describe("ruleLevel", () => {
   it("is high for a confirmed registry entry or linked scam message", () => {
     expect(ruleLevel([sig("REGISTRY_CONFIRMED")])).toBe("high");
     expect(ruleLevel([sig("LINKED_SCAM_MESSAGE")])).toBe("high");
+  });
+  it("treats hidden instructions as high on their own", () => {
+    expect(ruleLevel([HIDDEN_INSTRUCTIONS_SIGNAL])).toBe("high");
   });
 });
