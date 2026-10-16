@@ -18,6 +18,7 @@ async function main() {
     const margaret = await upsertUser(db, "margaret.demo@trustcircle.example", "Margaret");
     const sarah = await upsertUser(db, "sarah.demo@trustcircle.example", "Sarah");
     const daniel = await upsertUser(db, "daniel.demo@trustcircle.example", "Daniel");
+    const robert = await upsertUser(db, "robert.demo@trustcircle.example", "Robert");
     await db
       .insert(trustLinks)
       .values([
@@ -25,7 +26,7 @@ async function main() {
         { senderId: margaret.id, contactId: daniel.id, relationship: "grandson" },
       ])
       .onConflictDoNothing();
-    console.log(JSON.stringify({ margaret: margaret.id, sarah: sarah.id, daniel: daniel.id }));
+    console.log(JSON.stringify({ margaret: margaret.id, sarah: sarah.id, daniel: daniel.id, robert: robert.id }));
   } finally {
     await close();
   }
