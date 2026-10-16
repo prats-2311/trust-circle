@@ -3,7 +3,7 @@ export const NETWORK_ERROR = "We couldn't reach Trust Circle. Please check your 
 
 export type FetchResult<T> =
   | { ok: true; status: number; data: T }
-  | { ok: false; status: number; error: string; signedOut: boolean };
+  | { ok: false; status: number; error: string; signedOut: boolean; field?: string };
 
 /** Every screen talks to the API through this, so 401s, network errors and 202s are handled the same way. */
 export async function fetchJson<T>(url: string, init?: RequestInit): Promise<FetchResult<T>> {
@@ -17,7 +17,8 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<Fet
   const body: unknown = await res.json().catch(() => undefined);
   if (res.ok) return { ok: true, status: res.status, data: body as T };
   const error = body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : NETWORK_ERROR;
-  return { ok: false, status: res.status, error, signedOut: false };
+  const field = body && typeof body === "object" && "field" in body && typeof body.field === "string" ? body.field : undefined;
+  return { ok: false, status: res.status, error, signedOut: false, ...(field ? { field } : {}) };
 }
 
 export const jsonBody = (value: unknown): RequestInit => ({

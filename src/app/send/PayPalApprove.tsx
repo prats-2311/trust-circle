@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Notice } from "@/ui/Notice";
 import { loadSdk } from "./sdkLoader";
 
 type PayPalSession = { start(opts: { presentationMode: string }, order: Promise<{ orderId: string }>): Promise<void> };
@@ -24,7 +25,7 @@ declare global {
   }
 }
 
-export function PayPalApprove({ orderId, onApproved }: { orderId: string; onApproved: () => void }) {
+export function PayPalApprove({ orderId, onApproved, label }: { orderId: string; onApproved: () => void; label?: string }) {
   const ref = useRef<HTMLElement>(null);
   const approvedRef = useRef(onApproved);
   const openRef = useRef(false);
@@ -97,9 +98,12 @@ export function PayPalApprove({ orderId, onApproved }: { orderId: string; onAppr
   }, [orderId]);
 
   return (
-    <div>
-      <paypal-button ref={ref} type="pay" hidden data-testid="paypal-button" disabled={busy}></paypal-button>
-      {error && <p role="alert">{error}</p>}
+    <div className="flex flex-col gap-2.5">
+      {label && <p className="text-[17px] font-bold">{label}</p>}
+      <div className="min-h-[58px]">
+        <paypal-button ref={ref} type="pay" hidden data-testid="paypal-button" disabled={busy}></paypal-button>
+      </div>
+      {error && <Notice tone="error">{error}</Notice>}
     </div>
   );
 }
