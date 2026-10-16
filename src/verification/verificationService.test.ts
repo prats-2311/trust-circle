@@ -136,6 +136,19 @@ describe("verify the real person", () => {
     expect((await s.verifications.get(v!.id))!.status).toBe("denied");
   });
 
+  it("still tells the circle and reports the impersonation when the alert to the sender fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const s = setup();
+    const p = await s.held();
+    const [v] = await s.verifications.listForPayment(p.id);
+    s.alerts.notify.mockImplementation(async (a: { kind: string }) => {
+      if (a.kind === "payment_stopped") throw new Error("db");
+    });
+    expect(await s.verification.respond({ verificationId: v!.id, responderId: DANIEL, answer: "not_me" })).toEqual({ status: "denied", paymentState: "voided" });
+    expect(s.alerts.notify.mock.calls.map((c) => c[0].kind)).toContain("payment_update");
+    expect(s.onImpersonationConfirmed).toHaveBeenCalledWith(expect.objectContaining({ id: p.id }), DANIEL);
+  });
+
   it("returns the asked contact from startForHeld, and null for a repeat report", async () => {
     const s = setup();
     const p = await s.held();

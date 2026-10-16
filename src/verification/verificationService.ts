@@ -199,7 +199,11 @@ export function createVerificationService(deps: {
           () => paymentOps.blockHeld({ paymentId: payment.id, actorId: a.responderId }),
           async () => {
             await verifications.resolve(v.id, "denied", now());
-            await alerts.notify({ recipientId: payment.senderId, kind: "payment_stopped", paymentId: payment.id, payload: await payloadFor(payment, realName) });
+            try {
+              await alerts.notify({ recipientId: payment.senderId, kind: "payment_stopped", paymentId: payment.id, payload: await payloadFor(payment, realName) });
+            } catch (e) {
+              console.warn("sender alert failed", { paymentId: payment.id, error: e instanceof Error ? e.name : "unknown" });
+            }
             await tellCircle(payment, { reason: "denied", actorName: realName }, a.responderId);
             try {
               await deps.onImpersonationConfirmed?.(payment, a.responderId);
