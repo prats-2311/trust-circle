@@ -85,6 +85,15 @@ Run the smoke test (Task 6) against the live site:
 BASE_URL=https://<render-host> npx playwright test e2e/smoke.spec.ts
 ```
 
+To smoke-test a production build on your own machine first, run `npm run build`. `npm run start:prod` reads only the process environment, not `.env.local`, so export the variables in a subshell. `set -a; . ./.env.local; set +a` loads them without echoing any value:
+
+```bash
+# Terminal 1: serve the production build on port 3999
+(set -a; . ./.env.local; set +a; PORT=3999 npm run start:prod)
+# Terminal 2: run the smoke test against it
+BASE_URL=http://localhost:3999 npx playwright test --project smoke
+```
+
 ## 10. VAPID keys (push alerts)
 
 1. Run `npm run vapid:keys` locally. It prints a public and a private key.
