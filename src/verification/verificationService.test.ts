@@ -105,7 +105,7 @@ describe("verify the real person", () => {
       paymentId: p.id,
       payload: { senderName: "Margaret", amountCents: 80000, payee: PAYEE, requesterName: "Daniel" },
     });
-    expect(s.onImpersonationConfirmed).toHaveBeenCalledWith(expect.objectContaining({ id: p.id }));
+    expect(s.onImpersonationConfirmed).toHaveBeenCalledWith(expect.objectContaining({ id: p.id }), DANIEL);
     expect(await s.verification.stage({ paymentId: p.id, viewerId: MARGARET })).toEqual({ stage: "resolved", outcome: "denied" });
   });
 

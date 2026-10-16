@@ -44,7 +44,8 @@ export class PaymentPendingError extends Error {
   }
 }
 
-export type PaymentServiceEvent = { type: "held"; payment: PaymentRecord } | { type: "medium_sent"; payment: PaymentRecord };
+export type PaymentServiceEvent = { type: "held"; payment: PaymentRecord } | { type: "medium_sent"; payment: PaymentRecord }
+  | { type: "blocked_by_contact"; payment: PaymentRecord; actorId: string };
 
 type ExtraContext = Pick<SenderContext, "flaggedPayees" | "registry" | "circleLimitCents">;
 
@@ -262,9 +263,16 @@ export function createPaymentService(deps: {
       if (!(await repo.isContactFor(a.contactId, p.senderId))) {
         throw new NotAllowedError("Only someone in the sender's circle can decide.");
       }
-      return a.decision === "approve"
-        ? settleHeld({ paymentId: p.id, actorId: a.contactId })
-        : blockHeld({ paymentId: p.id, actorId: a.contactId });
+      if (a.decision === "approve") return settleHeld({ paymentId: p.id, actorId: a.contactId });
+      try {
+        const stopped = await blockHeld({ paymentId: p.id, actorId: a.contactId });
+        await emit({ type: "blocked_by_contact", payment: stopped, actorId: a.contactId });
+        return stopped;
+      } catch (e) {
+        // The block was claimed; only the void is still finishing. The decision still counts.
+        if (e instanceof PaymentPendingError) await emit({ type: "blocked_by_contact", payment: p, actorId: a.contactId });
+        throw e;
+      }
     },
 
     /** For callers that have already checked who may act (a trusted contact, the real person). */

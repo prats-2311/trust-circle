@@ -692,6 +692,23 @@ describe("captured rows needing attention", () => {
 });
 
 describe("payment events", () => {
+  it("emits blocked_by_contact when a trusted contact blocks", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "blocked_by_contact", actorId: CONTACT, payment: { id: payment.id } });
+  });
+  it("does not emit blocked_by_contact for an approval", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "approve" });
+    expect(onEvent).not.toHaveBeenCalled();
+  });
   function withEvents(level: "low" | "medium" | "high", onEvent = vi.fn().mockResolvedValue(undefined)) {
     // Starts at the real time: the memory repo stamps updatedAt with the wall clock, and the sweep compares against now().
     let clock = new Date();

@@ -61,4 +61,13 @@ describe("payment event handler", () => {
     await done;
     expect(warn).toHaveBeenCalledWith("payment event step failed", { step: "alert", paymentId: "p1", error: "Error" });
   });
+  it("sends a contact block to the registry and alerts no one", async () => {
+    const verification = { startForHeld: vi.fn() };
+    const alerts = { notify: vi.fn() };
+    const registry = { onContactBlock: vi.fn().mockResolvedValue(undefined), onImpersonationConfirmed: vi.fn() };
+    await createPaymentEventHandler({ circle, alerts, verification, registry })({ type: "blocked_by_contact", payment, actorId: "s" });
+    expect(registry.onContactBlock).toHaveBeenCalledWith(payment, "s");
+    expect(alerts.notify).not.toHaveBeenCalled();
+    expect(verification.startForHeld).not.toHaveBeenCalled();
+  });
 });
