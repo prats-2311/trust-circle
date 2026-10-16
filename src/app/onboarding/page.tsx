@@ -259,8 +259,8 @@ export default function OnboardingPage() {
 
         {step === "safe_word" && (
           <>
-            <Title>Choose a family safe word</Title>
-            <Lead>If someone calls asking for money, ask them for it. Only your family will know it.</Lead>
+            <Title>Choose a safe word</Title>
+            <Lead>If someone calls asking for money, ask them for it. Only the people you trust will know it.</Lead>
             {me.safeWordSet && (
               <div className="mt-4">
                 <Notice tone="info">You&apos;ve already set a safe word. You can change it here.</Notice>
@@ -270,7 +270,7 @@ export default function OnboardingPage() {
               <Field
                 id="word"
                 label="Safe word"
-                hint="Pick something easy to say and hard to guess, like a pet's name from years ago. Tell your family in person, not by text or email."
+                hint="Pick something easy to say and hard to guess, like a pet's name from years ago. Tell the people you trust in person, not by text or email."
                 error={fieldError}
               >
                 <input

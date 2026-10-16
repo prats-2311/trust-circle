@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { Preset } from "@/domain/types";
+import { homeFor, type Persona } from "@/server/demo";
 import { COOLING_OFF_CHOICES, PRESETS } from "@/settings/presets";
 import { EnableNotifications } from "@/ui/EnableNotifications";
 import { fetchJson } from "@/ui/fetchJson";
@@ -15,7 +16,7 @@ import { Skeleton } from "@/ui/Skeleton";
 import { useOnce } from "@/ui/useOnce";
 
 type Prefs = { preset: Preset; coolingOffHours: number; circleLimitCents: number | null };
-type Load = { kind: "loading" } | { kind: "signedOut" } | { kind: "error" } | { kind: "ready"; prefs: Prefs; safeWordSet: boolean };
+type Load = { kind: "loading" } | { kind: "signedOut" } | { kind: "error" } | { kind: "ready"; prefs: Prefs; safeWordSet: boolean; persona: Persona | null };
 
 const SAVE_FAILED = "We couldn't save that just now. Please try again.";
 
@@ -42,11 +43,11 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await fetchJson<Prefs & { safeWordSet: boolean }>("/api/me");
+      const r = await fetchJson<Prefs & { safeWordSet: boolean; persona: Persona | null }>("/api/me");
       if (cancelled) return;
       if (!r.ok) return setLoad(r.signedOut ? { kind: "signedOut" } : { kind: "error" });
-      const { preset, coolingOffHours, circleLimitCents, safeWordSet } = r.data;
-      setLoad({ kind: "ready", prefs: { preset, coolingOffHours, circleLimitCents }, safeWordSet });
+      const { preset, coolingOffHours, circleLimitCents, safeWordSet, persona } = r.data;
+      setLoad({ kind: "ready", prefs: { preset, coolingOffHours, circleLimitCents }, safeWordSet, persona });
     })();
     return () => {
       cancelled = true;
@@ -77,7 +78,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <Screen title="Settings" backHref="/home">
+    <Screen title="Settings" backHref={load.kind === "ready" && load.persona ? homeFor(load.persona) : "/home"}>
+      <h1 className="sr-only">Settings</h1>
       {load.kind === "loading" && (
         <>
           <p role="status" className="sr-only">Loading your settings…</p>

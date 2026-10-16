@@ -15,7 +15,7 @@ test("Margaret finishes setup from home and her safe word is saved", async ({ pa
   await expect(page.getByRole("heading", { name: "Who checks risky payments" })).toBeVisible();
   await page.getByTestId("onboarding-next").click();
 
-  await expect(page.getByRole("heading", { name: "Choose a family safe word" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose a safe word" })).toBeVisible();
   await page.getByLabel("Safe word").fill("bluebird");
   await page.getByTestId("onboarding-next").click();
 
