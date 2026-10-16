@@ -61,5 +61,17 @@ export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string;
     async auditFor(paymentId) {
       return audits.filter((a) => a.paymentId === paymentId).map((a) => structuredClone(a));
     },
+    async listForCircle(contactId, limit) {
+      const senders = new Set(links.filter((l) => l.contactId === contactId).map((l) => l.senderId));
+      return [...rows.values()]
+        .filter((r) => senders.has(r.senderId))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit)
+        .map(clone);
+    },
+    async blockedPaymentIds(ids) {
+      const blocked = new Set(audits.filter((a) => a.action === "BLOCK").map((a) => a.paymentId));
+      return ids.filter((id) => blocked.has(id));
+    },
   };
 }

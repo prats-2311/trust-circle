@@ -18,6 +18,7 @@ export type NewMessageCheck = Omit<MessageCheckRecord, "id" | "createdAt">;
 
 export interface MessageRepo {
   insert(c: NewMessageCheck): Promise<MessageCheckRecord>;
+  get(id: string): Promise<MessageCheckRecord | null>;
   /** Newest first. */
   listBySender(senderId: string, limit: number): Promise<MessageCheckRecord[]>;
 }
@@ -29,6 +30,10 @@ export function createMemoryMessageRepo(): MessageRepo {
       const row = { ...structuredClone(c), id: randomUUID(), createdAt: new Date() };
       rows.push(row);
       return structuredClone(row);
+    },
+    async get(id) {
+      const r = rows.find((x) => x.id === id);
+      return r ? structuredClone(r) : null;
     },
     async listBySender(senderId, limit) {
       return rows

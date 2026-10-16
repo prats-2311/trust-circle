@@ -1,6 +1,6 @@
-import { boolean, check, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, vector } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { Identifier, Requester } from "@/domain/types";
+import type { Identifier, IdentifierType, Requester } from "@/domain/types";
 
 export const presetEnum = pgEnum("preset", ["family", "business", "solo"]);
 export const paymentStateEnum = pgEnum("payment_state", [
@@ -109,3 +109,67 @@ export const alerts = pgTable("alerts", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   readAt: timestamp("read_at", { withTimezone: true }),
 });
+
+export const registryStatusEnum = pgEnum("registry_status", ["unconfirmed", "confirmed"]);
+export const registrySourceEnum = pgEnum("registry_source", ["message_report", "contact_block", "real_person_denied"]);
+
+/** Shared registry: scammer identifiers only, never message text or victim details. */
+export const registryEntries = pgTable(
+  "registry_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identifierType: text("identifier_type").$type<IdentifierType>().notNull(),
+    // canonicalKey() of the identifier, so every written form of a number or link meets here.
+    key: text("key").notNull(),
+    scamType: text("scam_type").notNull(),
+    status: registryStatusEnum("status").notNull().default("unconfirmed"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("registry_entries_key").on(t.key)],
+);
+
+export const registryReports = pgTable(
+  "registry_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entryId: uuid("entry_id").notNull().references(() => registryEntries.id),
+    reporterId: uuid("reporter_id").notNull().references(() => users.id),
+    source: registrySourceEnum("source").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("registry_reports_entry_reporter_source").on(t.entryId, t.reporterId, t.source)],
+);
+
+/** Anonymised scam scripts with their meaning-vectors (all-MiniLM-L6-v2, 384 dimensions). */
+export const scamPatterns = pgTable(
+  "scam_patterns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    description: text("description").notNull(),
+    scamType: text("scam_type").notNull(),
+    reportCount: integer("report_count").notNull().default(1),
+    embedding: vector("embedding", { dimensions: 384 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("scam_patterns_description").on(t.description),
+    index("scam_patterns_embedding").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+/** A user's own drafted report to PayPal for one message check. */
+export const scamReports = pgTable(
+  "scam_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterId: uuid("reporter_id").notNull().references(() => users.id),
+    messageCheckId: uuid("message_check_id").notNull().references(() => messageChecks.id),
+    patternId: uuid("pattern_id").references(() => scamPatterns.id),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("scam_reports_check").on(t.messageCheckId)],
+);

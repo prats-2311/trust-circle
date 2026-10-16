@@ -1,5 +1,6 @@
 import type { ImageMime, MessageInput, MessageJudge } from "@/ai/groqMessageJudge";
 import type { PromptGuard } from "@/ai/promptGuard";
+import type { PatternMatcher } from "@/patterns/patternService";
 import type { Requester } from "@/domain/types";
 import { assessMessage, type RegistryLists } from "./assessMessage";
 import { matchKeys } from "./identifiers";
@@ -54,6 +55,7 @@ export function createMessageService(deps: {
   repo: MessageRepo;
   judge: MessageJudge;
   guard?: PromptGuard;
+  patterns?: PatternMatcher;
   registry?: (senderId: string) => Promise<RegistryLists>;
 }) {
   const registry = deps.registry ?? (async () => ({ confirmed: [], unconfirmed: [] }));
@@ -62,7 +64,7 @@ export function createMessageService(deps: {
   return {
     async check(a: CheckRequest): Promise<MessageCheckResult> {
       const input = toInput(a);
-      const r = await assessMessage(input, { registry: await registry(a.senderId) }, { judge: deps.judge, guard: deps.guard });
+      const r = await assessMessage(input, { registry: await registry(a.senderId) }, { judge: deps.judge, guard: deps.guard, patterns: deps.patterns });
       // The screenshot itself is never stored, only the words read from it.
       const record = await deps.repo.insert({
         senderId: a.senderId,

@@ -60,6 +60,14 @@ describe("assessMessage", () => {
     expect(r.identifiers).toEqual([{ type: "phone", value: "+14155550199" }]);
   });
 
+  it("keeps the matched pattern's scam type when it raised the level", async () => {
+    const judge = vi.fn().mockResolvedValue(ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null }));
+    const patterns = vi.fn().mockResolvedValue({ patternId: "p1", scamType: "impersonation_family", similarity: 0.5 });
+    const r = await assessMessage({ kind: "text", text: scamText }, empty, { judge, patterns });
+    expect(r.level).toBe("medium");
+    expect(r.scamType).toBe("impersonation_family");
+  });
+
   it("marks the result unchecked when the AI fails, and never reports a confident low", async () => {
     const judge = vi.fn().mockResolvedValue({ ok: false, error: "groq http 503" });
     const r = await assessMessage({ kind: "text", text: "See you at dinner" }, empty, { judge });
@@ -89,5 +97,20 @@ describe("assessMessage", () => {
     const judge = vi.fn().mockResolvedValue(ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null }));
     const r = await assessMessage({ kind: "text", text: "See you at dinner" }, empty, { judge, guard: vi.fn().mockResolvedValue(null) });
     expect(r).toMatchObject({ checked: true, level: "low", scamType: "none" });
+  });
+  it("adds KNOWN_SCAM_PATTERN for a pasted message and for a screenshot transcript", async () => {
+    const patterns = vi.fn().mockResolvedValue({ patternId: "p1", scamType: "impersonation_family", similarity: 0.45 });
+    const low = ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null });
+    const text = await assessMessage({ kind: "text", text: "Grandpa it's Josh, in jail, need bail" }, empty, { judge: vi.fn().mockResolvedValue(low), patterns });
+    expect(text.level).toBe("medium");
+    expect(text.signals.map((s) => s.code)).toEqual(["KNOWN_SCAM_PATTERN"]);
+    const lowWithTranscript = ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null, transcript: "Grandpa it's Josh, in jail" });
+    const image = await assessMessage(
+      { kind: "image", mimeType: "image/png", base64: "AAAA" },
+      empty,
+      { judge: vi.fn().mockResolvedValue(lowWithTranscript), patterns },
+    );
+    expect(patterns).toHaveBeenLastCalledWith("Grandpa it's Josh, in jail");
+    expect(image.signals.map((s) => s.code)).toEqual(["KNOWN_SCAM_PATTERN"]);
   });
 });

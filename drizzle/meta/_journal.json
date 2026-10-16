@@ -22,6 +22,20 @@
       "when": 1792109346583,
       "tag": "0002_true_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792113110179,
+      "tag": "0003_enable_pgvector",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792113110857,
+      "tag": "0004_left_swarm",
+      "breakpoints": true
     }
   ]
 }

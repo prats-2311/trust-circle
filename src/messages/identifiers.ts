@@ -1,34 +1,15 @@
 import type { Identifier, IdentifierType } from "@/domain/types";
-import { normalisePayee } from "@/risk/signals";
+import { matchKeys, normalisePayee, phoneVariants } from "@/domain/matchKeys";
+
+export { matchKeys, phoneVariants };
 
 const URL_RE = /\b(?:https?:\/\/|www\.)[^\s<>"')\]]+/gi;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+// Links typed without http:// or www.: a domain followed by a path, or a bare domain on a common ending.
+const BARE_LINK_RE = /\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:[a-z]{2,}\/[^\s<>"')\]]+|(?:com|net|org|info|biz|io|co|me|ly|xyz|top|online|site|example)\b)/gi;
 const PHONE_RE = /\+?\d[\d\s().-]{6,18}\d/g;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_IDENTIFIERS = 20;
-
-export function phoneVariants(normalised: string): string[] {
-  const digits = normalised.replace(/^\+/, "");
-  const out = new Set([normalised, digits]);
-  if (digits.length > 10) out.add(digits.slice(-10));
-  return [...out];
-}
-
-/** Comparable keys for an email, URL or phone number, however it was written. */
-export function matchKeys(value: string): string[] {
-  const v = value.trim().toLowerCase();
-  if (v.includes("@")) return [v];
-  if (/[a-z]/.test(v)) {
-    return [
-      v
-        .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
-        .replace(/^www\./, "")
-        .replace(/[?#].*$/, "")
-        .replace(/\/+$/, ""),
-    ];
-  }
-  return phoneVariants(normalisePayee(v));
-}
 
 export function extractIdentifiers(text: string): Identifier[] {
   const out: Identifier[] = [];
@@ -48,7 +29,11 @@ export function extractIdentifiers(text: string): Identifier[] {
   for (const e of emails) add("email", normalisePayee(e));
   const withoutEmails = emails.reduce((t, e) => t.replace(e, " "), withoutUrls);
 
-  for (const p of withoutEmails.match(PHONE_RE) ?? []) {
+  const bare = withoutEmails.match(BARE_LINK_RE) ?? [];
+  for (const b of bare) add("url", b.replace(/[.,;:!?]+$/, "").replace(/\/+$/, "").toLowerCase());
+  const withoutLinks = bare.reduce((t, b) => t.replace(b, " "), withoutEmails);
+
+  for (const p of withoutLinks.match(PHONE_RE) ?? []) {
     if (ISO_DATE.test(p.trim())) continue;
     const digits = p.replace(/\D/g, "").length;
     if (digits >= 7 && digits <= 15) add("phone", normalisePayee(p));

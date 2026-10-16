@@ -26,7 +26,8 @@ function sanitiseReasons(raw: string[]): string[] {
   return [...new Set(cleaned)].slice(0, MAX_REASONS);
 }
 
-export function decide(signals: Signal[], ai: AiOutcome): RiskDecision {
+/** `patternScamType`: the scam type of a matched known pattern, kept when that pattern (not the AI) raised the level. */
+export function decide(signals: Signal[], ai: AiOutcome, patternScamType?: ScamType): RiskDecision {
   const rule = ruleLevel(signals);
   if (ai.ok) {
     const level = maxLevel(rule, ai.judgement.level);
@@ -36,7 +37,7 @@ export function decide(signals: Signal[], ai: AiOutcome): RiskDecision {
     if (level !== "low" && reasons.length === 0) reasons = details;
     return {
       level,
-      scamType: overridden ? "unknown" : ai.judgement.scamType,
+      scamType: overridden ? (patternScamType ?? "unknown") : ai.judgement.scamType,
       reasons,
       signals,
       aiUsed: true,

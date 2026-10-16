@@ -2,7 +2,8 @@ import type { MessageAiOutcome, MessageInput, MessageJudge } from "@/ai/groqMess
 import { INJECTION_THRESHOLD, type PromptGuard } from "@/ai/promptGuard";
 import type { Identifier, Requester, RiskLevel, ScamType } from "@/domain/types";
 import { decide } from "@/risk/decide";
-import { HIDDEN_INSTRUCTIONS_SIGNAL, type Signal } from "@/risk/signals";
+import type { PatternMatch, PatternMatcher } from "@/patterns/patternService";
+import { HIDDEN_INSTRUCTIONS_SIGNAL, KNOWN_PATTERN_SIGNAL, type Signal } from "@/risk/signals";
 import { extractIdentifiers, matchKeys } from "./identifiers";
 
 export interface RegistryLists {
@@ -45,10 +46,19 @@ async function injectionSignals(guard: PromptGuard | undefined, text: string): P
   }
 }
 
+async function patternMatch(patterns: PatternMatcher | undefined, text: string): Promise<PatternMatch | null> {
+  if (!patterns || !text) return null;
+  try {
+    return await patterns(text);
+  } catch {
+    return null;
+  }
+}
+
 export async function assessMessage(
   input: MessageInput,
   ctx: { registry: RegistryLists },
-  deps: { judge: MessageJudge; guard?: PromptGuard },
+  deps: { judge: MessageJudge; guard?: PromptGuard; patterns?: PatternMatcher },
 ): Promise<MessageAssessment> {
   const pasted = input.kind === "text" ? input.text.trim() : "";
   const early = messageSignals(extractIdentifiers(pasted), ctx.registry);
@@ -61,8 +71,9 @@ export async function assessMessage(
   // A screenshot's words only exist once the vision model has read them.
   const text = input.kind === "image" ? (ai.ok ? ai.judgement.transcript.trim() : "") : pasted;
   const identifiers = extractIdentifiers(text);
-  const signals = [...messageSignals(identifiers, ctx.registry), ...(await injectionSignals(deps.guard, text))];
-  const d = decide(signals, ai);
+  const [injection, pattern] = await Promise.all([injectionSignals(deps.guard, text), patternMatch(deps.patterns, text)]);
+  const signals = [...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
+  const d = decide(signals, ai, pattern?.scamType);
   return {
     checked: ai.ok,
     level: d.level,

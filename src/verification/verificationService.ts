@@ -56,7 +56,7 @@ export function createVerificationService(deps: {
   paymentOps: Pick<PaymentService, "settleHeld" | "blockHeld">;
   circle: CircleRepo;
   alerts: Pick<AlertService, "notify">;
-  onImpersonationConfirmed?: (payment: PaymentRecord) => Promise<void>;
+  onImpersonationConfirmed?: (payment: PaymentRecord, responderId: string) => Promise<void>;
   now?: () => Date;
 }) {
   const { verifications, payments, paymentOps, circle, alerts } = deps;
@@ -177,7 +177,7 @@ export function createVerificationService(deps: {
             await verifications.resolve(v.id, "denied", now());
             await alerts.notify({ recipientId: payment.senderId, kind: "payment_stopped", paymentId: payment.id, payload: await payloadFor(payment, realName) });
             try {
-              await deps.onImpersonationConfirmed?.(payment);
+              await deps.onImpersonationConfirmed?.(payment, a.responderId);
             } catch (e) {
               console.warn("impersonation report failed", { paymentId: payment.id, error: e instanceof Error ? e.name : "unknown" });
             }

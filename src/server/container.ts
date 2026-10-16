@@ -3,10 +3,12 @@ import { createDrizzleAlertRepo } from "@/alerts/drizzleAlertRepo";
 import { createResendEmailSender } from "@/alerts/emailSender";
 import { createGroqJudge } from "@/ai/groqJudge";
 import { createGroqMessageJudge } from "@/ai/groqMessageJudge";
+import { createGroqPatternDescriber } from "@/ai/patternDescriber";
 import { createPromptGuard } from "@/ai/promptGuard";
 import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
 import { loadEnv, type Env } from "@/config/env";
 import { createDb } from "@/db/client";
+import { createDashboardService, type DashboardService } from "@/dashboard/dashboardService";
 import { createDrizzleMessageRepo } from "@/messages/drizzleMessageRepo";
 import { createMessageService, type MessageService } from "@/messages/messageService";
 import { createDrizzlePaymentRepo } from "@/payments/drizzlePaymentRepo";
@@ -15,6 +17,14 @@ import { createPaymentService, type PaymentService, type PaymentServiceEvent } f
 import { createPayPalGateway } from "@/payments/paypalGateway";
 import { createDrizzleVerificationRepo } from "@/verification/drizzleVerificationRepo";
 import { createVerificationService, type VerificationService } from "@/verification/verificationService";
+import { getEmbedder } from "@/patterns/embedder";
+import { createDrizzlePatternRepo } from "@/patterns/drizzlePatternRepo";
+import { createPatternService, type PatternService } from "@/patterns/patternService";
+import { createDrizzleRegistryRepo } from "@/registry/drizzleRegistryRepo";
+import { createRegistryHooks } from "@/registry/hooks";
+import { createRegistryService, type RegistryService } from "@/registry/registryService";
+import { createDrizzleScamReportRepo } from "@/reports/drizzleScamReportRepo";
+import { createReportService, type ReportService } from "@/reports/reportService";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -24,6 +34,10 @@ type Container = {
   messages: MessageService;
   alerts: AlertService;
   verification: VerificationService;
+  registry: RegistryService;
+  patterns: PatternService;
+  reports: ReportService;
+  dashboard: DashboardService;
 };
 let container: Container | undefined;
 
@@ -34,8 +48,21 @@ export function getContainer(): Container {
   const repo = createDrizzlePaymentRepo(db);
   const circle = createDrizzleCircleRepo(db);
   const guard = createPromptGuard({ apiKey: env.GROQ_API_KEY, model: env.GROQ_GUARD_MODEL });
+  const messageRepo = createDrizzleMessageRepo(db);
+  const registryRepo = createDrizzleRegistryRepo(db);
+  const registry = createRegistryService({ repo: registryRepo });
+  const hooks = createRegistryHooks(registry);
+  // The registry is one signal among several: if it cannot be read, assessments go ahead without it.
+  const registryLists = () =>
+    registry.lists().catch((e: unknown) => {
+      console.warn("registry unavailable", { error: e instanceof Error ? e.name : "unknown" });
+      return { confirmed: [] as string[], unconfirmed: [] as string[] };
+    });
+  const patterns = createPatternService({ repo: createDrizzlePatternRepo(db), embed: getEmbedder() });
   const messages = createMessageService({
-    repo: createDrizzleMessageRepo(db),
+    repo: messageRepo,
+    registry: () => registryLists(),
+    patterns: patterns.match,
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
   });
@@ -53,11 +80,36 @@ export function getContainer(): Container {
     judge: createGroqJudge({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
     guard,
     linkedMessage: messages.linkedMessage,
-    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: { confirmed: [], unconfirmed: [] } }),
+    patterns: patterns.match,
+    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists() }),
     onEvent: (e) => onEvent(e),
   });
-  const verification = createVerificationService({ verifications: createDrizzleVerificationRepo(db), payments: repo, paymentOps: service, circle, alerts });
-  onEvent = createPaymentEventHandler({ circle, alerts, verification });
-  container = { env, repo, service, messages, alerts, verification };
+  const verification = createVerificationService({
+    verifications: createDrizzleVerificationRepo(db),
+    payments: repo,
+    paymentOps: service,
+    circle,
+    alerts,
+    onImpersonationConfirmed: hooks.onImpersonationConfirmed,
+  });
+  const reports = createReportService({
+    messages: messageRepo,
+    reports: createDrizzleScamReportRepo(db),
+    registry,
+    patterns,
+    describe: createGroqPatternDescriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
+    appUrl: env.APP_URL,
+    // Contact details of the reporter and the people they know are never a scammer's.
+    excludeKeys: async (reporterId) => {
+      const emailOf = async (id: string) => (await circle.getUser(id))?.email;
+      const members = await circle.contactsOf(reporterId);
+      const emails = await Promise.all([reporterId, ...members.map((m) => m.contactId)].map(emailOf));
+      const { previousPayees } = await repo.senderContextFacts(reporterId, new Date());
+      return [...emails.filter((e): e is string => Boolean(e)), ...previousPayees];
+    },
+  });
+  const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
+  onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
+  container = { env, repo, service, messages, alerts, verification, registry, patterns, reports, dashboard };
   return container;
 }

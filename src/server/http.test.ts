@@ -3,6 +3,7 @@ import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
+import { ReportError } from "@/reports/reportService";
 import { MessageInputError } from "@/messages/messageService";
 import { VerificationClosedError, VerificationInputError } from "@/verification/verificationService";
 import { errorResponse, readJsonObject } from "./http";
@@ -10,6 +11,11 @@ import { errorResponse, readJsonObject } from "./http";
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 describe("errorResponse", () => {
+  it("maps report errors to 400", async () => {
+    const r = errorResponse(new ReportError("Only a message that looks like a scam can be reported."));
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ error: "Only a message that looks like a scam can be reported." });
+  });
   it("maps input errors to 400 with the field", async () => {
     const r = errorResponse(new PaymentInputError("payee", "Please enter who to pay."));
     expect(r.status).toBe(400);

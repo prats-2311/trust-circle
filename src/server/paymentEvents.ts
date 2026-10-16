@@ -1,6 +1,7 @@
 import type { AlertService } from "@/alerts/alertService";
 import type { CircleRepo } from "@/circle/circleRepo";
 import type { PaymentServiceEvent } from "@/payments/paymentService";
+import type { RegistryHooks } from "@/registry/hooks";
 import type { VerificationService } from "@/verification/verificationService";
 
 async function safely(step: string, paymentId: string, work: () => Promise<void>): Promise<void> {
@@ -15,9 +16,14 @@ export function createPaymentEventHandler(deps: {
   circle: CircleRepo;
   alerts: Pick<AlertService, "notify">;
   verification: Pick<VerificationService, "startForHeld">;
+  registry?: RegistryHooks;
 }) {
   return async (e: PaymentServiceEvent): Promise<void> => {
     const p = e.payment;
+    if (e.type === "blocked_by_contact") {
+      if (deps.registry) await safely("registry", p.id, () => deps.registry!.onContactBlock(p, e.actorId));
+      return;
+    }
     // Asking the real person matters most, so it starts before the circle is told.
     if (e.type === "held") await safely("verification", p.id, () => deps.verification.startForHeld(p));
     const sender = await deps.circle.getUser(p.senderId);

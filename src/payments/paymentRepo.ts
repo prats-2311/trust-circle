@@ -70,4 +70,8 @@ export interface PaymentRepo {
   userExists(id: string): Promise<boolean>;
   audit(e: AuditEntry): Promise<void>;
   auditFor(paymentId: string): Promise<AuditEntry[]>;
+  /** Payments of every sender in this contact's circle, newest first. */
+  listForCircle(contactId: string, limit: number): Promise<PaymentRecord[]>;
+  /** The ids among these that a decision blocked (a BLOCK audit row). */
+  blockedPaymentIds(ids: string[]): Promise<string[]>;
 }

@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { installMsw, server } from "@/test/msw";
 import { GROQ_URL, groqChat, parseJsonObject } from "./groqClient";
 
@@ -43,6 +43,14 @@ describe("groqChat", () => {
     ];
     await groqChat({ ...base, json: true, messages: [{ role: "user", content }] });
     expect(body!.messages[0]!.content).toEqual(content);
+  });
+  it("logs the model, duration and outcome of each call, never the content", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    server.use(http.post(GROQ_URL, () => HttpResponse.json({ choices: [{ message: { content: "secret reply" } }] })));
+    await groqChat({ ...base, json: true, messages: [{ role: "user", content: "secret text" }] });
+    expect(info).toHaveBeenCalledWith("groq call", { model: "m", ms: expect.any(Number), ok: true });
+    expect(JSON.stringify(info.mock.calls)).not.toContain("secret");
+    info.mockRestore();
   });
   it("reports http errors and empty responses without throwing", async () => {
     server.use(http.post(GROQ_URL, () => HttpResponse.json({}, { status: 500 })));
