@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { pushSubscriptions } from "@/db/schema";
 import type { PushRepo } from "./pushRepo";
@@ -6,13 +6,20 @@ import type { PushRepo } from "./pushRepo";
 export function createDrizzlePushRepo(db: Db): PushRepo {
   return {
     async save(userId, sub, at) {
-      await db
+      const rows = await db
         .insert(pushSubscriptions)
         .values({ endpoint: sub.endpoint, userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, createdAt: at })
         .onConflictDoUpdate({
           target: pushSubscriptions.endpoint,
           set: { userId, p256dh: sub.keys.p256dh, auth: sub.keys.auth, createdAt: at },
-        });
+          // One statement, so two users can't race: take over only your own row or one with identical keys.
+          setWhere: or(
+            eq(pushSubscriptions.userId, userId),
+            and(eq(pushSubscriptions.p256dh, sql`excluded.p256dh`), eq(pushSubscriptions.auth, sql`excluded.auth`)),
+          ),
+        })
+        .returning({ endpoint: pushSubscriptions.endpoint });
+      return rows.length > 0 ? "saved" : "conflict";
     },
     async listForUser(userId) {
       const rows = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));

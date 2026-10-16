@@ -176,7 +176,7 @@ describe("alert service", () => {
     it("a hanging push is cut off and notify still resolves", async () => {
       vi.useFakeTimers();
       try {
-        vi.spyOn(console, "warn").mockImplementation(() => {});
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         const send = vi.fn(() => new Promise<void>(() => {}));
         const email = vi.fn().mockResolvedValue(undefined);
         const { channels, run } = await setup({ send, email });
@@ -184,6 +184,7 @@ describe("alert service", () => {
         await vi.advanceTimersByTimeAsync(5_000);
         await expect(done).resolves.toBeUndefined();
         expect(channels()).toEqual([["in_app", "sent"], ["push", "failed"], ["email", "sent"]]);
+        expect(warn).toHaveBeenCalledWith("alert push failed", { kind: "payment_held", status: "timeout" });
       } finally {
         vi.useRealTimers();
       }
@@ -192,7 +193,7 @@ describe("alert service", () => {
     it("a hanging email is cut off at the timeout and recorded as failed", async () => {
       vi.useFakeTimers();
       try {
-        vi.spyOn(console, "warn").mockImplementation(() => {});
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         const send = vi.fn().mockResolvedValue(undefined);
         const email = vi.fn(() => new Promise<void>(() => {}));
         const { channels, run } = await setup({ send, email });
@@ -200,6 +201,7 @@ describe("alert service", () => {
         await vi.advanceTimersByTimeAsync(5_000);
         await expect(done).resolves.toBeUndefined();
         expect(channels()).toEqual([["in_app", "sent"], ["push", "sent"], ["email", "failed"]]);
+        expect(warn).toHaveBeenCalledWith("alert email failed", { kind: "payment_held", error: "timeout" });
       } finally {
         vi.useRealTimers();
       }

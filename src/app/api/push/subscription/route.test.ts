@@ -9,11 +9,13 @@ const at = new Date("2026-11-01T10:00:00Z");
 const sub = (n: number) => ({ endpoint: `https://push.example/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
 
 let push: PushRepo;
-vi.mock("@/server/container", () => ({ getContainer: () => ({ push, env: { SESSION_SECRET: SECRET } }) }));
+let vapid: Record<string, string> = {};
+vi.mock("@/server/container", () => ({ getContainer: () => ({ push, env: { SESSION_SECRET: SECRET, ...vapid } }) }));
 import { DELETE, POST } from "./route";
 
 beforeEach(() => {
   push = createMemoryPushRepo();
+  vapid = { NEXT_PUBLIC_VAPID_PUBLIC_KEY: "pub", VAPID_PRIVATE_KEY: "priv" };
 });
 
 const cookie = (userId?: string): Record<string, string> =>
@@ -27,6 +29,33 @@ describe("/api/push/subscription", () => {
   it("answers 401 when signed out", async () => {
     expect((await post(sub(1))).status).toBe(401);
     expect((await del({ endpoint: sub(1).endpoint })).status).toBe(401);
+  });
+  it("answers 503 when push is not configured on this server", async () => {
+    vapid = {};
+    const res = await post(sub(1), U);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "Phone alerts aren't set up on this server." });
+    expect(await push.countForUser(U)).toBe(0);
+  });
+  it("answers 409 when another account has the device with different keys, and leaves the owner's row", async () => {
+    await push.save(V, sub(1), at);
+    const res = await post({ ...sub(1), keys: { p256dh: "other", auth: "other" } }, U);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "This device is already set up for alerts on another account." });
+    expect(await push.listForUser(V)).toEqual([sub(1)]);
+    expect(await push.listForUser(U)).toEqual([]);
+  });
+  it("moves the device when another account re-subscribes with the same keys", async () => {
+    await push.save(V, sub(1), at);
+    expect((await post(sub(1), U)).status).toBe(201);
+    expect(await push.listForUser(U)).toEqual([sub(1)]);
+    expect(await push.listForUser(V)).toEqual([]);
+  });
+  it("updates the keys when the same user re-saves with new keys", async () => {
+    await push.save(U, sub(1), at);
+    const next = { ...sub(1), keys: { p256dh: "new", auth: "new" } };
+    expect((await post(next, U)).status).toBe(201);
+    expect(await push.listForUser(U)).toEqual([next]);
   });
   it("answers 400 for a bad body", async () => {
     expect((await post({ endpoint: "http://x", keys: {} }, U)).status).toBe(400);

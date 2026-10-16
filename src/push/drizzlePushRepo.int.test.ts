@@ -28,12 +28,25 @@ describe("drizzle push repo", () => {
     expect(await repo.listForUser(a)).toEqual([sub(1)]);
     expect(await repo.listForUser(b)).toEqual([]);
   });
-  it("moves an endpoint to the user who saves it last", async () => {
+  it("refuses to move an endpoint to another user with different keys", async () => {
+    const repo = createDrizzlePushRepo(handle.db);
+    expect(await repo.save(a, sub(1), at)).toBe("saved");
+    expect(await repo.save(b, { ...sub(1), keys: { p256dh: "new", auth: "new" } }, at)).toBe("conflict");
+    expect(await repo.listForUser(a)).toEqual([sub(1)]);
+    expect(await repo.listForUser(b)).toEqual([]);
+  });
+  it("lets the same user update their own keys", async () => {
     const repo = createDrizzlePushRepo(handle.db);
     await repo.save(a, sub(1), at);
-    await repo.save(b, { ...sub(1), keys: { p256dh: "new", auth: "new" } }, at);
+    expect(await repo.save(a, { ...sub(1), keys: { p256dh: "new", auth: "new" } }, at)).toBe("saved");
+    expect(await repo.listForUser(a)).toEqual([{ ...sub(1), keys: { p256dh: "new", auth: "new" } }]);
+  });
+  it("moves an endpoint to another user only when the keys are identical", async () => {
+    const repo = createDrizzlePushRepo(handle.db);
+    await repo.save(a, sub(1), at);
+    expect(await repo.save(b, sub(1), at)).toBe("saved");
     expect(await repo.listForUser(a)).toEqual([]);
-    expect(await repo.listForUser(b)).toEqual([{ ...sub(1), keys: { p256dh: "new", auth: "new" } }]);
+    expect(await repo.listForUser(b)).toEqual([sub(1)]);
   });
   it("removes by endpoint", async () => {
     const repo = createDrizzlePushRepo(handle.db);

@@ -36,11 +36,16 @@ export function createAlertService(deps: {
   /** Resolves with the work's result, or "failed" when it throws or takes longer than the timeout. */
   async function withTimeout(work: () => Promise<AlertStatus>, onError: (e: unknown) => void): Promise<AlertStatus> {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const cutOff = new Promise<AlertStatus>((resolve) => {
-      timer = setTimeout(() => resolve("failed"), timeoutMs);
+    const cutOff = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), timeoutMs);
     });
     try {
-      return await Promise.race([Promise.resolve().then(work), cutOff]);
+      const r = await Promise.race([Promise.resolve().then(work), cutOff]);
+      if (r === "timeout") {
+        onError("timeout");
+        return "failed";
+      }
+      return r;
     } catch (e) {
       onError(e);
       return "failed";
@@ -74,7 +79,7 @@ export function createAlertService(deps: {
         );
         return results.some((r) => r.status === "fulfilled") ? "sent" : "failed";
       },
-      () => console.warn("alert push failed", { kind, status: undefined }),
+      (e) => console.warn("alert push failed", { kind, status: e === "timeout" ? "timeout" : undefined }),
     );
   }
 
@@ -89,7 +94,7 @@ export function createAlertService(deps: {
         await email({ to: user.email, subject: copy.title, text: `${copy.body}\n\nOpen Trust Circle: ${appUrl}${copy.path}` });
         return "sent";
       },
-      (e) => console.warn("alert email failed", { kind, error: e instanceof Error ? e.message : "unknown" }),
+      (e) => console.warn("alert email failed", { kind, error: e === "timeout" ? "timeout" : e instanceof Error ? e.message : "unknown" }),
     );
   }
 

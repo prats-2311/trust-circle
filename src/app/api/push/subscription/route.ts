@@ -7,14 +7,19 @@ export async function POST(req: Request) {
   const userId = currentUserId(req);
   if (!userId) return Response.json({ error: "Please sign in." }, { status: 401 });
   try {
+    const { push, env } = getContainer();
+    if (!env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
+      return Response.json({ error: "Phone alerts aren't set up on this server." }, { status: 503 });
+    }
     const sub = parsePushSub(await readJsonObject(req));
     if (!sub) return badBody();
-    const { push } = getContainer();
     const own = await push.listForUser(userId);
     if (own.length >= MAX_SUBSCRIPTIONS_PER_USER && !own.some((s) => s.endpoint === sub.endpoint)) {
       return Response.json({ error: `This account already has notifications on ${MAX_SUBSCRIPTIONS_PER_USER} devices.` }, { status: 409 });
     }
-    await push.save(userId, sub, new Date());
+    if ((await push.save(userId, sub, new Date())) === "conflict") {
+      return Response.json({ error: "This device is already set up for alerts on another account." }, { status: 409 });
+    }
     return Response.json({ ok: true }, { status: 201 });
   } catch (e) {
     return errorResponse(e);
