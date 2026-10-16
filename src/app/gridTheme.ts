@@ -15,3 +15,6 @@ export const gridTheme = themeQuartz.withParams({
   wrapperBorderRadius: 20,
   borderRadius: 14,
 });
+
+// Phones: tighter cell padding so Status, When, To and Amount fit side by side.
+export const gridThemeNarrow = gridTheme.withParams({ cellHorizontalPadding: 8 });

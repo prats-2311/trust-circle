@@ -27,6 +27,13 @@ test("a tapped row opens a details panel with every reason", async ({ page }) =>
   await expect(panel).toHaveCount(0);
 });
 
+test("on a phone the Amount column is visible without scrolling the grid", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByTestId("status-stopped").first()).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Amount" })).toBeInViewport();
+});
+
 test("the trends page draws the chart and the totals table", async ({ page }) => {
   await page.goto("/trends");
   await expect(page.getByTestId("trends-chart").locator("canvas").first()).toBeVisible();
