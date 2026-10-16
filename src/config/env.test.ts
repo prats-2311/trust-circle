@@ -47,4 +47,11 @@ describe("loadEnv", () => {
   it("requires a session secret of at least 32 characters", () => {
     expect(() => loadEnv({ ...valid, SESSION_SECRET: "short" })).toThrow(/SESSION_SECRET/);
   });
+
+  it("treats an empty RESEND_API_KEY as unset and defaults alert settings", () => {
+    const env = loadEnv({ ...valid, RESEND_API_KEY: "" });
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
+    expect(env.APP_URL).toBe("http://localhost:3000");
+  });
 });

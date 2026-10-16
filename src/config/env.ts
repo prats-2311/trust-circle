@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// An empty value in an env file means "not set".
+const optionalString = z.preprocess((v) => (v === "" ? undefined : v), z.string().min(1).optional());
+
 const EnvSchema = z.object({
   PAYPAL_CLIENT_ID: z.string().min(1),
   PAYPAL_CLIENT_SECRET: z.string().min(1),
@@ -12,6 +15,9 @@ const EnvSchema = z.object({
   GROQ_GUARD_MODEL: z.string().min(1).default("meta-llama/llama-prompt-guard-2-86m"),
   SESSION_SECRET: z.string().min(32),
   CRON_SECRET: z.string().min(24),
+  RESEND_API_KEY: optionalString,
+  ALERT_FROM_EMAIL: z.string().min(1).default("Trust Circle <onboarding@resend.dev>"),
+  APP_URL: z.string().url().default("http://localhost:3000"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
