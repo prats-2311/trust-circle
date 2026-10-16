@@ -77,7 +77,7 @@ function withTimeout<T>(p: Promise<T>, ms: number | undefined): Promise<T> {
  * Wraps a toolkit so only the allow-list is offered and only the allow-list can run, and only on this sender's data.
  * Refused calls never reach `tk`.
  */
-export function createReadOnlyToolRunner(tk: Toolkit, scope: ToolScope): ToolRunner {
+export function createReadOnlyToolRunner(tk: Toolkit, scope: ToolScope, hooks: { onUnauthorized?: () => void } = {}): ToolRunner {
   return {
     definitions: tk.getTools().filter((t) => isAllowed(t.function.name)),
     async run(name, argsJson, opts) {
@@ -105,6 +105,8 @@ export function createReadOnlyToolRunner(tk: Toolkit, scope: ToolScope): ToolRun
         }
         // The toolkit reports failures as {"error":…} or, for HTTP errors, {"ok":false,"status":…}.
         if (typeof parsed === "object" && parsed !== null && ("error" in parsed || (parsed as { ok?: unknown }).ok === false)) {
+          // The toolkit never refreshes its access token, so a 401 means the cached toolkit is stale.
+          if ((parsed as { status?: unknown }).status === 401) hooks.onUnauthorized?.();
           return { ok: false, content: FAILED };
         }
         return { ok: true, content: name === "list_transactions" ? scopeTransactions(parsed, scope) : scopeOrder(parsed) };
@@ -116,13 +118,39 @@ export function createReadOnlyToolRunner(tk: Toolkit, scope: ToolScope): ToolRun
 }
 
 /** The real toolkit, narrowed to the read actions and pinned to the PayPal sandbox. Loaded on first use. */
-let toolkit: Promise<Toolkit> | undefined;
+const TOOLKIT_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * Holds one toolkit, rebuilt when it is older than the TTL or after `invalidate()`.
+ * The toolkit keeps its access token forever, so a long-lived instance would go stale after hours.
+ */
+export function createToolkitCache(opts: { load: () => Promise<Toolkit>; now?: () => number; ttlMs?: number }) {
+  const now = opts.now ?? Date.now;
+  const ttl = opts.ttlMs ?? TOOLKIT_TTL_MS;
+  let held: { tk: Promise<Toolkit>; builtAt: number } | undefined;
+  return {
+    get(): Promise<Toolkit> {
+      if (held && now() - held.builtAt < ttl) return held.tk;
+      const entry = { tk: opts.load(), builtAt: now() };
+      held = entry;
+      entry.tk.catch(() => {
+        if (held === entry) held = undefined;
+      });
+      return entry.tk;
+    },
+    invalidate() {
+      held = undefined;
+    },
+  };
+}
+
+let cache: ReturnType<typeof createToolkitCache> | undefined;
 export function createPayPalReadOnlyToolkit(creds: { clientId: string; clientSecret: string }): Promise<Toolkit> {
-  toolkit ??= load(creds).catch((e: unknown) => {
-    toolkit = undefined;
-    throw e;
-  });
-  return toolkit;
+  cache ??= createToolkitCache({ load: () => load(creds) });
+  return cache.get();
+}
+export function invalidatePayPalReadOnlyToolkit(): void {
+  cache?.invalidate();
 }
 
 async function load(creds: { clientId: string; clientSecret: string }): Promise<Toolkit> {

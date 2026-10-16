@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { READ_ONLY_TOOLS, createReadOnlyToolRunner } from "./tools";
+import { READ_ONLY_TOOLS, createReadOnlyToolRunner, createToolkitCache } from "./tools";
 
 const names = [...READ_ONLY_TOOLS, "list_disputes", "get_dispute", "get_refund", "create_order", "create_refund", "pay_order", "send_invoice", "cancel_subscription", "accept_dispute_claim", "update_plan"];
 
@@ -80,5 +80,52 @@ describe("read-only tool runner", () => {
   it("reports a thrown toolkit error or malformed arguments as not ok", async () => {
     const tk = { getTools: () => [], handleToolCall: vi.fn(async () => { throw new Error("boom"); }) };
     expect((await createReadOnlyToolRunner(tk, SCOPE).run("get_order", "{}")).ok).toBe(false);
+  });
+});
+
+describe("toolkit cache", () => {
+  const make = () => {
+    let t = 0;
+    const load = vi.fn(async () => ({ getTools: () => [], handleToolCall: async () => ({ content: "{}" }) }));
+    const cache = createToolkitCache({ load, now: () => t, ttlMs: 3_600_000 });
+    return { load, cache, at: (ms: number) => { t = ms; } };
+  };
+
+  it("reuses the toolkit within the hour and rebuilds after it", async () => {
+    const { load, cache, at } = make();
+    const first = await cache.get();
+    at(3_599_999);
+    expect(await cache.get()).toBe(first);
+    expect(load).toHaveBeenCalledTimes(1);
+    at(3_600_000);
+    expect(await cache.get()).not.toBe(first);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops the cached toolkit when a tool result comes back 401, so the next call rebuilds", async () => {
+    const { load, cache } = make();
+    const tk = { getTools: () => [], handleToolCall: async () => ({ content: '{"ok":false,"status":401,"code":"PAYPAL_API_HTTP_ERROR"}' }) };
+    await cache.get();
+    const runner = createReadOnlyToolRunner(tk, SCOPE, { onUnauthorized: cache.invalidate });
+    expect((await runner.run("list_transactions", "{}")).ok).toBe(false);
+    await cache.get();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not invalidate on a 403", async () => {
+    const { load, cache } = make();
+    const tk = { getTools: () => [], handleToolCall: async () => ({ content: '{"ok":false,"status":403}' }) };
+    await cache.get();
+    await createReadOnlyToolRunner(tk, SCOPE, { onUnauthorized: cache.invalidate }).run("list_transactions", "{}");
+    await cache.get();
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not keep a failed load", async () => {
+    const load = vi.fn().mockRejectedValueOnce(new Error("x")).mockResolvedValue({ getTools: () => [], handleToolCall: async () => ({ content: "{}" }) });
+    const cache = createToolkitCache({ load });
+    await expect(cache.get()).rejects.toThrow();
+    await Promise.resolve();
+    await expect(cache.get()).resolves.toBeDefined();
   });
 });

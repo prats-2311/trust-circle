@@ -1,6 +1,6 @@
 import { createAftercareService } from "@/aftercare/aftercareService";
 import { runAftercareAgent } from "@/aftercare/aftercareAgent";
-import { createPayPalReadOnlyToolkit, createReadOnlyToolRunner } from "@/aftercare/tools";
+import { createPayPalReadOnlyToolkit, createReadOnlyToolRunner, invalidatePayPalReadOnlyToolkit } from "@/aftercare/tools";
 import { groqToolChat } from "@/ai/groqClient";
 import { keySet } from "@/domain/matchKeys";
 import { createAlertService, type AlertService } from "@/alerts/alertService";
@@ -179,7 +179,7 @@ export function getContainer(): Container {
           tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }), {
             paymentIds: new Set(input.payments.map((p) => p.id)),
             orderIds: new Set(input.paypalOrderIds),
-          }),
+          }, { onUnauthorized: invalidatePayPalReadOnlyToolkit }),
         },
         input,
       ),
