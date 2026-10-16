@@ -68,11 +68,18 @@ export function getContainer(): Container {
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
   });
+  const verificationRepo = createDrizzleVerificationRepo(db);
   const alerts = createAlertService({
     repo: createDrizzleAlertRepo(db),
     users: circle,
     email: env.RESEND_API_KEY ? createResendEmailSender({ apiKey: env.RESEND_API_KEY, from: env.ALERT_FROM_EMAIL }) : undefined,
     appUrl: env.APP_URL,
+    // A verify request is only worth showing while the verification is pending and the payment is still held.
+    isVerifyRequestOpen: async ({ paymentId, verificationId }) => {
+      if (!paymentId || !verificationId) return false;
+      const [v, p] = await Promise.all([verificationRepo.get(verificationId), repo.get(paymentId)]);
+      return v?.status === "pending" && p?.state === "held";
+    },
   });
   // Payments and verification depend on each other through events, so the handler is bound once both exist.
   let onEvent: (e: PaymentServiceEvent) => Promise<void> = async () => {};
@@ -87,7 +94,7 @@ export function getContainer(): Container {
     onEvent: (e) => onEvent(e),
   });
   const verification = createVerificationService({
-    verifications: createDrizzleVerificationRepo(db),
+    verifications: verificationRepo,
     payments: repo,
     paymentOps: service,
     circle,

@@ -19,7 +19,7 @@ type State =
   | { kind: "ready"; p: Loaded; stage: Stage | null; circleFirst: string | null };
 
 const POLL_MS = 5000;
-const POLLED: ScreenKind[] = ["pending", "waiting", "held", "challenge_memory", "challenge_safe_word", "official_routes"];
+const POLLED: ScreenKind[] = ["pending", "returning", "waiting", "held", "challenge_memory", "challenge_safe_word", "official_routes"];
 
 export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
