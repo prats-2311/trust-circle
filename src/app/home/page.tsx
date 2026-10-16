@@ -142,7 +142,7 @@ export default function HomePage() {
           <div className="mt-auto pt-8">
             <Link href="/onboarding?step=safe_word" data-testid="safe-word-row" className="flex min-h-[56px] items-center gap-3 rounded-control bg-surface px-4 py-3.5 text-[16px] text-ink-2 no-underline">
               <LockSimpleIcon aria-hidden="true" size={22} className="flex-none text-evergreen" />
-              <span>{state.me.safeWordSet ? "Your family safe word is set." : "You haven't set a family safe word yet."}</span>
+              <span>{state.me.safeWordSet ? "Your safe word is set." : "You haven't set a safe word yet."}</span>
             </Link>
           </div>
         </>

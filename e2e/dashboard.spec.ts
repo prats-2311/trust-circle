@@ -28,7 +28,13 @@ test("on a phone the Amount column is visible without scrolling the grid", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/circle/dashboard");
   await expect(page.getByTestId("status-stopped").first()).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Amount" })).toBeInViewport();
+  // The Aftercare card pushes the grid below the first screen, so scroll the page down. Scroll the
+  // grid itself, never the header cell, because that could also scroll the grid sideways and hide the defect.
+  await page.locator(".ag-root").first().scrollIntoViewIfNeeded();
+  const amount = page.getByRole("columnheader", { name: "Amount" });
+  await expect(amount).toBeInViewport({ ratio: 1 });
+  // Nothing has scrolled the grid sideways to make that true.
+  expect(await page.locator(".ag-grid-viewport").first().evaluate((el) => el.scrollLeft)).toBe(0);
 });
 
 test("the trends page draws the chart and the totals table", async ({ page }) => {

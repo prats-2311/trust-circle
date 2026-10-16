@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { Persona } from "../src/server/demo";
 import {
-  PAYMENT_ID, PAYMENT_KINDS, VERIFY_ID, stubCircleAlerts, stubCircleReview, stubHighRiskPayment, stubNotChecked, stubPayment, stubScamCheck, stubVerify,
+  PAYMENT_ID, PAYMENT_KINDS, STUB_PAYEE, VERIFY_ID, stubAftercare, stubCircleAlerts, stubCircleReview, stubHighRiskPayment, stubNotChecked, stubPayment, stubScamCheck, stubVerify,
 } from "./stubs";
 
 export type Screen = { name: string; as: Persona | null; prepare: (page: Page) => Promise<void> };
@@ -43,7 +43,7 @@ export const SCREENS: Screen[] = [
     prepare: async (p) => {
       await stubHighRiskPayment(p);
       await p.goto("/send");
-      await p.getByLabel("Who are you paying?").fill("tc-daniel-2311@personal.example.com");
+      await p.getByLabel("Who are you paying?").fill(STUB_PAYEE);
       await p.getByLabel("How much?").fill("800");
       await p.getByTestId("check").click();
       await p.getByTestId("risk-high").waitFor();
@@ -66,6 +66,17 @@ export const SCREENS: Screen[] = [
     prepare: async (p) => { await stubCircleReview(p, { closed: true }); await p.goto(`/circle/payments/${PAYMENT_ID}`); await settle(p); await p.getByRole("heading").first().waitFor(); },
   },
   { name: "circle-dashboard", as: "sarah", prepare: async (p) => { await p.goto("/circle/dashboard"); await p.locator(".ag-root").first().waitFor(); } },
+  {
+    name: "circle-dashboard-aftercare", as: "sarah",
+    prepare: async (p) => {
+      await stubAftercare(p);
+      await p.goto("/circle/dashboard");
+      await p.locator(".ag-root").first().waitFor();
+      await p.getByTestId("aftercare-run").click();
+      await p.getByTestId("aftercare-finding").first().waitFor();
+      await p.getByTestId("aftercare-tools").locator("summary").click();
+    },
+  },
   { name: "trends", as: "sarah", prepare: async (p) => { await p.goto("/trends"); await settle(p); } },
   { name: "verify-ask", as: "daniel", prepare: async (p) => { await stubVerify(p, "ask"); await p.goto(`/verify/${VERIFY_ID}`); await p.getByTestId("not-me").waitFor(); } },
   { name: "verify-not-for-you", as: "daniel", prepare: async (p) => { await stubVerify(p, "not_for_you"); await p.goto(`/verify/${VERIFY_ID}`); await p.getByTestId("not-for-you").waitFor(); } },

@@ -10,7 +10,12 @@ describe("payment state machine", () => {
     s = nextState(s, "CAPTURE");
     s = nextState(s, "PAY_OUT");
     expect(s).toBe("paid_out");
-    expect(isTerminal(s)).toBe(true);
+  });
+
+  it("moves a paid out payment to payout_failed when the payout comes back", () => {
+    expect(nextState("paid_out", "PAYOUT_FAIL")).toBe("payout_failed");
+    expect(isTerminal("paid_out")).toBe(false);
+    expect(isTerminal("refunded")).toBe(true);
   });
 
   it("holds, then voids on block", () => {

@@ -17,6 +17,8 @@ export interface PayPalGateway {
   voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<void>;
   sendPayout(a: { paymentId: string; receiver: string; amountCents: number }): Promise<{ payoutBatchId: string }>;
   refundCapture(a: { paymentId: string; captureId: string }): Promise<{ refundId: string }>;
+  /** True only when PayPal itself says the signature is valid. Any other answer or failure is false. */
+  verifyWebhookSignature(a: { headers: Record<string, string | null>; rawBody: string; webhookId: string }): Promise<boolean>;
 }
 
 /**
@@ -116,7 +118,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
           paypalRequestId: requestId(paymentId, "create"),
           body: {
             intent: CheckoutPaymentIntent.Authorize,
-            purchaseUnits: [{ referenceId: paymentId, amount: { currencyCode: "USD", value: centsToPayPalValue(amountCents) } }],
+            purchaseUnits: [{ referenceId: paymentId, customId: paymentId, amount: { currencyCode: "USD", value: centsToPayPalValue(amountCents) } }],
             paymentSource: {
               paypal: {
                 experienceContext: {
@@ -203,6 +205,39 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
       const batchId = json.batch_header?.payout_batch_id;
       if (res.ok && batchId) return { payoutBatchId: batchId };
       throw new PayPalError("sendPayout failed", res.status, json.details?.[0]?.issue, json.debug_id, res.ok || res.status >= 500);
+    },
+
+    async verifyWebhookSignature({ headers, rawBody, webhookId }) {
+      const header = (name: string) => headers[name] ?? null;
+      const fields = ["auth-algo", "cert-url", "transmission-id", "transmission-sig", "transmission-time"].map((n) => header(`paypal-${n}`));
+      if (fields.some((f) => !f)) return false;
+      const [authAlgo, certUrl, transmissionId, transmissionSig, transmissionTime] = fields;
+      // The raw body is spliced in as the event: re-serialising it can change the bytes PayPal signed.
+      const body =
+        `{"auth_algo":${JSON.stringify(authAlgo)},"cert_url":${JSON.stringify(certUrl)},` +
+        `"transmission_id":${JSON.stringify(transmissionId)},"transmission_sig":${JSON.stringify(transmissionSig)},` +
+        `"transmission_time":${JSON.stringify(transmissionTime)},"webhook_id":${JSON.stringify(webhookId)},"webhook_event":${rawBody}}`;
+      const post = async (): Promise<Response> => {
+        const token = await restToken();
+        return fetch(`${base}/v1/notifications/verify-webhook-signature`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body,
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+      };
+      try {
+        let res = await post();
+        if (res.status === 401) {
+          cached = undefined;
+          res = await post();
+        }
+        if (!res.ok) return false;
+        const json = (await res.json().catch(() => undefined)) as { verification_status?: unknown } | undefined;
+        return json?.verification_status === "SUCCESS";
+      } catch {
+        return false;
+      }
     },
 
     async refundCapture({ paymentId, captureId }) {

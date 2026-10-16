@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { installMsw, server } from "@/test/msw";
-import { GROQ_URL, groqChat, parseJsonObject } from "./groqClient";
+import { GROQ_URL, groqChat, groqToolChat, parseJsonObject } from "./groqClient";
 
 installMsw();
 const base = { apiKey: "gsk_test", model: "m", timeoutMs: 500 };
@@ -57,5 +57,34 @@ describe("groqChat", () => {
     expect(await groqChat({ ...base, json: true, messages: [] })).toEqual({ ok: false, error: "groq http 500" });
     server.use(http.post(GROQ_URL, () => HttpResponse.json({ choices: [] })));
     expect(await groqChat({ ...base, json: true, messages: [] })).toEqual({ ok: false, error: "groq empty response" });
+  });
+});
+
+describe("groqToolChat", () => {
+  it("sends tools and returns parsed tool calls", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post(GROQ_URL, async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({
+          choices: [{ message: { content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "get_order", arguments: '{"id":"X"}' } }] } }],
+        });
+      }),
+    );
+    const tools = [{ type: "function", function: { name: "get_order" } }];
+    const out = await groqToolChat({ ...base, tools, messages: [{ role: "user", content: "x" }] });
+    expect(out).toEqual({ ok: true, content: null, toolCalls: [{ id: "c1", type: "function", function: { name: "get_order", arguments: '{"id":"X"}' } }] });
+    expect(bodies[0]!.tools).toEqual(tools);
+    expect(bodies[0]!.temperature).toBe(0);
+  });
+
+  it("returns plain content with no tool calls", async () => {
+    server.use(http.post(GROQ_URL, () => HttpResponse.json({ choices: [{ message: { content: '{"a":1}' } }] })));
+    expect(await groqToolChat({ ...base, tools: [], messages: [] })).toEqual({ ok: true, content: '{"a":1}', toolCalls: [] });
+  });
+
+  it("fails on a non-OK status", async () => {
+    server.use(http.post(GROQ_URL, () => new HttpResponse(null, { status: 429 })));
+    expect(await groqToolChat({ ...base, tools: [], messages: [] })).toEqual({ ok: false, error: "groq http 429" });
   });
 });

@@ -75,9 +75,10 @@ export function createPaymentService(deps: {
     event: PaymentEventType,
     actorId: string | null,
     patch: Omit<TransitionPatch, "state"> = {},
+    detail?: Record<string, unknown>,
   ): Promise<PaymentRecord> {
     const to = nextState(p.state, event);
-    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event });
+    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event, ...(detail ? { detail } : {}) });
   }
 
   async function mustGet(id: string): Promise<PaymentRecord> {
@@ -279,11 +280,58 @@ export function createPaymentService(deps: {
       }
     },
 
+    /**
+     * A PayPal payout item webhook reports what happened after the payout was sent. A failed, returned or
+     * blocked payout moves paid_out to payout_failed (once: the state check and the transition are atomic),
+     * and the sweep then refunds it. Unclaimed and succeeded only leave an audit row. Never moves money itself.
+     */
+    async payoutOutcome(a: {
+      paymentId: string;
+      outcome: "failed" | "unclaimed" | "succeeded";
+      eventId: string;
+      eventType?: string;
+    }): Promise<"applied" | "ignored" | "deferred"> {
+      const p = await repo.get(a.paymentId);
+      // A failed outcome that arrives while the payout is still uncertain (captured) must not be lost: retry it later.
+      if (p?.state === "captured" && a.outcome === "failed") return "deferred";
+      if (!p || p.state !== "paid_out") return "ignored";
+      if (a.outcome === "failed") {
+        try {
+          await step(p, "PAYOUT_FAIL", null, {}, { eventId: a.eventId, ...(a.eventType ? { eventType: a.eventType } : {}) });
+        } catch (e) {
+          // Another delivery or the sweep got there first: the outcome is already recorded.
+          if (e instanceof ConcurrentUpdateError) return "ignored";
+          throw e;
+        }
+        return "applied";
+      }
+      await repo.audit({
+        paymentId: p.id, actorId: null, action: a.outcome === "succeeded" ? "payout_confirmed" : "payout_unclaimed",
+        fromState: p.state, toState: p.state, detail: { eventId: a.eventId },
+      });
+      return "applied";
+    },
+
     /** For callers that have already checked who may act (a trusted contact, the real person). */
     settleHeld,
 
     /** For callers that have already checked who may act. */
     blockHeld,
+
+    /**
+     * The daily demo reset voids a held authorisation before it wipes anything. Same claim-then-void path as a
+     * block (no actor), with an audit row that says why.
+     */
+    async systemVoidHeld(paymentId: string): Promise<PaymentRecord> {
+      const p = await mustGet(paymentId);
+      if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
+      const stopped = await step(p, "BLOCK", null);
+      return afterClaim(p.id, async () => {
+        await repo.audit({ paymentId: p.id, actorId: null, action: "demo_reset_void", fromState: "held", toState: stopped.state, detail: {} });
+        await gateway.voidAuthorization({ paymentId: stopped.id, authorizationId: stopped.authorizationId! });
+        return step(stopped, "VOID", null);
+      });
+    },
 
     async senderRelease(a: { paymentId: string; senderId: string }) {
       const p = await mustGet(a.paymentId);

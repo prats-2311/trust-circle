@@ -28,6 +28,7 @@ function fakeGateway(): PayPalGateway {
     voidAuthorization: vi.fn().mockResolvedValue(undefined),
     sendPayout: vi.fn().mockResolvedValue({ payoutBatchId: "BATCH1" }),
     refundCapture: vi.fn().mockResolvedValue({ refundId: "REF1" }),
+    verifyWebhookSignature: vi.fn().mockResolvedValue(true),
   };
 }
 

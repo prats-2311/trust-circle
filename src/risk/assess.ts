@@ -8,9 +8,11 @@ async function isInjection(guard: PromptGuard | undefined, text: string): Promis
   if (!guard || !text) return false;
   try {
     const score = await guard(text);
+    if (score === null) console.warn("prompt guard unavailable", { where: "payment", error: "no score" });
     return score !== null && score >= INJECTION_THRESHOLD;
-  } catch {
+  } catch (e) {
     // An unavailable guard removes one signal; the rules and the AI still apply.
+    console.warn("prompt guard unavailable", { where: "payment", error: e instanceof Error ? e.name : "unknown" });
     return false;
   }
 }

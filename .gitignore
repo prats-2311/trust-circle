@@ -1,6 +1,14 @@
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
 
+# Local agent tooling: never commit
+/.claude/
+/.agents/
+/agent/
+/.mcp.json
+/.ignore
+/skills-lock.json
+
 # Local secrets: never commit
 .env.local
 .env*.local
@@ -48,3 +56,6 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# Downloaded embedding model
+/.cache/

@@ -2,10 +2,15 @@
   "name": "trust-circle",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.12 <23"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:prod": "node scripts/migrate.mjs && next start -p ${PORT:-3000}",
+    "postbuild": "node scripts/prefetch-model.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --project unit",
@@ -21,10 +26,12 @@
     "demo:reset": "tsx --env-file=.env.local scripts/demo-reset.ts",
     "seed:history": "tsx --env-file=.env.local scripts/seed-demo-history.ts",
     "seed:patterns": "tsx --env-file=.env.local scripts/seed-patterns.ts",
+    "deploy:seed": "tsx scripts/deploy-seed.ts",
     "eval:live": "tsx --env-file=.env.local scripts/eval-live.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
+    "@paypal/agent-toolkit": "1.11.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@phosphor-icons/react": "^2.1.10",
     "ag-charts-community": "^14.2.0",

@@ -1,3 +1,8 @@
+import { createAftercareService } from "@/aftercare/aftercareService";
+import { runAftercareAgent } from "@/aftercare/aftercareAgent";
+import { createPayPalReadOnlyToolkit, createReadOnlyToolRunner, invalidatePayPalReadOnlyToolkit } from "@/aftercare/tools";
+import { groqToolChat } from "@/ai/groqClient";
+import { keySet } from "@/domain/matchKeys";
 import { createAlertService, type AlertService } from "@/alerts/alertService";
 import { createDrizzleAlertRepo } from "@/alerts/drizzleAlertRepo";
 import { createResendEmailSender } from "@/alerts/emailSender";
@@ -6,8 +11,8 @@ import { createGroqMessageJudge } from "@/ai/groqMessageJudge";
 import { createGroqPatternDescriber } from "@/ai/patternDescriber";
 import { createPromptGuard } from "@/ai/promptGuard";
 import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
-import { loadEnv, type Env } from "@/config/env";
-import { createDb } from "@/db/client";
+import { loadEnvSafe, type Env } from "@/config/env";
+import { createDb, type Db } from "@/db/client";
 import { createDashboardService, type DashboardService } from "@/dashboard/dashboardService";
 import { createDrizzleMessageRepo } from "@/messages/drizzleMessageRepo";
 import { createMessageService, type MessageService } from "@/messages/messageService";
@@ -15,7 +20,7 @@ import { createDrizzlePaymentRepo } from "@/payments/drizzlePaymentRepo";
 import type { CircleRepo } from "@/circle/circleRepo";
 import type { PaymentRepo } from "@/payments/paymentRepo";
 import { createPaymentService, type PaymentService, type PaymentServiceEvent } from "@/payments/paymentService";
-import { createPayPalGateway } from "@/payments/paypalGateway";
+import { createPayPalGateway, type PayPalGateway } from "@/payments/paypalGateway";
 import { createDrizzleVerificationRepo } from "@/verification/drizzleVerificationRepo";
 import { createVerificationService, type VerificationService } from "@/verification/verificationService";
 import { getEmbedder } from "@/patterns/embedder";
@@ -31,10 +36,14 @@ import { createSettingsService, type SettingsService } from "@/settings/settings
 import { createDrizzlePushRepo } from "@/push/drizzlePushRepo";
 import type { PushRepo } from "@/push/pushRepo";
 import { createWebPushSender } from "@/push/pushSender";
+import { createDrizzleWebhookRepo } from "@/webhooks/drizzleWebhookRepo";
+import type { WebhookRepo } from "@/webhooks/webhookRepo";
+import { createWebhookService, type WebhookService } from "@/webhooks/webhookService";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
   env: Env;
+  db: Db;
   repo: PaymentRepo;
   circle: CircleRepo;
   service: PaymentService;
@@ -47,12 +56,17 @@ type Container = {
   dashboard: DashboardService;
   settings: SettingsService;
   push: PushRepo;
+  gateway: PayPalGateway;
+  webhooks: WebhookService;
+  webhookRepo: WebhookRepo;
+  aftercare: ReturnType<typeof createAftercareService>;
 };
 let container: Container | undefined;
 
 export function getContainer(): Container {
   if (container) return container;
-  const env = loadEnv();
+  const { env, warnings } = loadEnvSafe();
+  for (const warning of warnings) console.warn("config", warning);
   const { db } = createDb(env.DATABASE_URL);
   const repo = createDrizzlePaymentRepo(db);
   const circle = createDrizzleCircleRepo(db);
@@ -104,9 +118,10 @@ export function getContainer(): Container {
   });
   // Payments and verification depend on each other through events, so the handler is bound once both exist.
   let onEvent: (e: PaymentServiceEvent) => Promise<void> = async () => {};
+  const gateway = createPayPalGateway({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET });
   const service = createPaymentService({
     repo,
-    gateway: createPayPalGateway({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }),
+    gateway,
     judge: createGroqJudge({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
     guard,
     linkedMessage: messages.linkedMessage,
@@ -143,6 +158,33 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo };
+  const webhookRepo = createDrizzleWebhookRepo(db);
+  const webhooks = createWebhookService({
+    repo: webhookRepo,
+    payments: service,
+    audit: ({ paymentId, action, detail }) =>
+      paymentId ? repo.audit({ paymentId, actorId: null, action, fromState: null, toState: null, detail }) : Promise.resolve(),
+    paymentExists: async (id) => (await repo.get(id)) !== null,
+  });
+  // The toolkit is heavy, so it loads on the first review, not at boot.
+  const aftercare = createAftercareService({
+    payments: repo,
+    circle,
+    registryConfirmed: async () => keySet((await registryLists()).confirmed),
+    agent: async (input) =>
+      runAftercareAgent(
+        {
+          chat: groqToolChat,
+          apiKey: env.GROQ_API_KEY,
+          model: env.GROQ_TEXT_MODEL,
+          tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }), {
+            paymentIds: new Set(input.payments.map((p) => p.id)),
+            orderIds: new Set(input.paypalOrderIds),
+          }, { onUnauthorized: invalidatePayPalReadOnlyToolkit }),
+        },
+        input,
+      ),
+  });
+  container = { aftercare, env, db, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
   return container;
 }
