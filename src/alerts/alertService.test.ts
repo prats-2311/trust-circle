@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMemoryCircleRepo } from "@/circle/circleRepo";
 import { createMemoryAlertRepo } from "./alertRepo";
+import { createMemoryPushRepo, type PushRepo } from "@/push/pushRepo";
 import { createAlertService } from "./alertService";
 
 const SARAH = "00000000-0000-4000-8000-000000000002";
@@ -28,7 +29,7 @@ describe("alert service", () => {
     const repo = createMemoryAlertRepo();
     const insert = vi.spyOn(repo, "insert");
     await createAlertService({ repo, users, appUrl: "http://localhost:3000" }).notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p1", payload });
-    expect(insert.mock.calls.map((c) => [c[0].channel, c[0].status])).toEqual([["in_app", "sent"], ["email", "skipped"]]);
+    expect(insert.mock.calls.map((c) => [c[0].channel, c[0].status])).toEqual([["in_app", "sent"], ["push", "skipped"], ["email", "skipped"]]);
   });
 
   it("records a failed email without throwing", async () => {
@@ -37,7 +38,7 @@ describe("alert service", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const email = vi.fn().mockRejectedValue(new Error("resend http 500"));
     await createAlertService({ repo, users, email, appUrl: "http://x" }).notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p1", payload });
-    expect(insert.mock.calls.map((c) => c[0].status)).toEqual(["sent", "failed"]);
+    expect(insert.mock.calls.map((c) => c[0].status)).toEqual(["sent", "skipped", "failed"]);
   });
 
   it("hides a verify request once its verification or its payment is no longer open", async () => {
@@ -45,7 +46,7 @@ describe("alert service", () => {
     const open = new Set(["v-open"]);
     const alerts = createAlertService({
       repo, users, appUrl: "http://x",
-      isVerifyRequestOpen: async ({ verificationId }) => verificationId !== null && open.has(verificationId),
+      isAlertOpen: async ({ kind, verificationId }) => kind !== "verify_request" || (verificationId !== null && open.has(verificationId)),
     });
     await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p1", verificationId: "v-open", payload });
     await alerts.notify({ recipientId: SARAH, kind: "verify_request", paymentId: "p2", verificationId: "v-done", payload });
@@ -58,6 +59,23 @@ describe("alert service", () => {
     expect(list).toHaveLength(2);
   });
 
+  it("drops a payment_held row once the payment is no longer open, and keeps it while it is", async () => {
+    const repo = createMemoryAlertRepo();
+    const openPayments = new Set(["p-open"]);
+    const alerts = createAlertService({
+      repo, users, appUrl: "http://x",
+      isAlertOpen: async ({ kind, paymentId }) => kind !== "payment_held" || (paymentId !== null && openPayments.has(paymentId)),
+    });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p-open", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p-closed", payload });
+    await alerts.notify({ recipientId: SARAH, kind: "payment_update", paymentId: "p-closed", payload: { ...payload, reason: "cancelled" } });
+    const list = await alerts.list(SARAH);
+    expect(list.map((a) => [a.kind, a.paymentId])).toEqual(
+      expect.arrayContaining([["payment_held", "p-open"], ["payment_update", "p-closed"]]),
+    );
+    expect(list).toHaveLength(2);
+  });
+
   it("marks only the recipient's own alerts as read", async () => {
     const repo = createMemoryAlertRepo();
     const alerts = createAlertService({ repo, users, appUrl: "http://x", now: () => at });
@@ -66,5 +84,154 @@ describe("alert service", () => {
     expect(await alerts.markRead(a!.id, "00000000-0000-4000-8000-000000000009")).toBe(false);
     expect(await alerts.markRead(a!.id, SARAH)).toBe(true);
     expect((await alerts.list(SARAH))[0]!.readAt).toEqual(at);
+  });
+
+  describe("push channel", () => {
+    const sub = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: `p${n}`, auth: `a${n}` } });
+    const at0 = new Date("2026-11-01T10:00:00Z");
+    const setup = async (opts: { send: (s: ReturnType<typeof sub>, p: string) => Promise<void>; email?: () => Promise<void>; devices?: number; push?: boolean }) => {
+      const repo = createMemoryAlertRepo();
+      const pushRepo: PushRepo = createMemoryPushRepo();
+      for (let i = 1; i <= (opts.devices ?? 2); i++) await pushRepo.save(SARAH, sub(i), at0);
+      const insert = vi.spyOn(repo, "insert");
+      const svc = createAlertService({
+        repo, users, appUrl: "http://x",
+        email: opts.email,
+        push: opts.push === false ? undefined : { repo: pushRepo, send: opts.send },
+      });
+      const channels = () => insert.mock.calls.map((c) => [c[0].channel, c[0].status]);
+      const run = () => svc.notify({ recipientId: SARAH, kind: "payment_held", paymentId: "p1", payload });
+      return { pushRepo, channels, run };
+    };
+
+    it("pushes to every device and records one push row", async () => {
+      const send = vi.fn().mockResolvedValue(undefined);
+      const { channels, run } = await setup({ send });
+      await run();
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(JSON.parse(send.mock.calls[0]![1])).toEqual({
+        title: "Margaret's payment of $800 is on hold",
+        body: expect.any(String),
+        url: "/circle/payments/p1",
+        tag: "payment_held:p1",
+      });
+      expect(channels()).toEqual([["in_app", "sent"], ["push", "sent"], ["email", "skipped"]]);
+    });
+
+    it("tags a verify request by its verification id", async () => {
+      const send = vi.fn().mockResolvedValue(undefined);
+      const repo = createMemoryAlertRepo();
+      const pushRepo = createMemoryPushRepo();
+      await pushRepo.save(SARAH, sub(1), at0);
+      await createAlertService({ repo, users, appUrl: "http://x", push: { repo: pushRepo, send } })
+        .notify({ recipientId: SARAH, kind: "verify_request", verificationId: "v1", payload });
+      expect(JSON.parse(send.mock.calls[0]![1])).toMatchObject({ url: "/verify/v1", tag: "verify_request:v1" });
+    });
+
+    it("counts as sent when at least one device received it", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const send = vi.fn().mockRejectedValueOnce(Object.assign(new Error("boom"), { statusCode: 500 })).mockResolvedValue(undefined);
+      const { channels, run } = await setup({ send });
+      await run();
+      expect(channels()).toContainEqual(["push", "sent"]);
+    });
+
+    it("deletes a gone subscription and still records the alert and the email attempt", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const send = vi.fn().mockRejectedValue(Object.assign(new Error("gone"), { statusCode: 410 }));
+      const email = vi.fn().mockResolvedValue(undefined);
+      const { pushRepo, channels, run } = await setup({ send, email });
+      await run();
+      expect(await pushRepo.listForUser(SARAH)).toEqual([]);
+      expect(channels()).toEqual([["in_app", "sent"], ["push", "failed"], ["email", "sent"]]);
+    });
+
+    it("also deletes a 404 subscription but keeps one that failed for another reason", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const send = vi.fn(async (s: { endpoint: string }) => {
+        throw Object.assign(new Error("x"), { statusCode: s.endpoint.endsWith("/1") ? 404 : 500 });
+      });
+      const { pushRepo, run } = await setup({ send });
+      await run();
+      expect(await pushRepo.listForUser(SARAH)).toEqual([sub(2)]);
+    });
+
+    it("a throwing sender never rejects notify", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const send = vi.fn(() => { throw new Error("sync boom"); });
+      const { channels, run } = await setup({ send });
+      await expect(run()).resolves.toBeUndefined();
+      expect(channels()).toContainEqual(["push", "failed"]);
+    });
+
+    it("logs only the status code and kind, never the endpoint or payload", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const send = vi.fn().mockRejectedValue(Object.assign(new Error("https://push.example/1 leaked"), { statusCode: 500 }));
+      const { run } = await setup({ send, devices: 1 });
+      await run();
+      expect(warn).toHaveBeenCalledWith("alert push failed", { kind: "payment_held", status: 500 });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("push.example");
+    });
+
+    it("a hanging push is cut off and notify still resolves", async () => {
+      vi.useFakeTimers();
+      try {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const send = vi.fn(() => new Promise<void>(() => {}));
+        const email = vi.fn().mockResolvedValue(undefined);
+        const { channels, run } = await setup({ send, email });
+        const done = run();
+        await vi.advanceTimersByTimeAsync(5_000);
+        await expect(done).resolves.toBeUndefined();
+        expect(channels()).toEqual([["in_app", "sent"], ["push", "failed"], ["email", "sent"]]);
+        expect(warn).toHaveBeenCalledWith("alert push failed", { kind: "payment_held", status: "timeout" });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("a hanging email is cut off at the timeout and recorded as failed", async () => {
+      vi.useFakeTimers();
+      try {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        const send = vi.fn().mockResolvedValue(undefined);
+        const email = vi.fn(() => new Promise<void>(() => {}));
+        const { channels, run } = await setup({ send, email });
+        const done = run();
+        await vi.advanceTimersByTimeAsync(5_000);
+        await expect(done).resolves.toBeUndefined();
+        expect(channels()).toEqual([["in_app", "sent"], ["push", "sent"], ["email", "failed"]]);
+        expect(warn).toHaveBeenCalledWith("alert email failed", { kind: "payment_held", error: "timeout" });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("no devices or no push config is 'skipped'", async () => {
+      const send = vi.fn();
+      const none = await setup({ send, devices: 0 });
+      await none.run();
+      expect(none.channels()).toContainEqual(["push", "skipped"]);
+      const off = await setup({ send, push: false });
+      await off.run();
+      expect(off.channels()).toContainEqual(["push", "skipped"]);
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("push and email run at the same time", async () => {
+      vi.useFakeTimers();
+      try {
+        const slow = () => new Promise<void>((r) => setTimeout(r, 100));
+        const { channels, run } = await setup({ send: slow, email: slow });
+        let settled = false;
+        const done = run().then(() => { settled = true; });
+        await vi.advanceTimersByTimeAsync(100);
+        await done;
+        expect(settled).toBe(true);
+        expect(channels()).toEqual([["in_app", "sent"], ["push", "sent"], ["email", "sent"]]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

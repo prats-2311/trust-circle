@@ -26,6 +26,11 @@ import { createRegistryHooks } from "@/registry/hooks";
 import { createRegistryService, type RegistryService } from "@/registry/registryService";
 import { createDrizzleScamReportRepo } from "@/reports/drizzleScamReportRepo";
 import { createReportService, type ReportService } from "@/reports/reportService";
+import { createDrizzleSettingsRepo } from "@/settings/drizzleSettingsRepo";
+import { createSettingsService, type SettingsService } from "@/settings/settingsService";
+import { createDrizzlePushRepo } from "@/push/drizzlePushRepo";
+import type { PushRepo } from "@/push/pushRepo";
+import { createWebPushSender } from "@/push/pushSender";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -40,6 +45,8 @@ type Container = {
   patterns: PatternService;
   reports: ReportService;
   dashboard: DashboardService;
+  settings: SettingsService;
+  push: PushRepo;
 };
 let container: Container | undefined;
 
@@ -68,17 +75,31 @@ export function getContainer(): Container {
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
   });
+  const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });
   const verificationRepo = createDrizzleVerificationRepo(db);
+  const pushRepo = createDrizzlePushRepo(db);
   const alerts = createAlertService({
     repo: createDrizzleAlertRepo(db),
     users: circle,
     email: env.RESEND_API_KEY ? createResendEmailSender({ apiKey: env.RESEND_API_KEY, from: env.ALERT_FROM_EMAIL }) : undefined,
+    push:
+      env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+        ? { repo: pushRepo, send: createWebPushSender({ publicKey: env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT }) }
+        : undefined,
     appUrl: env.APP_URL,
     // A verify request is only worth showing while the verification is pending and the payment is still held.
-    isVerifyRequestOpen: async ({ paymentId, verificationId }) => {
-      if (!paymentId || !verificationId) return false;
-      const [v, p] = await Promise.all([verificationRepo.get(verificationId), repo.get(paymentId)]);
-      return v?.status === "pending" && p?.state === "held";
+    // A hold alert is only worth showing while the payment is still held. Every other kind stays visible.
+    isAlertOpen: async ({ kind, paymentId, verificationId }) => {
+      if (kind === "verify_request") {
+        if (!paymentId || !verificationId) return false;
+        const [v, p] = await Promise.all([verificationRepo.get(verificationId), repo.get(paymentId)]);
+        return v?.status === "pending" && p?.state === "held";
+      }
+      if (kind === "payment_held") {
+        if (!paymentId) return false;
+        return (await repo.get(paymentId))?.state === "held";
+      }
+      return true;
     },
   });
   // Payments and verification depend on each other through events, so the handler is bound once both exist.
@@ -90,7 +111,10 @@ export function getContainer(): Container {
     guard,
     linkedMessage: messages.linkedMessage,
     patterns: patterns.match,
-    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists() }),
+    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists(),
+      circleLimitCents: (await settings.circleLimitCents(senderId)) ?? undefined,
+    }),
+    coolingOffMs: settings.coolingOffMs,
     onEvent: (e) => onEvent(e),
   });
   const verification = createVerificationService({
@@ -119,6 +143,6 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard };
+  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo };
   return container;
 }

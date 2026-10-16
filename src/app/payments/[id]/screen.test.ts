@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { screenCopy, screenFor, type ScreenKind } from "./screen";
+import { circleNamesText, screenCopy, screenFor, toldLine, type ScreenKind } from "./screen";
 
 const held = { state: "held", outcome: null };
 describe("screenFor", () => {
@@ -29,11 +29,15 @@ describe("screenFor", () => {
 });
 
 describe("screenCopy", () => {
-  const d = { amount: "$800", payee: "dhill@x.example", contactName: "Daniel" };
+  const d = { amount: "$800", payee: "dhill@x.example", contactName: "Daniel", circleNames: ["Daniel"], coolingOffHours: 24 };
   const ALL: ScreenKind[] = [
     "not_approved", "pending", "waiting", "challenge_memory", "challenge_safe_word", "official_routes", "held", "sent", "refunded", "returning",
     "stopped_by_person", "stopped_by_check", "stopped_by_circle", "cancelled", "hold_ended",
   ];
+  it("a held payment with no circle does not claim anyone can approve or stop it", () => {
+    expect(screenCopy("held", { ...d, circleNames: [] }).lead).toBe("You can cancel any time, or release it yourself after 24 hours.");
+    expect(screenCopy("held", d).lead).toContain("Daniel can approve or stop this payment.");
+  });
   it("only says 'Nothing has been sent' when no money can have moved", () => {
     for (const k of ALL) {
       const text = `${screenCopy(k, d).title} ${screenCopy(k, d).lead}`;
@@ -67,7 +71,33 @@ describe("screenCopy", () => {
   });
   it("falls back when no contact is known", () => {
     expect(screenCopy("waiting", { ...d, contactName: null }).title).toBe("We've asked the real person if it was really them");
-    expect(screenCopy("held", { ...d, contactName: null }).lead).toBe("Your circle is looking at this payment. Nothing is sent unless it's approved.");
     expect(screenCopy("sent", d).title).toBe("$800 sent to dhill@x.example");
   });
+});
+
+describe("circleNamesText", () => {
+  it.each([
+    [[], "Your circle"],
+    [["Sarah"], "Sarah"],
+    [["Sarah", "Daniel"], "Sarah and Daniel"],
+    [["A", "B", "C"], "A, B and C"],
+  ])("%j → %s", (names, text) => expect(circleNamesText(names)).toBe(text));
+});
+
+describe("held copy", () => {
+  const d = { amount: "$800", payee: "dhill@x.example", contactName: "Daniel", circleNames: ["Daniel"], coolingOffHours: 24 };
+  it("names every circle member and the real hours", () => {
+    expect(screenCopy("held", { ...d, circleNames: ["Sarah", "Daniel"], coolingOffHours: 24 }).lead).toBe(
+      "Sarah and Daniel can approve or stop this payment. If nobody decides, you can release it yourself after 24 hours.",
+    );
+    expect(screenCopy("held", { ...d, circleNames: ["Sarah"], coolingOffHours: 48 }).lead).toContain("after 48 hours");
+  });
+});
+
+describe("toldLine", () => {
+  it.each([
+    [[], null],
+    [["Sarah"], "Sarah has been told."],
+    [["Sarah", "Daniel"], "Sarah and Daniel have been told."],
+  ] as const)("%j → %s", (names, line) => expect(toldLine([...names])).toBe(line));
 });

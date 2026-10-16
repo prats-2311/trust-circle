@@ -5,7 +5,7 @@ import { ArrowLeftIcon } from "./icons";
 /** One decision per screen: a narrow column on every device, with actions pinned to the bottom. */
 export function Screen({ title, backHref, chip, children, footer }: { title?: string; backHref?: string; chip?: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-4">
+    <main id="main" tabIndex={-1} className="focus:outline-none mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-4">
       {(backHref || title || chip) && (
         <div className="flex min-h-[48px] items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
@@ -25,8 +25,8 @@ export function Screen({ title, backHref, chip, children, footer }: { title?: st
   );
 }
 
-export function Title({ children }: { children: ReactNode }) {
-  return <h1 className="mt-5 [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{children}</h1>;
+export function Title({ children, id }: { children: ReactNode; id?: string }) {
+  return <h1 id={id} className="mt-5 [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{children}</h1>;
 }
 
 export function Lead({ children }: { children: ReactNode }) {

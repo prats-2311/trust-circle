@@ -19,6 +19,9 @@ const EnvSchema = z.object({
   CRON_SECRET: z.string().min(24),
   RESEND_API_KEY: optionalString,
   ALERT_FROM_EMAIL: withDefault("Trust Circle <onboarding@resend.dev>"),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: optionalString,
+  VAPID_PRIVATE_KEY: optionalString,
+  VAPID_SUBJECT: withDefault("mailto:alerts@trustcircle.example", z.string().regex(/^(mailto:|https:)/)),
   APP_URL: withDefault("http://localhost:3000", z.string().url()),
 });
 

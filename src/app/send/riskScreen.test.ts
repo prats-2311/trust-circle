@@ -3,18 +3,21 @@ import { approvalErrorCopy, cancelErrorCopy, riskScreen } from "./riskScreen";
 
 describe("riskScreen", () => {
   it("explains a hold in terms of the circle", () => {
-    expect(riskScreen("high", { circleName: "Sarah" })).toMatchObject({
+    expect(riskScreen("high", { circleName: "Sarah", coolingOffHours: 24 })).toMatchObject({
       chipTone: "held", title: "Let's pause before this goes", continueLabel: "Continue, and let Sarah review it",
-      holdNote: "If you continue, PayPal holds the money. It isn't sent until Sarah approves it.",
+      holdNote: "If you continue, PayPal holds the money. Sarah can approve or stop it. If nobody decides, you can release it yourself after 24 hours.",
     });
-    expect(riskScreen("high", { circleName: null }).continueLabel).toBe("Continue, and hold it for 24 hours");
-    expect(riskScreen("high", { circleName: null }).holdNote).toBe(
-      "If you continue, PayPal holds the money. It isn't sent until the waiting time is over and you release it.",
+  });
+  it("uses the sender's cooling-off hours when there is no circle", () => {
+    const r = riskScreen("high", { circleName: null, coolingOffHours: 12 });
+    expect(r.continueLabel).toBe("Continue, and hold it for 12 hours");
+    expect(riskScreen("high", { circleName: null, coolingOffHours: 48 }).holdNote).toBe(
+      "If you continue, PayPal holds the money for 48 hours. After that you can release it yourself.",
     );
   });
   it("asks for a pause on medium and stays plain on low", () => {
-    expect(riskScreen("medium", { circleName: "Sarah" })).toMatchObject({ chipTone: "caution", continueLabel: "I understand, continue to PayPal", holdNote: null });
-    expect(riskScreen("low", { circleName: "Sarah" })).toMatchObject({ chipTone: "safe", title: "This payment looks fine", holdNote: null });
+    expect(riskScreen("medium", { circleName: "Sarah", coolingOffHours: 24 })).toMatchObject({ chipTone: "caution", continueLabel: "I understand, continue to PayPal", holdNote: null });
+    expect(riskScreen("low", { circleName: "Sarah", coolingOffHours: 24 })).toMatchObject({ chipTone: "safe", title: "This payment looks fine", holdNote: null });
   });
 });
 

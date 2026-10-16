@@ -43,6 +43,21 @@ async function main() {
       }
     }
 
+    // Priya's normal supplier and amounts, so a new payee or a big amount stands out for her.
+    const priya = await byEmail("priya.demo@trustcircle.example");
+    if (!priya) throw new Error("Run `npm run seed` first");
+    const supplies = [
+      { n: 9, cents: 18000, at: new Date(now - 24 * 86_400_000) },
+      { n: 10, cents: 24000, at: new Date(now - 10 * 86_400_000) },
+    ];
+    for (const s of supplies) {
+      await db.insert(payments).values({
+        id: id(s.n), senderId: priya.id, payee: "studio.supplies@example.com", amountCents: s.cents, note: null, senderAnswer: null, state: "paid_out",
+        riskLevel: "low", scamType: "none", reasons: [], impersonatedRequester: null,
+        createdAt: s.at, updatedAt: s.at,
+      }).onConflictDoNothing();
+    }
+
     const reporters = [];
     for (let r = 1; r <= 6; r++) {
       await db.insert(users).values({ id: id(200 + r), email: `demo.reporter${r}@trustcircle.example`, displayName: `Demo reporter ${r}` }).onConflictDoNothing();
@@ -62,7 +77,7 @@ async function main() {
     }
     // Keep Sarah in Margaret's circle even if the base seed changes.
     await db.insert(trustLinks).values({ senderId: margaret.id, contactId: sarah.id, relationship: "daughter" }).onConflictDoNothing();
-    console.log(`Demo history ready: ${history.length} payments, ${n} registry reports`);
+    console.log(`Demo history ready: ${history.length + supplies.length} payments, ${n} registry reports`);
   } finally {
     await close();
   }

@@ -1,4 +1,5 @@
 "use client";
+import { formatWhen } from "@/ui/format";
 import { use, useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import { Button, ButtonLink } from "@/ui/Button";
@@ -35,9 +36,8 @@ const SAVE_UNSURE = "We couldn't confirm your answer just now. It may not have b
 function askedText(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(" AM", " am").replace(" PM", " pm");
-  const sameDay = d.toDateString() === new Date().toDateString();
-  return `Asked ${sameDay ? "today" : d.toLocaleDateString("en-US", { month: "long", day: "numeric" })} at ${time}`;
+  const when = formatWhen(d);
+  return `Asked ${/^(Today|Yesterday)/.test(when) ? when.charAt(0).toLowerCase() + when.slice(1) : when}`;
 }
 
 function Outcome({ title, lead, tone }: { title: string; lead: string; tone: "safe" | "info" }) {

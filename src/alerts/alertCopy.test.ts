@@ -46,4 +46,36 @@ describe("alertCopy", () => {
       expect(`${title} ${body}`).not.toMatch(/\b(fell for|mistake|careless|should have|fault)\b/i);
     }
   });
+
+  describe("payment_update", () => {
+    const upd = { ...payload, actorName: "Daniel" };
+    it("tells the circle the real person said no", () => {
+      expect(alertCopy({ kind: "payment_update", payload: { ...upd, reason: "denied" }, ...ids })).toEqual({
+        title: "Margaret's payment was stopped",
+        body: "Daniel said it wasn't them, so we stopped Margaret's payment of $800 to dhill.urgent@outlook.example. The money was never sent.",
+        path: "/circle/payments/p1",
+      });
+    });
+    it("tells the circle the sender cancelled", () => {
+      expect(alertCopy({ kind: "payment_update", payload: { ...payload, reason: "cancelled" }, ...ids })).toEqual({
+        title: "Margaret cancelled a payment",
+        body: "Margaret cancelled the payment of $800 to dhill.urgent@outlook.example. The money was never sent.",
+        path: "/circle/payments/p1",
+      });
+    });
+    it("tells the circle a check failed", () => {
+      expect(alertCopy({ kind: "payment_update", payload: { ...payload, reason: "check_failed" }, ...ids })).toEqual({
+        title: "Margaret's payment was stopped",
+        body: "The caller couldn't pass Margaret's check, so we stopped the payment of $800 to dhill.urgent@outlook.example. The money was never sent.",
+        path: "/circle/payments/p1",
+      });
+    });
+    it("tells the sender the circle stopped it", () => {
+      expect(alertCopy({ kind: "payment_update", payload: { ...upd, actorName: "Sarah", reason: "stopped_by_circle" }, ...ids })).toEqual({
+        title: "Sarah stopped your payment",
+        body: "Sarah stopped your payment of $800 to dhill.urgent@outlook.example. The money was never sent.",
+        path: "/payments/p1",
+      });
+    });
+  });
 });

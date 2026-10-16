@@ -1,4 +1,5 @@
 "use client";
+import { formatShortDay } from "@/ui/format";
 import { AllCommunityModule, ModuleRegistry, type CellKeyDownEvent, type ColDef, type ICellRendererParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,13 +13,14 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const NARROW_PX = 700;
 
 const STATUS_STYLE: Record<DashboardStatus, { background: string; color: string }> = {
-  sent: { background: "#E3EDE8", color: "#14402F" },
-  on_hold: { background: "#E6EEF7", color: "#24456B" },
-  stopped: { background: "#F8E5E3", color: "#8A231E" },
-  hold_ended: { background: "#EEF1EF", color: "#3F4B46" },
-  refunded: { background: "#FBF0DC", color: "#6E4300" },
-  not_approved: { background: "#EEF1EF", color: "#3F4B46" },
-  in_progress: { background: "#EEF1EF", color: "#3F4B46" },
+  sent: { background: "var(--color-evergreen-tint)", color: "var(--color-evergreen-dark)" },
+  on_hold: { background: "var(--color-held-tint)", color: "var(--color-held-ink)" },
+  stopped: { background: "var(--color-blocked-tint)", color: "var(--color-blocked-ink)" },
+  hold_ended: { background: "var(--color-neutral-tint)", color: "var(--color-ink-2)" },
+  refunded: { background: "var(--color-caution-tint)", color: "var(--color-caution-ink)" },
+  returning: { background: "var(--color-caution-tint)", color: "var(--color-caution-ink)" },
+  not_approved: { background: "var(--color-neutral-tint)", color: "var(--color-ink-2)" },
+  in_progress: { background: "var(--color-neutral-tint)", color: "var(--color-ink-2)" },
 };
 
 function StatusChip(p: ICellRendererParams<DashboardRow>) {
@@ -32,7 +34,7 @@ function StatusChip(p: ICellRendererParams<DashboardRow>) {
   );
 }
 
-const shortDate = (v: unknown) => new Date(v as string).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const shortDate = (v: unknown) => formatShortDay(v as string);
 
 export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
   const [search, setSearch] = useState("");
@@ -102,7 +104,7 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
         id="grid-search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ height: 48, fontSize: 16, padding: "0 14px", borderRadius: 14, border: "2px solid #D9DFDB", width: "100%", maxWidth: 420, marginBottom: 16, boxSizing: "border-box" }}
+        style={{ height: 48, fontSize: 16, fontWeight: 400, color: "var(--color-ink)", padding: "0 14px", borderRadius: 14, border: "2px solid var(--color-line)", width: "100%", maxWidth: 420, marginBottom: 16, boxSizing: "border-box" }}
       />
       <div ref={ref}>
         {width !== null && (
@@ -121,7 +123,7 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
         )}
       </div>
       {selected && (
-        <div role="region" aria-label="Payment details" data-testid="payment-details" style={{ marginTop: 16, padding: 20, background: "#FFFFFF", border: "1px solid #D9DFDB", borderRadius: 20 }}>
+        <div role="region" aria-label="Payment details" data-testid="payment-details" style={{ marginTop: 16, padding: 20, background: "var(--color-surface)", border: "1px solid var(--color-line)", borderRadius: 20 }}>
           <h2 ref={headingRef} tabIndex={-1} style={{ fontSize: 20, fontWeight: 800, margin: "0 0 12px", outline: "none" }}>Payment details</h2>
           <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", margin: 0, fontSize: 16 }}>
             <dt style={{ fontWeight: 700 }}>From</dt>
@@ -148,7 +150,7 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
           <button
             type="button"
             onClick={closePanel}
-            style={{ marginTop: 16, minHeight: 44, minWidth: 44, padding: "0 20px", fontSize: 16, fontWeight: 700, borderRadius: 14, border: "2px solid #1E5A47", background: "#FFFFFF", color: "#1E5A47", cursor: "pointer" }}
+            style={{ marginTop: 16, minHeight: 44, minWidth: 44, padding: "0 20px", fontSize: 16, fontWeight: 700, borderRadius: 14, border: "2px solid var(--color-evergreen)", background: "var(--color-surface)", color: "var(--color-evergreen)", cursor: "pointer" }}
           >
             Close
           </button>

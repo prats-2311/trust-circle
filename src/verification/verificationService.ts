@@ -96,6 +96,23 @@ export function createVerificationService(deps: {
     return done;
   }
 
+  /** Tells the circle (except one person) that the payment was stopped. A failure here is logged and never changes the outcome. */
+  async function tellCircle(p: PaymentRecord, extra: Pick<AlertPayload, "reason" | "actorName">, exceptId?: string): Promise<void> {
+    try {
+      const payload = { ...(await payloadFor(p)), ...extra };
+      const contacts = (await circle.contactsOf(p.senderId)).filter((c) => c.contactId !== exceptId);
+      await Promise.all(
+        contacts.map((c) =>
+          alerts
+            .notify({ recipientId: c.contactId, kind: "payment_update", paymentId: p.id, payload })
+            .catch((e: unknown) => console.warn("circle update failed", { paymentId: p.id, error: e instanceof Error ? e.name : "unknown" })),
+        ),
+      );
+    } catch (e) {
+      console.warn("circle update failed", { paymentId: p.id, error: e instanceof Error ? e.name : "unknown" });
+    }
+  }
+
   const isChallenge = (v: { method: string }) => v.method === "safe_word" || v.method === "memory_question";
 
   async function blockQuietly(paymentId: string, actorId: string): Promise<void> {
@@ -144,19 +161,20 @@ export function createVerificationService(deps: {
   }
 
   return {
-    async startForHeld(payment: PaymentRecord): Promise<void> {
+    /** Returns who was asked, so the caller doesn't also send them the hold alert. Null when no contact was asked. */
+    async startForHeld(payment: PaymentRecord): Promise<{ targetContactId: string } | null> {
       const requester = payment.impersonatedRequester;
-      if (!requester) return;
+      if (!requester) return null;
       // The live path and a sweep recovery can both report the same hold.
-      if ((await verifications.listForPayment(payment.id)).length > 0) return;
+      if ((await verifications.listForPayment(payment.id)).length > 0) return null;
       const base = { paymentId: payment.id, status: "pending" as const, requesterName: requester.name, createdAt: now(), resolvedAt: null };
       if (requester.kind === "organisation") {
         await verifications.insert({ ...base, method: "official_routes", targetContactId: null });
-        return;
+        return null;
       }
       const match = matchRequester(requester.name, await circle.contactsOf(payment.senderId));
       // Not in the circle: the sender is coached through a challenge instead (see stage()).
-      if (!match) return;
+      if (!match) return null;
       const v = await verifications.insert({ ...base, method: "real_person", targetContactId: match.contactId });
       await alerts.notify({
         recipientId: match.contactId,
@@ -165,6 +183,7 @@ export function createVerificationService(deps: {
         verificationId: v.id,
         payload: await payloadFor(payment),
       });
+      return { targetContactId: match.contactId };
     },
 
     async respond(a: { verificationId: string; responderId: string; answer: "me" | "not_me" }): Promise<{ status: "confirmed" | "denied"; paymentState: PaymentState }> {
@@ -180,7 +199,12 @@ export function createVerificationService(deps: {
           () => paymentOps.blockHeld({ paymentId: payment.id, actorId: a.responderId }),
           async () => {
             await verifications.resolve(v.id, "denied", now());
-            await alerts.notify({ recipientId: payment.senderId, kind: "payment_stopped", paymentId: payment.id, payload: await payloadFor(payment, realName) });
+            try {
+              await alerts.notify({ recipientId: payment.senderId, kind: "payment_stopped", paymentId: payment.id, payload: await payloadFor(payment, realName) });
+            } catch (e) {
+              console.warn("sender alert failed", { paymentId: payment.id, error: e instanceof Error ? e.name : "unknown" });
+            }
+            await tellCircle(payment, { reason: "denied", actorName: realName }, a.responderId);
             try {
               await deps.onImpersonationConfirmed?.(payment, a.responderId);
             } catch (e) {
@@ -230,6 +254,7 @@ export function createVerificationService(deps: {
       // One-way: a wrong answer or an excuse stops the payment; a right answer never releases it.
       if (!passed) {
         await blockQuietly(p.id, a.senderId);
+        await tellCircle(p, { reason: "check_failed" });
       }
       return { outcome: passed ? "passed" : "failed" };
     },

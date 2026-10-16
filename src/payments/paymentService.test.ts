@@ -230,6 +230,29 @@ describe("contactDecision", () => {
   });
 });
 
+describe("a settings change mid-hold", () => {
+  it("never moves a hold that already exists", async () => {
+    let hours = 12;
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    let clock = new Date("2026-11-01T10:00:00Z");
+    let n = 0;
+    const service = createPaymentService({
+      repo, gateway: fakeGateway(), judge: judgeSaying("high"),
+      now: () => clock,
+      newId: () => `00000000-0000-4000-9000-${String(++n).padStart(12, "0")}`,
+      coolingOffMs: async () => hours * 3_600_000,
+    });
+    const { payment } = await service.start(send);
+    const held = await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(held.coolingOffUntil?.toISOString()).toBe("2026-11-01T22:00:00.000Z");
+
+    hours = 48;
+    clock = new Date(clock.getTime() + 13 * 3_600_000);
+    expect((await service.senderRelease({ paymentId: payment.id, senderId: SENDER })).state).toBe("paid_out");
+    expect((await repo.get(payment.id))!.coolingOffUntil?.toISOString()).toBe("2026-11-01T22:00:00.000Z");
+  });
+});
+
 describe("senderRelease and expiry", () => {
   async function held() {
     const ctx = setup({ level: "high" });
@@ -797,6 +820,44 @@ describe("settleHeld and blockHeld", () => {
     const { service } = setup({ level: "high" });
     const { payment } = await service.start(send);
     await expect(service.blockHeld({ paymentId: payment.id, actorId: CONTACT })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+  });
+});
+
+describe("senderCancel events", () => {
+  function withEvents(level: "low" | "medium" | "high") {
+    const onEvent = vi.fn().mockResolvedValue(undefined);
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge: judgeSaying(level), onEvent });
+    return { service, onEvent };
+  }
+  it("emits cancelled_by_sender after the block succeeds", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await service.senderCancel({ paymentId: payment.id, senderId: SENDER });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "cancelled_by_sender", payment: { id: payment.id } });
+  });
+  it("still emits it on the 202 pending path", async () => {
+    const onEvent = vi.fn().mockResolvedValue(undefined);
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const gateway = fakeGateway({ voidAuthorization: vi.fn().mockRejectedValue(new PayPalError("void", 500, undefined, "d")) });
+    const service = createPaymentService({ repo, gateway, judge: judgeSaying("high"), onEvent });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "cancelled_by_sender" });
+  });
+  it("does not emit when the cancel is refused", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    onEvent.mockClear();
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: CONTACT })).rejects.toBeInstanceOf(NotAllowedError);
+    expect(onEvent).not.toHaveBeenCalled();
   });
 });
 

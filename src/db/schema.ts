@@ -9,14 +9,20 @@ export const paymentStateEnum = pgEnum("payment_state", [
 ]);
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  preset: presetEnum("preset").notNull().default("family"),
-  safeWordHash: text("safe_word_hash"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    preset: presetEnum("preset").notNull().default("family"),
+    safeWordHash: text("safe_word_hash"),
+    coolingOffHours: integer("cooling_off_hours").notNull().default(24),
+    onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("users_cooling_off_choice", sql`${t.coolingOffHours} in (12, 24, 48)`)],
+);
 
 export const trustLinks = pgTable(
   "trust_links",
@@ -70,7 +76,7 @@ export const auditLog = pgTable("audit_log", {
 
 export const verificationMethodEnum = pgEnum("verification_method", ["real_person", "official_routes", "safe_word", "memory_question"]);
 export const verificationStatusEnum = pgEnum("verification_status", ["pending", "confirmed", "denied", "passed", "failed"]);
-export const alertChannelEnum = pgEnum("alert_channel", ["in_app", "email"]);
+export const alertChannelEnum = pgEnum("alert_channel", ["in_app", "push", "email"]);
 export const alertStatusEnum = pgEnum("alert_status", ["sent", "skipped", "failed"]);
 
 export const messageChecks = pgTable("message_checks", {
@@ -173,3 +179,11 @@ export const scamReports = pgTable(
   },
   (t) => [uniqueIndex("scam_reports_check").on(t.messageCheckId)],
 );
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  endpoint: text("endpoint").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("push_subscriptions_user").on(t.userId)]);

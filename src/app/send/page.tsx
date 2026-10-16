@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, ButtonLink } from "@/ui/Button";
 import { Card } from "@/ui/Card";
 import { Chip } from "@/ui/Chip";
-import { describedBy, Field, INPUT } from "@/ui/Field";
+import { Field, INPUT } from "@/ui/Field";
 import { fetchJson, jsonBody } from "@/ui/fetchJson";
 import { WarningIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
@@ -18,7 +18,7 @@ import { approvalErrorCopy, riskScreen } from "./riskScreen";
 
 type Level = "low" | "medium" | "high";
 type Result = { paymentId: string; orderId: string; risk: { level: Level; reasons: string[] } };
-type Me = { circle: { displayName: string }[] };
+type Me = { circle: { displayName: string }[]; coolingOffHours?: number };
 type Errors = Partial<Record<"payee" | "amount" | "answer" | "note", string>>;
 type Phase =
   | { kind: "form" }
@@ -41,6 +41,7 @@ export default function SendPage() {
   const [errors, setErrors] = useState<Errors>({});
   const [formNotice, setFormNotice] = useState<string | null>(null);
   const [circleName, setCircleName] = useState<string | null>(null);
+  const [coolingOffHours, setCoolingOffHours] = useState(24);
   const [confirmedMedium, setConfirmedMedium] = useState(false);
   const [signedOutNotice, setSignedOutNotice] = useState(false);
   const approvedFor = useRef<string | null>(null);
@@ -51,7 +52,10 @@ export default function SendPage() {
     let cancelled = false;
     (async () => {
       const r = await fetchJson<Me>("/api/me");
-      if (!cancelled && r.ok) setCircleName(r.data.circle[0]?.displayName ?? null);
+      if (!cancelled && r.ok) {
+        setCircleName(r.data.circle[0]?.displayName ?? null);
+        setCoolingOffHours(r.data.coolingOffHours ?? 24);
+      }
     })();
     return () => {
       cancelled = true;
@@ -108,7 +112,9 @@ export default function SendPage() {
     return (
       <Screen title="Send money">
         {phase.afterApproval && (
-          <p className="mt-5 text-[18px] font-bold leading-snug">Your payment may already be in progress. Check your payments before you send it again.</p>
+          <div className="mt-5">
+            <Notice tone="error">Your payment may already be in progress. Check your payments before you send it again.</Notice>
+          </div>
         )}
         <SignedOut />
       </Screen>
@@ -164,7 +170,7 @@ export default function SendPage() {
   if (phase.kind === "risk") {
     const { result, cents } = phase;
     const level = result.risk.level;
-    const copy = riskScreen(level, { circleName });
+    const copy = riskScreen(level, { circleName, coolingOffHours });
     const showPayPal = level !== "medium" || confirmedMedium;
     return (
       <Screen
@@ -224,7 +230,7 @@ export default function SendPage() {
       footer={
         <>
           {signedOutNotice && <SignedOut />}
-          {formNotice && <Notice tone="error">{formNotice}</Notice>}
+          <Notice tone="error">{formNotice}</Notice>
           <Button data-testid="check" disabled={busy} onClick={check}>
             Check this payment
           </Button>
@@ -247,12 +253,11 @@ export default function SendPage() {
             autoComplete="off"
             value={payee}
             onChange={(e) => setPayee(e.target.value)}
-            aria-describedby={describedBy("payee", "Their email address or mobile number", errors.payee)}
-            aria-invalid={errors.payee ? true : undefined}
             className={INPUT}
           />
         </Field>
         <Field id="amount" label="How much?" error={errors.amount}>
+          {(wired) => (
           <div className="flex h-16 items-center rounded-control border-2 border-line-strong bg-surface px-4 focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-held">
             <span aria-hidden="true" className="text-[30px] font-extrabold text-ink-3">$</span>
             <input
@@ -262,11 +267,11 @@ export default function SendPage() {
               autoComplete="off"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              aria-describedby={describedBy("amount", undefined, errors.amount)}
-              aria-invalid={errors.amount ? true : undefined}
+              {...wired}
               className="min-w-0 flex-1 border-0 bg-transparent pl-1.5 text-[30px] font-extrabold tabular-nums text-ink outline-none"
             />
           </div>
+          )}
         </Field>
         <Field id="answer" label="Who asked you to make this payment, and why?" hint="Your answer helps us spot scams. Only you and your circle can see it." error={errors.answer}>
           <textarea
@@ -275,8 +280,6 @@ export default function SendPage() {
             rows={3}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            aria-describedby={describedBy("answer", "Your answer helps us spot scams. Only you and your circle can see it.", errors.answer)}
-            aria-invalid={errors.answer ? true : undefined}
             className={`${INPUT} py-3.5`}
           />
         </Field>
@@ -287,8 +290,6 @@ export default function SendPage() {
             autoComplete="off"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            aria-describedby={describedBy("note", undefined, errors.note)}
-            aria-invalid={errors.note ? true : undefined}
             className={INPUT}
           />
         </Field>

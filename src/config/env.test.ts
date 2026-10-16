@@ -61,4 +61,17 @@ describe("loadEnv", () => {
     expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
     expect(env.APP_URL).toBe("http://localhost:3000");
   });
+
+  it("treats VAPID keys as optional and defaults the subject", () => {
+    const env = loadEnv({ ...valid, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "", VAPID_PRIVATE_KEY: "", VAPID_SUBJECT: "" });
+    expect(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(env.VAPID_PRIVATE_KEY).toBeUndefined();
+    expect(env.VAPID_SUBJECT).toBe("mailto:alerts@trustcircle.example");
+  });
+
+  it("accepts a mailto: or https: VAPID subject and refuses anything else", () => {
+    expect(loadEnv({ ...valid, VAPID_SUBJECT: "https://tc.example" }).VAPID_SUBJECT).toBe("https://tc.example");
+    expect(loadEnv({ ...valid, VAPID_SUBJECT: "mailto:me@tc.example" }).VAPID_SUBJECT).toBe("mailto:me@tc.example");
+    expect(() => loadEnv({ ...valid, VAPID_SUBJECT: "tel:123" })).toThrow(/VAPID_SUBJECT/);
+  });
 });

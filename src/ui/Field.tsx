@@ -1,13 +1,21 @@
-import type { ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 
-/** Label above, hint and error below; children is the input, which must use `id` and `aria-describedby`. */
-export function Field({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string | null; children: ReactNode }) {
+export type FieldControlProps = { "aria-describedby"?: string; "aria-invalid"?: true };
+
+/**
+ * Label above, hint and error below. The child must be the input (it needs `id`); Field wires
+ * `aria-describedby` and `aria-invalid` onto it. When the input sits inside a wrapper, pass a function
+ * that receives those props and spreads them on the input.
+ */
+export function Field({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string | null; children: ReactElement | ((props: FieldControlProps) => ReactNode) }) {
+  const wired: FieldControlProps = { "aria-describedby": describedBy(id, hint, error), "aria-invalid": error ? true : undefined };
+  const control = typeof children === "function" ? children(wired) : isValidElement(children) ? cloneElement(children as ReactElement<FieldControlProps>, wired) : children;
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-[18px] font-bold">
         {label}
       </label>
-      {children}
+      {control}
       {hint && (
         <span id={`${id}-hint`} className="text-[16px] leading-snug text-ink-3">
           {hint}
@@ -22,8 +30,9 @@ export function Field({ id, label, hint, error, children }: { id: string; label:
   );
 }
 
-export const INPUT = "min-h-[56px] w-full rounded-control border-2 border-line-strong bg-surface px-4 text-[18px] text-ink";
+export const INPUT = "min-h-[56px] w-full rounded-control border-2 border-line-strong bg-surface px-4 text-[18px] text-ink disabled:border-line disabled:bg-neutral-tint disabled:text-ink-3";
 
+/** Kept for compatibility; Field now does this itself. */
 export function describedBy(id: string, hint?: string, error?: string | null): string | undefined {
   const ids = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean);
   return ids.length ? ids.join(" ") : undefined;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "danger" | "quiet";
 
@@ -11,7 +11,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   quiet: "min-h-[44px] bg-transparent px-3 text-[18px] font-medium text-ink-2 underline underline-offset-4",
 };
 
-export function Button({ variant = "primary", className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
+export function Button({ variant = "primary", className = "", ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; ref?: Ref<HTMLButtonElement> }) {
   return <button type="button" {...props} className={`${BASE} ${VARIANTS[variant]} ${className}`} />;
 }
 

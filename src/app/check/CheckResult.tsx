@@ -1,4 +1,5 @@
 "use client";
+import { formatDay } from "@/ui/format";
 import { useState } from "react";
 import { Button, ButtonLink } from "@/ui/Button";
 import { Chip } from "@/ui/Chip";
@@ -46,10 +47,19 @@ export function CheckResult({
   const copy = resultCopy(check);
   const { busy, run } = useOnce();
   const [note, setNote] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [mailtoUrl, setMailtoUrl] = useState<string | null>(null);
   const showDetails = copy.kind === "scam" || copy.kind === "warning";
-  const when = justNow ? "Checked just now" : `Checked ${new Date(check.createdAt).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`;
+  const when = justNow ? "Checked just now" : `Checked ${formatDay(check.createdAt)}`;
 
-  const report = () =>
+  // After a successful report the button only re-opens the same email; it never POSTs again.
+  const report = () => {
+    if (mailtoUrl) {
+      window.location.assign(mailtoUrl);
+      return;
+    }
+    void sendReport();
+  };
+  const sendReport = () =>
     run(async () => {
       const r = await fetchJson<ReportResult>(`/api/messages/${check.id}/report`, { method: "POST" });
       if (!r.ok) return setNote({ tone: "error", text: r.error });
@@ -59,6 +69,7 @@ export function CheckResult({
           ? "You've already reported this message."
           : "Thanks. These contact details are now on the shared scam list. Your email app will open with a report for PayPal.",
       });
+      setMailtoUrl(r.data.mailtoUrl);
       window.location.href = r.data.mailtoUrl;
     });
 
@@ -72,7 +83,7 @@ export function CheckResult({
             <>
               {note && <Notice tone={note.tone}>{note.text}</Notice>}
               <Button data-testid="report" disabled={busy} onClick={report}>
-                Report this to PayPal
+                {mailtoUrl ? "Open the email again" : "Report this to PayPal"}
               </Button>
               <FinePrint>The report opens in your own email so you can read it before you send it.</FinePrint>
             </>

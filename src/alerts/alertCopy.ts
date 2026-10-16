@@ -47,5 +47,35 @@ export function alertCopy(a: {
         body: `${requester} said they asked for this money, so we're sending ${amount} to ${payee}.`,
         path: `/payments/${a.paymentId}`,
       };
+    case "payment_update": {
+      const actor = a.payload.actorName ?? "Someone in your circle";
+      const circlePath = `/circle/payments/${a.paymentId}`;
+      switch (a.payload.reason) {
+        case "stopped_by_circle":
+          return {
+            title: `${actor} stopped your payment`,
+            body: `${actor} stopped your payment of ${amount} to ${payee}. The money was never sent.`,
+            path: `/payments/${a.paymentId}`,
+          };
+        case "cancelled":
+          return {
+            title: `${sender} cancelled a payment`,
+            body: `${sender} cancelled the payment of ${amount} to ${payee}. The money was never sent.`,
+            path: circlePath,
+          };
+        case "check_failed":
+          return {
+            title: `${sender}'s payment was stopped`,
+            body: `The caller couldn't pass ${sender}'s check, so we stopped the payment of ${amount} to ${payee}. The money was never sent.`,
+            path: circlePath,
+          };
+        default:
+          return {
+            title: `${sender}'s payment was stopped`,
+            body: `${actor} said it wasn't them, so we stopped ${sender}'s payment of ${amount} to ${payee}. The money was never sent.`,
+            path: circlePath,
+          };
+      }
+    }
   }
 }

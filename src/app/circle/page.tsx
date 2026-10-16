@@ -1,4 +1,5 @@
 "use client";
+import { formatDay } from "@/ui/format";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
@@ -10,6 +11,7 @@ import { holdProgress, timeLeftText } from "@/ui/holdProgress";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
+import { SettingsLink } from "../SettingsLink";
 import { SignOutButton } from "../SignOutButton";
 
 type Held = { id: string; payee: string; amountCents: number; reasons: string[]; authorisedAt: string | null; coolingOffUntil: string | null };
@@ -22,7 +24,7 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; me: Me; items: Item[]; alerts: Alert[] };
 
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+const day = formatDay;
 const joinNames = (names: string[]) => names.join(" and ");
 
 export default function CirclePage() {
@@ -59,10 +61,13 @@ export default function CirclePage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
+    <main id="main" tabIndex={-1} className="focus:outline-none mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
       <div className="flex items-center justify-between">
         <span className="text-[17px] font-bold text-evergreen">Trust Circle</span>
-        <SignOutButton />
+        <div className="flex items-center">
+          <SettingsLink />
+          <SignOutButton />
+        </div>
       </div>
       {state.kind === "loading" && (
         <>
