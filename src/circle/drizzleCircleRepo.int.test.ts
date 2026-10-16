@@ -35,4 +35,15 @@ describe("drizzle circle repo", () => {
     expect(await repo.getUser(randomUUID())).toBeNull();
     expect(await repo.getUser("not-a-uuid")).toBeNull();
   });
+  it("finds a user by email, ignoring case", async () => {
+    const repo = createDrizzleCircleRepo(handle.db);
+    expect((await repo.getUserByEmail("M@Example.com"))?.id).toBe(margaretId);
+    expect(await repo.getUserByEmail("nobody@example.com")).toBeNull();
+  });
+  it("lists who a contact looks after", async () => {
+    const repo = createDrizzleCircleRepo(handle.db);
+    expect(await repo.sendersOf(danielId)).toEqual([{ senderId: margaretId, displayName: "Margaret", relationship: "grandson" }]);
+    expect(await repo.sendersOf(margaretId)).toEqual([]);
+    expect(await repo.sendersOf("not-a-uuid")).toEqual([]);
+  });
 });

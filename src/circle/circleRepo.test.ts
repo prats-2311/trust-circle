@@ -32,4 +32,14 @@ describe("memory circle repo", () => {
   it("returns null for an unknown user", async () => {
     expect(await seed().getUser("nope")).toBeNull();
   });
+  it("finds a user by email, ignoring case", async () => {
+    const repo = seed();
+    expect((await repo.getUserByEmail("M@Example.com"))?.id).toBe(margaret.id);
+    expect(await repo.getUserByEmail("nobody@example.com")).toBeNull();
+  });
+  it("lists who a contact looks after", async () => {
+    const repo = seed();
+    expect(await repo.sendersOf(sarah.id)).toEqual([{ senderId: margaret.id, displayName: "Margaret", relationship: "daughter" }]);
+    expect(await repo.sendersOf(margaret.id)).toEqual([]);
+  });
 });

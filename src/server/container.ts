@@ -12,6 +12,7 @@ import { createDashboardService, type DashboardService } from "@/dashboard/dashb
 import { createDrizzleMessageRepo } from "@/messages/drizzleMessageRepo";
 import { createMessageService, type MessageService } from "@/messages/messageService";
 import { createDrizzlePaymentRepo } from "@/payments/drizzlePaymentRepo";
+import type { CircleRepo } from "@/circle/circleRepo";
 import type { PaymentRepo } from "@/payments/paymentRepo";
 import { createPaymentService, type PaymentService, type PaymentServiceEvent } from "@/payments/paymentService";
 import { createPayPalGateway } from "@/payments/paypalGateway";
@@ -30,6 +31,7 @@ import { createPaymentEventHandler } from "./paymentEvents";
 type Container = {
   env: Env;
   repo: PaymentRepo;
+  circle: CircleRepo;
   service: PaymentService;
   messages: MessageService;
   alerts: AlertService;
@@ -110,6 +112,6 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, service, messages, alerts, verification, registry, patterns, reports, dashboard };
+  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard };
   return container;
 }

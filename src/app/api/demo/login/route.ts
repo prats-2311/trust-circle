@@ -1,24 +1,26 @@
 import { getContainer } from "@/server/container";
+import { DEMO_PERSONAS, homeFor, isPersona } from "@/server/demo";
 import { badBody, errorResponse, readJsonObject } from "@/server/http";
-import { signSession } from "@/server/session";
+import { SESSION_TTL_MS, signSession } from "@/server/session";
 
-// Demo only: Plan 4 replaces this with Auth.js.
+// Demo mode: pick one of the seeded accounts by name. There is no other way to sign in.
 export async function POST(req: Request) {
   const body = await readJsonObject(req);
-  if (!body) return badBody();
-  const userId = body.userId;
-  if (typeof userId !== "string" || !userId) return badBody();
+  if (!body || !isPersona(body.as)) return badBody();
   try {
-    if (!(await getContainer().repo.userExists(userId))) {
-      return Response.json({ error: "Unknown demo user." }, { status: 404 });
-    }
+    const user = await getContainer().circle.getUserByEmail(DEMO_PERSONAS[body.as]);
+    if (!user) return Response.json({ error: "The demo accounts aren't set up yet." }, { status: 404 });
+    const token = signSession(user.id, getContainer().env.SESSION_SECRET);
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+    return Response.json(
+      { home: homeFor(body.as) },
+      {
+        headers: {
+          "Set-Cookie": `tc_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_MS / 1000}${secure}`,
+        },
+      },
+    );
   } catch (e) {
     return errorResponse(e);
   }
-  const token = signSession(userId, getContainer().env.SESSION_SECRET);
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  return new Response(null, {
-    status: 204,
-    headers: { "Set-Cookie": `tc_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secure}` },
-  });
 }
