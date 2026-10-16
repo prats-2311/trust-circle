@@ -26,4 +26,10 @@ describe("match keys", () => {
     expect(matchKeys("https://x.example/unsub?e=a@b.com")).toEqual(["x.example/unsub"]);
     expect(matchKeys("A@B.example")).toEqual(["a@b.example"]);
   });
+  it("keys a link by the host a browser would really open", () => {
+    expect(matchKeys("https://evil.example?@paypal.com")).toEqual(["evil.example"]);
+    expect(matchKeys("https://evil.example#@paypal.com")).toEqual(["evil.example"]);
+    expect(matchKeys("https://evil.example\\@paypal.com")).toEqual(["evil.example"]);
+    expect(matchKeys("http://paypal.com@evil.example/x")).toEqual(["evil.example/x"]);
+  });
 });
