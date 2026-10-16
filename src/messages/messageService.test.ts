@@ -112,3 +112,13 @@ describe("message service: links to payments", () => {
     expect(await service.linkedMessage("00000000-0000-4000-8000-000000000009", "dhill@mail.example")).toBeUndefined();
   });
 });
+
+describe("message service: patterns", () => {
+  it("passes the pattern matcher to the assessment", async () => {
+    const repo = createMemoryMessageRepo();
+    const patterns = vi.fn().mockResolvedValue(null);
+    const service = createMessageService({ repo, judge: vi.fn().mockResolvedValue(verdict("low")), patterns });
+    await service.check({ senderId: SENDER, text: "Lunch on Friday?" });
+    expect(patterns).toHaveBeenCalledWith("Lunch on Friday?");
+  });
+});

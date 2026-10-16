@@ -3,6 +3,7 @@ import type { PaymentJudge } from "@/ai/groqJudge";
 import type { PromptGuard } from "@/ai/promptGuard";
 import { nextState } from "@/domain/paymentStateMachine";
 import type { PaymentEventType } from "@/domain/types";
+import type { PatternMatcher } from "@/patterns/patternService";
 import { assessPayment } from "@/risk/assess";
 import type { RiskDecision } from "@/risk/decide";
 import { normalisePayee, type SenderContext } from "@/risk/signals";
@@ -52,6 +53,7 @@ export function createPaymentService(deps: {
   gateway: PayPalGateway;
   judge: PaymentJudge;
   guard?: PromptGuard;
+  patterns?: PatternMatcher;
   now?: () => Date;
   newId?: () => string;
   extraContext?: (senderId: string) => Promise<ExtraContext>;
@@ -222,6 +224,7 @@ export function createPaymentService(deps: {
         { ...facts, ...(await extra(a.senderId)) },
         judge,
         deps.guard,
+        deps.patterns,
       );
       const id = newId();
       let payment = await repo.insert({

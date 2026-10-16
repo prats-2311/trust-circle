@@ -101,6 +101,14 @@ describe("start", () => {
     expect(payment.paypalOrderId).toBe("ORDER1");
     expect(gateway.createAuthorizeOrder).toHaveBeenCalledWith({ paymentId: payment.id, amountCents: 80000 });
   });
+  it("uses the pattern matcher when one is configured", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const patterns = vi.fn().mockResolvedValue({ patternId: "p1", scamType: "impersonation_family", similarity: 0.5 });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge: judgeSaying("low"), patterns });
+    const { decision } = await service.start({ ...send, amountCents: 1000 });
+    expect(patterns).toHaveBeenCalledWith("my grandson");
+    expect(decision.signals.map((s) => s.code)).toContain("KNOWN_SCAM_PATTERN");
+  });
 });
 
 describe("completeApproval", () => {

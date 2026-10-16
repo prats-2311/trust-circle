@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeSignals, HIDDEN_INSTRUCTIONS_SIGNAL, normalisePayee, ruleLevel, type SenderContext } from "./signals";
+import { computeSignals, HIDDEN_INSTRUCTIONS_SIGNAL, KNOWN_PATTERN_SIGNAL, normalisePayee, ruleLevel, type SenderContext } from "./signals";
 
 const ctx = (over: Partial<SenderContext> = {}): SenderContext => ({
   previousPayees: ["sarah@example.com"],
@@ -88,5 +88,9 @@ describe("ruleLevel", () => {
       "REGISTRY_CONFIRMED",
     );
     expect(computeSignals(input, ctx({ flaggedPayees: ["14155550199"] })).map((s) => s.code)).toContain("LINKED_SCAM_MESSAGE");
+  });
+  it("raises a known scam pattern to at least medium", () => {
+    expect(ruleLevel([KNOWN_PATTERN_SIGNAL])).toBe("medium");
+    expect(Object.isFrozen(KNOWN_PATTERN_SIGNAL)).toBe(true);
   });
 });
