@@ -61,7 +61,7 @@ flowchart LR
 | `risk` | `src/risk` | Computes signals in code (`signals.ts`), asks the AI, and decides (`decide.ts`). The final level is the higher of the rule level and the AI level. |
 | `ai` | `src/ai` | Groq client, prompts, JSON schema checks, the Prompt Guard screen and the pattern describer. |
 | `patterns` | `src/patterns` | Embeds text with `Xenova/all-MiniLM-L6-v2` inside the server process and searches anonymised scam scripts in pgvector. |
-| `payments` | `src/payments`, `src/domain/paymentStateMachine.ts` | Orders, authorise, capture, void, payout and refund. Every PayPal call carries a `PayPal-Request-Id` built from the payment id. The sweep `expireStale` finishes anything left half done. |
+| `payments` | `src/payments`, `src/domain/paymentStateMachine.ts` | Orders, authorise, capture, void, payout and refund. Every money-moving PayPal call carries a `PayPal-Request-Id` built from the payment id. The sweep `expireStale` finishes anything left half done. |
 | `verification` | `src/verification` | Asks the real person, falls back to the safe word or a memory question after 10 minutes, and shows official routes for an organisation. |
 | `registry` | `src/registry`, `src/reports` | Shared scam list with confirmation rules, plus the one-tap report draft to PayPal. |
 | `alerts` | `src/alerts`, `src/push` | In-app alerts, web push (`web-push`, VAPID) and email through Resend when a key is set. |
@@ -149,7 +149,7 @@ stateDiagram-v2
 3. Claims the event id in the `webhook_events` table. A second delivery of a processed event is a no-op.
 4. Applies it:
    - payout item events call `payoutOutcome` (above);
-   - `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.AUTHORIZATION.VOIDED` and `CUSTOMER.DISPUTE.CREATED` are written to the audit log only.
+   - `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.AUTHORIZATION.VOIDED` and `CUSTOMER.DISPUTE.CREATED` are written to the audit log only, and only when the event carries a Trust Circle id (otherwise they are ignored).
 5. A handler failure answers 500, so PayPal delivers it again, for up to 5 attempts. After that it answers 200 and the event stays recorded as failed. A failed payout that arrives while the payment is still `captured` is deferred (500) until the sweep settles it.
 
 Logs carry event type, event id and payment id only.

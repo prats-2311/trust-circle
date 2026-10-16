@@ -17,7 +17,8 @@ export default defineConfig({
   timeout: 180_000,
   use: { baseURL: remote ?? "http://localhost:3000", trace: "retain-on-failure" },
   projects: [
-    { name: "default", testIgnore: "smoke.spec.ts" },
+    // Against a deployed site only the smoke test runs; the stories reset data and move sandbox money.
+    { name: "default", testIgnore: remote ? "**" : "smoke.spec.ts" },
     { name: "smoke", testMatch: "smoke.spec.ts" },
   ],
   webServer: remote ? undefined : { command: "npm run dev", url: "http://localhost:3000/demo", reuseExistingServer: true, timeout: 120_000 },

@@ -2,6 +2,7 @@ name: demo reset
 on:
   schedule: [{ cron: "0 9 * * *" }]
   workflow_dispatch: {}
+permissions: {}
 jobs:
   demo-reset:
     runs-on: ubuntu-latest

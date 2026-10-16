@@ -59,7 +59,7 @@ Paste the Neon direct connection string at the silent prompt and press Enter. Th
 3. Event types:
    - all eight `PAYMENT.PAYOUTS-ITEM.*` events;
    - `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.REFUNDED`;
-   - `PAYMENT.AUTHORIZATION.VOIDED` and `CUSTOMER.DISPUTE.CREATED`.
+   - `PAYMENT.AUTHORIZATION.VOIDED` and `CUSTOMER.DISPUTE.CREATED`. These are recorded in the audit log only when the event carries a Trust Circle id.
 4. Save. Copy the **Webhook ID** into Render as `PAYPAL_WEBHOOK_ID`. Render redeploys.
 
 ## 6. Transaction Search (for aftercare)
@@ -85,7 +85,11 @@ Run the smoke test (Task 6) against the live site:
 BASE_URL=https://<render-host> npx playwright test e2e/smoke.spec.ts
 ```
 
+When `BASE_URL` is set, only the `smoke` project runs: the `default` project (the full end-to-end stories, which reset the demo and move sandbox money) matches nothing, so a run against a deployed site can't wipe or change its data.
+
 To smoke-test a production build on your own machine first, run `npm run build`. `npm run start:prod` reads only the process environment, not `.env.local`, so export the variables in a subshell. `set -a; . ./.env.local; set +a` loads them without echoing any value:
+
+Values with spaces or `< >` (such as `ALERT_FROM_EMAIL="Trust Circle <onboarding@resend.dev>"`) must be quoted in `.env.local`, or the shell step above fails to load them.
 
 ```bash
 # Terminal 1: serve the production build on port 3999

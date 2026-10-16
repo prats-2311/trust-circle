@@ -127,7 +127,7 @@ From the dashboard, Sarah can ask an agent to review Margaret's recent payments 
 | Webhooks, verified online | Checks every event with `/v1/notifications/verify-webhook-signature`, stores it once per event id, and turns a returned, failed, blocked, canceled or refunded payout into `payout_failed`, which the sweep then refunds | `src/app/api/paypal/webhook/route.ts`, `src/webhooks/webhookService.ts` |
 | Agent Toolkit (`@paypal/agent-toolkit`) | Aftercare, read-only: `list_transactions` and `get_order` only. Disputes and refunds are not exposed. | `src/aftercare/tools.ts` |
 
-Every PayPal call carries a `PayPal-Request-Id` derived from the payment id, so a retry can't move money twice. The server SDK is `@paypal/paypal-server-sdk`. The gateway refuses any base URL other than the sandbox.
+Every money-moving PayPal call carries a `PayPal-Request-Id` derived from the payment id, so a retry can't move money twice. The server SDK is `@paypal/paypal-server-sdk`. The gateway refuses any base URL other than the sandbox.
 
 ## How AI is used
 
@@ -272,7 +272,7 @@ npm run dev                     # http://localhost:3000
 | `DEMO_DAILY_RESET` | No | `1` lets the daily job reset the shared demo |
 | `TEST_DATABASE_URL`, `SANDBOX_*`, `E2E_ALLOW_RESET` | Tests only | See `.env.example` |
 
-A broken optional setting turns that feature off with one warning; a missing required one stops the server at start with the variable's name.
+A broken optional setting turns that feature off with one warning; a missing required setting is named in the log and the app answers 500.
 
 **Tests**
 
