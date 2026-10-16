@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MessageJudge } from "@/ai/groqMessageJudge";
 import type { PaymentJudge } from "@/ai/groqJudge";
 import { EVAL_CASES, type EvalCase } from "./cases";
+import type { PatternMatcher } from "@/patterns/patternService";
 import { runEval, scoreResults, type EvalResult } from "./runEval";
 
 const payments = EVAL_CASES.filter((c): c is Extract<EvalCase, { kind: "payment" }> => c.kind === "payment");
@@ -52,9 +53,36 @@ describe("evaluation set", () => {
   });
 });
 
+describe("retry and patterns", () => {
+  const one = EVAL_CASES.filter((c) => c.kind === "payment" && c.label === "scam").slice(0, 1);
+  it("retries an unchecked case once and clears the cause when the retry works", async () => {
+    let calls = 0;
+    const flaky: PaymentJudge = async (input) => (++calls === 1 ? { ok: false, error: "groq http 503" } : oraclePayment(input, []));
+    const { results } = await runEval(one, { paymentJudge: flaky, messageJudge: oracleMessage });
+    expect(results[0]).toMatchObject({ checked: true, attempts: 2, uncheckedCause: null });
+  });
+  it("records the judge's error when the retry fails too", async () => {
+    const { results } = await runEval(one, { paymentJudge: downPayment, messageJudge: downMessage });
+    expect(results[0]).toMatchObject({ checked: false, attempts: 2, uncheckedCause: "groq http 503" });
+  });
+  it("makes one attempt when retryUnchecked is false", async () => {
+    let calls = 0;
+    const down: PaymentJudge = async () => (calls++, { ok: false, error: "groq http 503" });
+    const { results } = await runEval(one, { paymentJudge: down, messageJudge: downMessage, retryUnchecked: false });
+    expect(calls).toBe(1);
+    expect(results[0]).toMatchObject({ attempts: 1, uncheckedCause: "groq http 503" });
+  });
+  it("passes the pattern matcher through to both kinds of case", async () => {
+    const patterns: PatternMatcher = async () => ({ patternId: "p", scamType: "romance", similarity: 0.5 });
+    const msg = EVAL_CASES.filter((c) => c.kind === "message").slice(0, 1);
+    const { results } = await runEval([...one, ...msg], { paymentJudge: oraclePayment, messageJudge: oracleMessage, patterns });
+    for (const r of results) expect(r.signals).toContain("KNOWN_SCAM_PATTERN");
+  });
+});
+
 describe("scoreResults", () => {
   const r = (label: "scam" | "genuine", level: "low" | "medium" | "high", checked = true): EvalResult => ({
-    id: "x", kind: "message", preset: "family", label, level, scamType: "other", checked, signals: [],
+    id: "x", kind: "message", preset: "family", label, level, scamType: "other", checked, signals: [], attempts: 1, uncheckedCause: null,
   });
   it("computes catch, hold, false-alarm and false-hold rates", () => {
     const m = scoreResults([r("scam", "high"), r("scam", "medium"), r("scam", "low"), r("genuine", "low"), r("genuine", "medium", false)]);
