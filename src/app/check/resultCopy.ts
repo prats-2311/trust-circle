@@ -1,4 +1,5 @@
 import { SCAM_TYPE_LABELS } from "@/domain/scamTypeLabels";
+import { cleanRequesterName } from "@/domain/requesterName";
 import type { Requester, ScamType } from "@/domain/types";
 import type { ChipTone } from "@/ui/Chip";
 
@@ -16,7 +17,7 @@ export function resultKind(v: { checked: boolean; level: "low" | "medium" | "hig
   return v.level === "high" ? "scam" : v.level === "medium" ? "warning" : "clear";
 }
 
-const who = (r: Requester | null) => (r ? r.name.replace(/^(my|your)\s+/i, "").trim() : null);
+const who = (r: Requester | null) => (r ? cleanRequesterName(r.name) : null);
 
 export function resultCopy(v: CheckView): { kind: ResultKind; chipTone: ChipTone; chip: string; title: string; lead: string; canReport: boolean } {
   const kind = resultKind(v);

@@ -58,6 +58,9 @@ describe("screenCopy", () => {
       lead: "Daniel told us they didn't ask for this money. The $800 was never sent.",
     });
   });
+  it("cleans the claimed name the same way as the message check", () => {
+    expect(screenCopy("challenge_memory", { ...d, requesterName: "my grandson Daniel" }).title).toBe("Ask the caller something only Daniel would know");
+  });
   it("names who the caller claims to be, not the circle member, on the memory question", () => {
     expect(screenCopy("challenge_memory", { ...d, contactName: "Sarah", requesterName: "Daniel" }).title).toBe("Ask the caller something only Daniel would know");
     expect(screenCopy("challenge_memory", { ...d, contactName: "Sarah" }).title).toBe("Ask the caller something only they would know");

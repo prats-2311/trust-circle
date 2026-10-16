@@ -16,7 +16,7 @@ describe("resultCopy", () => {
   it("names who the scam pretends to be", () => {
     expect(resultCopy(base)).toMatchObject({
       kind: "scam", chipTone: "blocked", chip: "Very likely a scam",
-      title: "Someone is pretending to be grandson Daniel",
+      title: "Someone is pretending to be Daniel",
       lead: "Family member in trouble. Don't reply, click links or send money.", canReport: true,
     });
     expect(resultCopy({ ...base, impersonatedRequester: { kind: "person", name: "your grandson" } }).title).toBe("Someone is pretending to be grandson");
