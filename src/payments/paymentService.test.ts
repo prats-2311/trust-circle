@@ -682,3 +682,95 @@ describe("captured rows needing attention", () => {
     expect((await ctx.repo.auditFor(payment.id)).map((a) => a.action)).toContain("payout_needs_attention");
   });
 });
+
+describe("payment events", () => {
+  function withEvents(level: "low" | "medium" | "high", onEvent = vi.fn().mockResolvedValue(undefined)) {
+    // Starts at the real time: the memory repo stamps updatedAt with the wall clock, and the sweep compares against now().
+    let clock = new Date();
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const gateway = fakeGateway();
+    const service = createPaymentService({ repo, gateway, judge: judgeSaying(level), now: () => clock, onEvent });
+    return { repo, gateway, service, onEvent, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
+  }
+
+  it("emits held when a high-risk payment is put on hold", async () => {
+    const { service, onEvent } = withEvents("high");
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent.mock.calls[0]![0]).toMatchObject({ type: "held", payment: { id: payment.id, state: "held" } });
+  });
+
+  it("emits medium_sent after a medium-risk payment is paid out, and nothing for low risk", async () => {
+    const medium = withEvents("medium");
+    const { payment } = await medium.service.start({ ...send, amountCents: 2000 });
+    await medium.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(medium.onEvent.mock.calls.map((c) => c[0].type)).toEqual(["medium_sent"]);
+    expect(medium.onEvent.mock.calls[0]![0].payment.state).toBe("paid_out");
+
+    const low = withEvents("low");
+    const p2 = (await low.service.start({ ...send, amountCents: 2000 })).payment;
+    await low.service.completeApproval({ paymentId: p2.id, senderId: SENDER });
+    expect(low.onEvent).not.toHaveBeenCalled();
+  });
+
+  it("emits held when the sweep recovers a stranded payment", async () => {
+    const { service, repo, onEvent, advance } = withEvents("high");
+    const { payment } = await service.start(send);
+    await repo.transition(payment.id, "created", { state: "approved" });
+    advance(STALE_MS * 2);
+    await service.expireStale();
+    expect(onEvent.mock.calls.map((c) => c[0].type)).toEqual(["held"]);
+  });
+
+  it("keeps the hold when the event handler fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { service } = withEvents("high", vi.fn().mockRejectedValue(new Error("alerts down")));
+    const { payment } = await service.start(send);
+    const held = await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(held.state).toBe("held");
+    expect(warn).toHaveBeenCalledWith("payment event handler failed", { type: "held", paymentId: payment.id, error: "Error" });
+  });
+});
+
+describe("settleHeld and blockHeld", () => {
+  async function heldPayment() {
+    const s = setup({ level: "high" });
+    const { payment } = await s.service.start(send);
+    await s.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    return { ...s, id: payment.id };
+  }
+
+  it("settles a held payment for an already-authorised actor", async () => {
+    const { service, repo, id } = await heldPayment();
+    const done = await service.settleHeld({ paymentId: id, actorId: STRANGER });
+    expect(done.state).toBe("paid_out");
+    expect((await repo.auditFor(id)).find((a) => a.action === "RELEASE")!.actorId).toBe(STRANGER);
+  });
+
+  it("blocks and voids a held payment", async () => {
+    const { service, gateway, id } = await heldPayment();
+    const done = await service.blockHeld({ paymentId: id, actorId: STRANGER });
+    expect(done.state).toBe("voided");
+    expect(gateway.voidAuthorization).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets only one of two racing decisions move money", async () => {
+    const { service, gateway, id } = await heldPayment();
+    await service.blockHeld({ paymentId: id, actorId: STRANGER });
+    await expect(service.settleHeld({ paymentId: id, actorId: CONTACT })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    expect(gateway.captureAuthorization).not.toHaveBeenCalled();
+  });
+
+  it("refuses to settle once the hold has ended", async () => {
+    const { service, advance, id } = await heldPayment();
+    advance(72 * 3_600_000);
+    await expect(service.settleHeld({ paymentId: id, actorId: CONTACT })).rejects.toBeInstanceOf(NotAllowedError);
+  });
+
+  it("refuses payments that are not held", async () => {
+    const { service } = setup({ level: "high" });
+    const { payment } = await service.start(send);
+    await expect(service.blockHeld({ paymentId: payment.id, actorId: CONTACT })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+  });
+});
