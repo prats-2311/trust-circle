@@ -27,6 +27,11 @@ describe("messageSignals", () => {
       "REGISTRY_UNCONFIRMED",
     ]);
   });
+  it("matches a URL regardless of scheme, www, query or fragment", () => {
+    expect(
+      messageSignals([{ type: "url", value: "www.evil.example/login?ref=sms" }], { confirmed: ["https://evil.example/login"], unconfirmed: [] }).map((s) => s.code),
+    ).toEqual(["REGISTRY_CONFIRMED"]);
+  });
   it("returns nothing when no identifier is known", () => {
     expect(messageSignals([{ type: "url", value: "www.x.example" }], { confirmed: ["www.y.example"], unconfirmed: [] })).toEqual([]);
   });

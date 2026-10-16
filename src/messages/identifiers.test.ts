@@ -38,7 +38,8 @@ describe("phoneVariants and matchKeys", () => {
   });
   it("normalises any identifier to comparable keys", () => {
     expect(matchKeys(" A@B.example ")).toEqual(["a@b.example"]);
-    expect(matchKeys("http://x.example/login/")).toEqual(["http://x.example/login"]);
+    expect(matchKeys("http://x.example/login/")).toEqual(["x.example/login"]);
+    expect(matchKeys("https://WWW.Evil.example/login?x=1#top")).toEqual(["evil.example/login"]);
     expect(matchKeys("(415) 555-0199")).toEqual(["4155550199"]);
   });
 });

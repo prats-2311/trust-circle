@@ -17,7 +17,16 @@ export function phoneVariants(normalised: string): string[] {
 /** Comparable keys for an email, URL or phone number, however it was written. */
 export function matchKeys(value: string): string[] {
   const v = value.trim().toLowerCase();
-  if (/[a-z@/]/.test(v)) return [v.replace(/\/+$/, "")];
+  if (v.includes("@")) return [v];
+  if (/[a-z]/.test(v)) {
+    return [
+      v
+        .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+        .replace(/^www\./, "")
+        .replace(/[?#].*$/, "")
+        .replace(/\/+$/, ""),
+    ];
+  }
   return phoneVariants(normalisePayee(v));
 }
 
