@@ -1,11 +1,16 @@
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { auditLog, payments, trustLinks, users } from "@/db/schema";
+import { isUuid } from "@/domain/ids";
 import type { ScamType } from "@/domain/types";
 import { ConcurrentUpdateError, type PaymentRecord, type PaymentRepo } from "./paymentRepo";
 
 type Row = typeof payments.$inferSelect;
-const toRecord = (r: Row): PaymentRecord => ({ ...r, scamType: r.scamType as ScamType });
+const toRecord = (r: Row): PaymentRecord => ({
+  ...r,
+  scamType: r.scamType as ScamType,
+  impersonatedRequester: r.impersonatedRequester ?? null,
+});
 
 export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
   return {
@@ -14,19 +19,32 @@ export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
       return toRecord(row!);
     },
     async get(id) {
+      if (!isUuid(id)) return null;
       const [row] = await db.select().from(payments).where(eq(payments.id, id));
       return row ? toRecord(row) : null;
     },
-    async transition(id, expected, patch, expectedVersion) {
-      const conditions = [eq(payments.id, id), eq(payments.state, expected)];
-      if (expectedVersion !== undefined) conditions.push(eq(payments.version, expectedVersion));
-      const [row] = await db
-        .update(payments)
-        .set({ ...patch, version: sql`${payments.version} + 1`, updatedAt: new Date() })
-        .where(and(...conditions))
-        .returning();
-      if (!row) throw new ConcurrentUpdateError(id, expected);
-      return toRecord(row);
+    async transition(id, expected, patch, expectedVersion, audit) {
+      return db.transaction(async (tx) => {
+        const conditions = [eq(payments.id, id), eq(payments.state, expected)];
+        if (expectedVersion !== undefined) conditions.push(eq(payments.version, expectedVersion));
+        const [row] = await tx
+          .update(payments)
+          .set({ ...patch, version: sql`${payments.version} + 1`, updatedAt: new Date() })
+          .where(and(...conditions))
+          .returning();
+        if (!row) throw new ConcurrentUpdateError(id, expected);
+        if (audit) {
+          await tx.insert(auditLog).values({
+            paymentId: id,
+            actorId: audit.actorId,
+            action: audit.action,
+            fromState: expected,
+            toState: row.state,
+            detail: audit.detail ?? {},
+          });
+        }
+        return toRecord(row);
+      });
     },
     async listBySender(senderId) {
       return (await db.select().from(payments).where(eq(payments.senderId, senderId))).map(toRecord);
@@ -60,7 +78,7 @@ export function createDrizzlePaymentRepo(db: Db): PaymentRepo {
       };
     },
     async userExists(id) {
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return false;
+      if (!isUuid(id)) return false;
       const [row] = await db.select({ id: users.id }).from(users).where(eq(users.id, id));
       return Boolean(row);
     },

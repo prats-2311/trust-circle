@@ -4,7 +4,7 @@ import { toContactView, toSenderView } from "./paymentView";
 
 const rec: PaymentRecord = {
   id: "p1", senderId: "s1", payee: "a@b.com", amountCents: 100, note: "hi", senderAnswer: "my answer",
-  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"],
+  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"], impersonatedRequester: null,
   paypalOrderId: "ORD", authorizationId: "AUTH", captureId: "CAP", payoutBatchId: "BATCH", refundId: "REF",
   authorisedAt: new Date(1), coolingOffUntil: new Date(2), version: 3, createdAt: new Date(4), updatedAt: new Date(5),
 };

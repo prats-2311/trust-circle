@@ -9,6 +9,7 @@ const valid = {
   DATABASE_URL: "postgres://u:p@localhost:5433/db",
   GROQ_API_KEY: "gsk_x",
   GROQ_TEXT_MODEL: "openai/gpt-oss-120b",
+  GROQ_VISION_MODEL: "v",
   SESSION_SECRET: "x".repeat(32),
   CRON_SECRET: "y".repeat(24),
 };
@@ -36,7 +37,28 @@ describe("loadEnv", () => {
     expect(message).not.toMatch(/secret"/);
   });
 
+  it("requires the vision model and defaults the guard model", () => {
+    const missing: Record<string, string | undefined> = { ...valid };
+    delete missing.GROQ_VISION_MODEL;
+    expect(() => loadEnv(missing)).toThrow(/GROQ_VISION_MODEL/);
+    expect(loadEnv({ ...valid, GROQ_VISION_MODEL: "v" }).GROQ_GUARD_MODEL).toBe("meta-llama/llama-prompt-guard-2-86m");
+  });
+
   it("requires a session secret of at least 32 characters", () => {
     expect(() => loadEnv({ ...valid, SESSION_SECRET: "short" })).toThrow(/SESSION_SECRET/);
+  });
+
+  it("treats an empty RESEND_API_KEY as unset and defaults alert settings", () => {
+    const env = loadEnv({ ...valid, RESEND_API_KEY: "" });
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
+    expect(env.APP_URL).toBe("http://localhost:3000");
+  });
+
+  it("treats empty guard model, from address and app url as unset", () => {
+    const env = loadEnv({ ...valid, GROQ_GUARD_MODEL: "", ALERT_FROM_EMAIL: "", APP_URL: "" });
+    expect(env.GROQ_GUARD_MODEL).toBe("meta-llama/llama-prompt-guard-2-86m");
+    expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
+    expect(env.APP_URL).toBe("http://localhost:3000");
   });
 });

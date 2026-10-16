@@ -1,4 +1,4 @@
-import type { PaymentState, RiskLevel, ScamType } from "@/domain/types";
+import type { PaymentState, Requester, RiskLevel, ScamType } from "@/domain/types";
 
 export interface PaymentRecord {
   id: string;
@@ -11,6 +11,7 @@ export interface PaymentRecord {
   riskLevel: RiskLevel;
   scamType: ScamType;
   reasons: string[];
+  impersonatedRequester: Requester | null;
   paypalOrderId: string | null;
   authorizationId: string | null;
   captureId: string | null;
@@ -32,6 +33,12 @@ export interface AuditEntry {
   detail: Record<string, unknown>;
 }
 
+export interface TransitionAudit {
+  actorId: string | null;
+  action: string;
+  detail?: Record<string, unknown>;
+}
+
 export class ConcurrentUpdateError extends Error {
   constructor(readonly paymentId: string, readonly expected: PaymentState) {
     super(`Payment ${paymentId} is no longer in state ${expected}`);
@@ -45,7 +52,13 @@ export type TransitionPatch = Partial<Omit<PaymentRecord, "id" | "senderId" | "v
 export interface PaymentRepo {
   insert(p: NewPayment): Promise<PaymentRecord>;
   get(id: string): Promise<PaymentRecord | null>;
-  transition(id: string, expected: PaymentState, patch: TransitionPatch, expectedVersion?: number): Promise<PaymentRecord>;
+  transition(
+    id: string,
+    expected: PaymentState,
+    patch: TransitionPatch,
+    expectedVersion?: number,
+    audit?: TransitionAudit,
+  ): Promise<PaymentRecord>;
   listBySender(senderId: string): Promise<PaymentRecord[]>;
   listHeldForContact(contactId: string): Promise<PaymentRecord[]>;
   listByStates(states: PaymentState[]): Promise<PaymentRecord[]>;

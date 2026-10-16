@@ -3,6 +3,8 @@ import { InvalidTransitionError } from "@/domain/paymentStateMachine";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payments/paymentService";
 import { PayPalError } from "@/payments/paypalGateway";
+import { MessageInputError } from "@/messages/messageService";
+import { VerificationClosedError, VerificationInputError } from "@/verification/verificationService";
 import { errorResponse, readJsonObject } from "./http";
 
 vi.spyOn(console, "error").mockImplementation(() => {});
@@ -23,6 +25,17 @@ describe("errorResponse", () => {
     });
     expect(body.error).not.toContain("Nothing has been sent");
   });
+  it("maps message input errors to 400 with the field", async () => {
+    const r = errorResponse(new MessageInputError("image", "Please add a screenshot of the message."));
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ error: "Please add a screenshot of the message.", field: "image" });
+  });
+  it("maps verification errors", async () => {
+    expect(errorResponse(new VerificationInputError("Please type what the caller said.")).status).toBe(400);
+    const closed = errorResponse(new VerificationClosedError());
+    expect(closed.status).toBe(409);
+    expect(await closed.json()).toEqual({ error: "This has already been answered." });
+  });
   it("maps not-allowed to 403", () => {
     expect(errorResponse(new NotAllowedError("No.")).status).toBe(403);
   });
@@ -35,12 +48,19 @@ describe("errorResponse", () => {
     expect(r.status).toBe(502);
     expect((await r.json()).error).toContain("Nothing has been sent");
   });
-  it("maps an uncertain PayPal outcome to 202 without claiming nothing was sent", async () => {
+  it("maps a pre-claim uncertain PayPal outcome to 503 and asks to try again shortly", async () => {
+    // Uncertain errors after a claim become PaymentPendingError, so one reaching here happened
+    // before any money could move (for example creating the order).
     const r = errorResponse(new PayPalError("x", 500, undefined, "dbg", true));
-    expect(r.status).toBe(202);
-    expect((await r.json()).error).toBe(
-      "PayPal is still confirming this step. We will finish it automatically. Nothing more is needed from you.",
-    );
+    expect(r.status).toBe(503);
+    expect((await r.json()).error).toBe("PayPal didn't answer in time. Nothing has been sent. Please try again in a moment.");
+  });
+  it("logs the cause of a pending payment without message text", () => {
+    const spy = vi.mocked(console.error);
+    spy.mockClear();
+    errorResponse(new PaymentPendingError("p1", new PayPalError("secret detail", 500, "ISSUE", "dbg1", true)));
+    expect(spy).toHaveBeenCalledWith("payment pending", { paymentId: "p1", cause: "PayPalError", status: 500, debugId: "dbg1" });
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("secret detail");
   });
   it("maps unknown errors to 500 without leaking details", async () => {
     const r = errorResponse(new Error("secret detail"));

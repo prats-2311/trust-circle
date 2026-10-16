@@ -11,7 +11,7 @@ let contactId: string;
 
 const base = (over: Partial<NewPayment> = {}): NewPayment => ({
   id: randomUUID(), senderId, payee: "grandson@example.com", amountCents: 80000, note: null, senderAnswer: null,
-  state: "created", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"],
+  state: "created", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"], impersonatedRequester: null,
   paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null,
   authorisedAt: null, coolingOffUntil: null, ...over,
 });
@@ -28,6 +28,12 @@ beforeEach(async () => {
 afterAll(async () => handle?.close());
 
 describe("drizzle payment repo", () => {
+  it("round-trips the impersonated requester", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    const p = await repo.insert(base({ impersonatedRequester: { kind: "person", name: "grandson" } }));
+    expect((await repo.get(p.id))!.impersonatedRequester).toEqual({ kind: "person", name: "grandson" });
+  });
+
   it("rejects a trust link from a user to themselves", async () => {
     await expect(handle.db.insert(trustLinks).values({ senderId, contactId: senderId, relationship: "self" })).rejects.toThrow();
   });
@@ -104,5 +110,37 @@ describe("drizzle payment repo", () => {
     expect(await repo.auditFor(p.id)).toEqual([
       { paymentId: p.id, actorId: senderId, action: "APPROVE", fromState: "created", toState: "approved", detail: {} },
     ]);
+  });
+
+  it("writes the transition and its audit row together", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    const p = await repo.insert(base());
+    await repo.transition(p.id, "created", { state: "approved" }, p.version, { actorId: senderId, action: "APPROVE" });
+    expect((await repo.get(p.id))!.state).toBe("approved");
+    expect(await repo.auditFor(p.id)).toEqual([
+      { paymentId: p.id, actorId: senderId, action: "APPROVE", fromState: "created", toState: "approved", detail: {} },
+    ]);
+  });
+
+  it("rolls back the state change when the audit write fails", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    const p = await repo.insert(base());
+    // actor_id is a uuid column, so this audit insert fails inside the transaction.
+    await expect(
+      repo.transition(p.id, "created", { state: "approved" }, p.version, { actorId: "not-a-uuid", action: "APPROVE" }),
+    ).rejects.toThrow();
+    expect((await repo.get(p.id))!.state).toBe("created");
+    expect(await repo.auditFor(p.id)).toEqual([]);
+  });
+
+  it("returns null for a non-uuid payment id", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    expect(await repo.get("not-a-uuid")).toBeNull();
+  });
+
+  it("round-trips reasons as a JSON array", async () => {
+    const repo = createDrizzlePaymentRepo(handle.db);
+    const p = await repo.insert(base({ reasons: ["First reason.", "Second, with \"quotes\"."] }));
+    expect((await repo.get(p.id))!.reasons).toEqual(["First reason.", "Second, with \"quotes\"."]);
   });
 });

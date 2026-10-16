@@ -4,7 +4,7 @@ import { ConcurrentUpdateError, type NewPayment } from "./paymentRepo";
 
 const base = (over: Partial<NewPayment> = {}): NewPayment => ({
   id: "p1", senderId: "s1", payee: "grandson@example.com", amountCents: 80000, note: null, senderAnswer: null,
-  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"],
+  state: "held", riskLevel: "high", scamType: "impersonation_family", reasons: ["r"], impersonatedRequester: null,
   paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null,
   authorisedAt: null, coolingOffUntil: null, ...over,
 });
@@ -65,5 +65,14 @@ describe("memory payment repo", () => {
     expect(await repo.isContactFor("s1", "c1")).toBe(false);
     const f = await repo.senderContextFacts("s1", new Date());
     expect(f).toEqual({ previousPayees: ["sarah@example.com"], recentAmountsCents: [2000], paymentsInLastHour: 2 });
+  });
+
+  it("records the audit entry passed to transition", async () => {
+    const repo = createMemoryPaymentRepo();
+    const p = await repo.insert(base({ state: "created" }));
+    await repo.transition(p.id, "created", { state: "approved" }, p.version, { actorId: null, action: "APPROVE" });
+    expect(await repo.auditFor(p.id)).toEqual([
+      { paymentId: p.id, actorId: null, action: "APPROVE", fromState: "created", toState: "approved", detail: {} },
+    ]);
   });
 });

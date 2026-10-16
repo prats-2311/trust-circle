@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PaymentJudge } from "@/ai/groqJudge";
+import type { PromptGuard } from "@/ai/promptGuard";
 import { nextState } from "@/domain/paymentStateMachine";
 import type { PaymentEventType } from "@/domain/types";
 import { assessPayment } from "@/risk/assess";
@@ -42,15 +43,20 @@ export class PaymentPendingError extends Error {
   }
 }
 
+export type PaymentServiceEvent = { type: "held"; payment: PaymentRecord } | { type: "medium_sent"; payment: PaymentRecord };
+
 type ExtraContext = Pick<SenderContext, "flaggedPayees" | "registry" | "circleLimitCents">;
 
 export function createPaymentService(deps: {
   repo: PaymentRepo;
   gateway: PayPalGateway;
   judge: PaymentJudge;
+  guard?: PromptGuard;
   now?: () => Date;
   newId?: () => string;
   extraContext?: (senderId: string) => Promise<ExtraContext>;
+  linkedMessage?: (senderId: string, payee: string) => Promise<string | undefined>;
+  onEvent?: (e: PaymentServiceEvent) => Promise<void>;
 }) {
   const { repo, gateway, judge } = deps;
   const now = deps.now ?? (() => new Date());
@@ -64,15 +70,29 @@ export function createPaymentService(deps: {
     patch: Omit<TransitionPatch, "state"> = {},
   ): Promise<PaymentRecord> {
     const to = nextState(p.state, event);
-    const updated = await repo.transition(p.id, p.state, { ...patch, state: to }, p.version);
-    await repo.audit({ paymentId: p.id, actorId, action: event, fromState: p.state, toState: to, detail: {} });
-    return updated;
+    return repo.transition(p.id, p.state, { ...patch, state: to }, p.version, { actorId, action: event });
   }
 
   async function mustGet(id: string): Promise<PaymentRecord> {
     const p = await repo.get(id);
     if (!p) throw new NotAllowedError("Payment not found");
     return p;
+  }
+
+  /** Notifies listeners (alerts, verification). A failing listener never changes the payment outcome. */
+  async function emit(e: PaymentServiceEvent): Promise<void> {
+    if (!deps.onEvent) return;
+    try {
+      await deps.onEvent(e);
+    } catch (err) {
+      console.warn("payment event handler failed", { type: e.type, paymentId: e.payment.id, error: err instanceof Error ? err.name : "unknown" });
+    }
+  }
+
+  async function hold(p: PaymentRecord, actorId: string | null, coolingOffUntil: Date): Promise<PaymentRecord> {
+    const held = await step(p, "HOLD", actorId, { coolingOffUntil });
+    await emit({ type: "held", payment: held });
+    return held;
   }
 
   const isUncertain = (e: unknown) => e instanceof PayPalError && e.uncertain;
@@ -178,20 +198,37 @@ export function createPaymentService(deps: {
     return payee;
   }
 
+  async function settleHeld(a: { paymentId: string; actorId: string }): Promise<PaymentRecord> {
+    const p = await mustGet(a.paymentId);
+    if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
+    assertHoldOpen(p);
+    return settle(p, a.actorId);
+  }
+
+  async function blockHeld(a: { paymentId: string; actorId: string }): Promise<PaymentRecord> {
+    const p = await mustGet(a.paymentId);
+    if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
+    return voidHeld(p, "BLOCK", a.actorId);
+  }
+
   return {
     async start(a: { senderId: string; payee: string; amountCents: number; note?: string; senderAnswer?: string }) {
       const payee = validate(a);
+      // A failed lookup only loses context for the AI; it must not stop the payment being assessed.
+      const linkedMessage = deps.linkedMessage ? await deps.linkedMessage(a.senderId, payee).catch(() => undefined) : undefined;
       const facts = await repo.senderContextFacts(a.senderId, now());
       const decision: RiskDecision = await assessPayment(
-        { payee, amountCents: a.amountCents, note: a.note, senderAnswer: a.senderAnswer },
+        { payee, amountCents: a.amountCents, note: a.note, senderAnswer: a.senderAnswer, ...(linkedMessage ? { linkedMessage } : {}) },
         { ...facts, ...(await extra(a.senderId)) },
         judge,
+        deps.guard,
       );
       const id = newId();
       let payment = await repo.insert({
         id, senderId: a.senderId, payee, amountCents: a.amountCents,
         note: a.note ?? null, senderAnswer: a.senderAnswer ?? null, state: "created",
         riskLevel: decision.level, scamType: decision.scamType, reasons: decision.reasons,
+        impersonatedRequester: decision.impersonatedRequester,
         paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null,
         authorisedAt: null, coolingOffUntil: null,
       });
@@ -209,9 +246,11 @@ export function createPaymentService(deps: {
         const authorisedAt = now();
         p = await step(p, "AUTHORISE", a.senderId, { authorizationId, authorisedAt });
         if (p.riskLevel === "high") {
-          return step(p, "HOLD", null, { coolingOffUntil: new Date(authorisedAt.getTime() + COOLING_OFF_MS) });
+          return hold(p, null, new Date(authorisedAt.getTime() + COOLING_OFF_MS));
         }
-        return settle(p, a.senderId);
+        const settled = await settle(p, a.senderId);
+        if (settled.riskLevel === "medium") await emit({ type: "medium_sent", payment: settled });
+        return settled;
       });
     },
 
@@ -220,13 +259,16 @@ export function createPaymentService(deps: {
       if (!(await repo.isContactFor(a.contactId, p.senderId))) {
         throw new NotAllowedError("Only someone in the sender's circle can decide.");
       }
-      if (p.state !== "held") throw new ConcurrentUpdateError(p.id, "held");
-      if (a.decision === "approve") {
-        assertHoldOpen(p);
-        return settle(p, a.contactId);
-      }
-      return voidHeld(p, "BLOCK", a.contactId);
+      return a.decision === "approve"
+        ? settleHeld({ paymentId: p.id, actorId: a.contactId })
+        : blockHeld({ paymentId: p.id, actorId: a.contactId });
     },
+
+    /** For callers that have already checked who may act (a trusted contact, the real person). */
+    settleHeld,
+
+    /** For callers that have already checked who may act. */
+    blockHeld,
 
     async senderRelease(a: { paymentId: string; senderId: string }) {
       const p = await mustGet(a.paymentId);
@@ -306,15 +348,17 @@ export function createPaymentService(deps: {
         const { authorizationId } = await gateway.authorizeOrder({ paymentId: p.id, orderId: p.paypalOrderId });
         const authorisedAt = now();
         const auth = await step(p, "AUTHORISE", null, { authorizationId, authorisedAt });
-        await step(auth, "HOLD", null, { coolingOffUntil: new Date(authorisedAt.getTime() + COOLING_OFF_MS) });
+        await hold(auth, null, new Date(authorisedAt.getTime() + COOLING_OFF_MS));
         recovered.push(p.id);
       });
       await each("authorised", (await repo.listByStates(["authorised"])).filter(isStale), async (p) => {
         const base = (p.authorisedAt ?? now()).getTime();
-        await step(p, "HOLD", null, { coolingOffUntil: new Date(base + COOLING_OFF_MS) });
+        await hold(p, null, new Date(base + COOLING_OFF_MS));
         recovered.push(p.id);
       });
       return { expired, voidRetried, payoutRetried, refundRetried, recovered, captureRetried, needsAttention };
     },
   };
 }
+
+export type PaymentService = ReturnType<typeof createPaymentService>;

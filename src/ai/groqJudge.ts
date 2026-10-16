@@ -1,11 +1,10 @@
 import type { AiOutcome } from "@/risk/decide";
 import type { PaymentRiskInput, Signal } from "@/risk/signals";
+import { groqChat, parseJsonObject } from "./groqClient";
 import { JudgementSchema } from "./judgementSchema";
 import { buildPaymentUserMessage, PAYMENT_SYSTEM_PROMPT } from "./prompts";
 
 export type PaymentJudge = (input: PaymentRiskInput, signals: Signal[]) => Promise<AiOutcome>;
-
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 export function createGroqJudge(opts: {
   apiKey: string;
@@ -16,30 +15,24 @@ export function createGroqJudge(opts: {
   const timeoutMs = opts.timeoutMs ?? 8000;
 
   return async (input, signals) => {
+    const out = await groqChat({
+      apiKey: opts.apiKey,
+      model: opts.model,
+      json: true,
+      timeoutMs,
+      fetchImpl: opts.fetchImpl,
+      messages: [
+        { role: "system", content: PAYMENT_SYSTEM_PROMPT },
+        { role: "user", content: buildPaymentUserMessage(input, signals) },
+      ],
+    });
+    if (!out.ok) return out;
     try {
-      const res = await (opts.fetchImpl ?? fetch)(GROQ_URL, {
-        method: "POST",
-        signal: AbortSignal.timeout(timeoutMs),
-        headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: opts.model,
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: PAYMENT_SYSTEM_PROMPT },
-            { role: "user", content: buildPaymentUserMessage(input, signals) },
-          ],
-        }),
-      });
-      if (!res.ok) return { ok: false, error: `groq http ${res.status}` };
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) return { ok: false, error: "groq empty response" };
-      const parsed = JudgementSchema.safeParse(JSON.parse(content));
+      const parsed = JudgementSchema.safeParse(parseJsonObject(out.content));
       if (!parsed.success) return { ok: false, error: "groq output failed validation" };
       return { ok: true, judgement: parsed.data };
-    } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.name : "groq error" };
+    } catch {
+      return { ok: false, error: "groq output was not JSON" };
     }
   };
 }
