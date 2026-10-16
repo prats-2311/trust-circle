@@ -28,7 +28,7 @@ export const PRESETS: Record<Preset, PresetInfo> = {
   },
   solo: {
     label: "Just me",
-    description: "No circle. Risky payments wait before they go, so you have time to check.",
+    description: "Risky payments wait before they go, so you have time to check.",
     circleWord: "you",
     circleLimitCents: null,
     defaultCoolingOffHours: 24,

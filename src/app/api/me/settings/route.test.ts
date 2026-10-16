@@ -44,6 +44,11 @@ describe("PUT /api/me/settings", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Please choose Family, Business or Just me." });
   });
+  it("answers 400 for a preset that is not a string", async () => {
+    const res = await call({ preset: ["family"] }, U);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Please choose Family, Business or Just me." });
+  });
   it("answers 200 with the view for a preset", async () => {
     const res = await call({ preset: "solo" }, U);
     expect(res.status).toBe(200);

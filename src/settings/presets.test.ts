@@ -8,6 +8,9 @@ describe("presets", () => {
   it("Just me has no circle limit", () => {
     expect(PRESETS.solo.circleLimitCents).toBeNull();
   });
+  it("Just me does not claim the user has no circle", () => {
+    expect(PRESETS.solo.description).toBe("Risky payments wait before they go, so you have time to check.");
+  });
   it("accepts 12, 24 and 48", () => {
     for (const h of [12, 24, 48]) expect(isCoolingOffHours(h)).toBe(true);
   });

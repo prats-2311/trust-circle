@@ -20,6 +20,9 @@ describe("settingsService", () => {
   it("rejects an unknown preset", async () => {
     await expect(make().choosePreset("u1", "x" as never)).rejects.toThrow("Please choose Family, Business or Just me.");
   });
+  it("rejects a preset that is not a string", async () => {
+    await expect(make().choosePreset("u1", ["family"] as never)).rejects.toThrow("Please choose Family, Business or Just me.");
+  });
   it("rejects a cooling-off outside the choices", async () => {
     await expect(make().setCoolingOff("u1", 72)).rejects.toThrow(SettingsInputError);
     await expect(make().setCoolingOff("u1", 72)).rejects.toThrow("Please choose 12, 24 or 48 hours.");

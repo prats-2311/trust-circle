@@ -25,7 +25,7 @@ export function createSettingsService(deps: { repo: SettingsRepo; now?: () => Da
       return { ...s, circleLimitCents: PRESETS[s.preset].circleLimitCents };
     },
     async choosePreset(userId: string, preset: Preset) {
-      if (!Object.hasOwn(PRESETS, preset)) throw new SettingsInputError("Please choose Family, Business or Just me.");
+      if (typeof preset !== "string" || !Object.hasOwn(PRESETS, preset)) throw new SettingsInputError("Please choose Family, Business or Just me.");
       const current = await read(userId);
       // Choosing the same preset again must not undo a cooling-off the user changed.
       if (current.preset === preset) return current;

@@ -28,7 +28,7 @@ export function notificationState(env: NotificationEnv): NotificationState {
   return "ask";
 }
 
-const STILL_HERE = "You'll still see every alert here in Trust Circle, and by email.";
+const STILL_HERE = "You'll still see every alert here in Trust Circle.";
 
 const COPY: Record<NotificationState, { title: string; body: string; action: string | null }> = {
   unsupported: { title: "This browser can't show alerts", body: STILL_HERE, action: null },
