@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Send money</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+  <div style="display: flex; align-items: center; gap: 8px; height: 48px">
+    <button aria-label="Back" style="width: 44px; height: 44px; margin-left: -10px; border: 0; background: transparent; color: #14201B; display: flex; align-items: center; justify-content: center; border-radius: 12px">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <span style="font-size: 18px; font-weight: 700">Send money</span>
+  </div>
+
+  <form style="margin-top: 16px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <label for="payee" style="font-size: 18px; font-weight: 700">Who are you paying?</label>
+      <input id="payee" value="dhill.urgent@outlook.example" style="height: 56px; box-sizing: border-box; padding: 0 16px; border: 2px solid #B9C4BE; border-radius: 14px; background: #FFFFFF; color: #14201B; font-size: 18px">
+      <span style="font-size: 15px; color: #4A5651">Their email address or mobile number</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <label for="amount" style="font-size: 18px; font-weight: 700">How much?</label>
+      <div style="display: flex; align-items: center; height: 64px; padding: 0 16px; border: 2px solid #B9C4BE; border-radius: 14px; background: #FFFFFF">
+        <span aria-hidden="true" style="font-size: 30px; font-weight: 800; color: #4A5651">$</span>
+        <input id="amount" value="800" inputmode="decimal" style="flex: 1; min-width: 0; border: 0; background: transparent; color: #14201B; font-size: 30px; font-weight: 800; padding-left: 6px; font-variant-numeric: tabular-nums">
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <label for="why" style="font-size: 18px; font-weight: 700">Who asked you to make this payment, and why?</label>
+      <textarea id="why" rows="3" style="box-sizing: border-box; padding: 14px 16px; border: 2px solid #B9C4BE; border-radius: 14px; background: #FFFFFF; color: #14201B; font-size: 18px; line-height: 1.4; resize: none">My grandson Daniel called. He's in jail and needs bail today.</textarea>
+      <span style="font-size: 15px; line-height: 1.4; color: #4A5651">Your answer helps us spot scams. Only you and your circle can see it.</span>
+    </div>
+  </form>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 58px; border: 0; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 19px; font-weight: 700">Check this payment</button>
+    <p style="margin: 0; font-size: 15px; line-height: 1.4; color: #4A5651; text-align: center">Nothing is sent until you approve it in PayPal.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1E5A47","options":["#1E5A47","#2C5C8F","#14201B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#1E5A47' };
+  }
+}
+</script>
+</body>
+</html>

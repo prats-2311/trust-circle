@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { CircleDashboard } from "@/dashboard/dashboardService";
-import { SessionNotice } from "../../SessionNotice";
-import { Skeleton } from "../../Skeleton";
+import { SignedOut } from "@/ui/SignedOut";
+import { Skeleton } from "@/ui/Skeleton";
 import { DashboardGrid } from "./DashboardGrid";
 
 export default function CircleDashboardPage() {
@@ -28,7 +28,7 @@ export default function CircleDashboardPage() {
   return (
     <main style={{ width: "100%", boxSizing: "border-box", maxWidth: 1200, margin: "0 auto", padding: "24px 16px", background: "#F4F6F4", color: "#14201B" }}>
       <h1 style={{ fontSize: 32, fontWeight: 800 }}>Your circle&apos;s payments</h1>
-      {signedOut && <SessionNotice />}
+      {signedOut && <SignedOut />}
       {failed && !signedOut && <p role="alert">We couldn&apos;t load the dashboard. Please refresh.</p>}
       {!data && !failed && !signedOut && (
         <>

@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SessionNotice, SIGN_IN_AGAIN } from "../SessionNotice";
+import { SignedOut } from "@/ui/SignedOut";
+import { SIGNED_OUT } from "@/ui/fetchJson";
 import { PayPalApprove } from "./PayPalApprove";
 
 type Risk = { level: "low" | "medium" | "high"; reasons: string[] };
@@ -30,7 +31,7 @@ export default function SendPage() {
     });
     const json: unknown = await res.json().catch(() => null);
     if (!res.ok) {
-      if (res.status === 401) return setError(SIGN_IN_AGAIN);
+      if (res.status === 401) return setError(SIGNED_OUT);
       const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
       setError(msg ?? "Something went wrong. Nothing was sent.");
       return;
@@ -51,7 +52,7 @@ export default function SendPage() {
         return;
       }
       approvedFor.current = null;
-      if (res.status === 401) return setError(SIGN_IN_AGAIN);
+      if (res.status === 401) return setError(SIGNED_OUT);
       const json: unknown = await res.json().catch(() => null);
       const msg = json && typeof json === "object" && "error" in json && typeof json.error === "string" ? json.error : null;
       setError(msg ?? fallback);
@@ -71,7 +72,7 @@ export default function SendPage() {
           <label>Note<input name="note" data-testid="note" /></label>
           <label>Who asked you to make this payment, and why?<textarea name="answer" data-testid="answer" /></label>
           <button type="submit" data-testid="check">Continue</button>
-          {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
+          {error === SIGNED_OUT ? <SignedOut /> : error && <p role="alert">{error}</p>}
         </form>
       )}
       {result && (
@@ -84,7 +85,7 @@ export default function SendPage() {
           ) : (
             <PayPalApprove orderId={result.orderId} onApproved={onApproved} />
           )}
-          {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
+          {error === SIGNED_OUT ? <SignedOut /> : error && <p role="alert">{error}</p>}
         </section>
       )}
     </main>

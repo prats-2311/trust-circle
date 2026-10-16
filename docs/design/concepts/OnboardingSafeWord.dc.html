@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choose a family safe word</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 24px 24px 28px">
+  <div style="display: flex; flex-direction: column; gap: 10px">
+    <span style="font-size: 16px; font-weight: 700; color: #3F4B46">Step 3 of 4</span>
+    <div role="progressbar" aria-label="Setup progress" aria-valuemin="1" aria-valuemax="4" aria-valuenow="3" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px">
+      <span style="height: 6px; border-radius: 999px; background: #1E5A47"></span>
+      <span style="height: 6px; border-radius: 999px; background: #1E5A47"></span>
+      <span style="height: 6px; border-radius: 999px; background: #1E5A47"></span>
+      <span style="height: 6px; border-radius: 999px; background: #D3DBD6"></span>
+    </div>
+  </div>
+
+  <h1 style="margin: 28px 0 0; font-size: 32px; line-height: 1.15; font-weight: 800; letter-spacing: -0.01em">Choose a family safe word</h1>
+  <p style="margin: 12px 0 0; font-size: 19px; line-height: 1.45; color: #3F4B46">If someone calls asking for money, ask them for it. Only your family will know it.</p>
+
+  <div style="margin-top: 26px; display: flex; flex-direction: column; gap: 8px">
+    <label for="word" style="font-size: 18px; font-weight: 700">Safe word</label>
+    <input id="word" autocomplete="off" style="height: 56px; box-sizing: border-box; padding: 0 16px; border: 2px solid #B9C4BE; border-radius: 14px; background: #FFFFFF; color: #14201B; font-size: 20px">
+    <span style="font-size: 16px; line-height: 1.45; color: #4A5651">Pick something easy to say and hard to guess, like a pet's name from years ago. Tell your family in person, not by text or email.</span>
+  </div>
+
+  <div style="margin-top: 22px; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: #FFFFFF; font-size: 16px; line-height: 1.45; color: #3F4B46">
+    <svg aria-hidden="true" style="flex: none; margin-top: 2px" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E5A47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+    <span>We only keep a scrambled copy. Nobody at Trust Circle can read your safe word.</span>
+  </div>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 58px; border: 0; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 19px; font-weight: 700">Save safe word</button>
+    <button style="height: 48px; border: 0; background: transparent; color: #3F4B46; font-size: 18px; font-weight: 500; text-decoration: underline; text-underline-offset: 4px">Skip for now</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1E5A47","options":["#1E5A47","#2C5C8F","#14201B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#1E5A47' };
+  }
+}
+</script>
+</body>
+</html>

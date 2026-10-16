@@ -1,5 +1,5 @@
 "use client";
-import { SessionNotice } from "../SessionNotice";
+import { SignedOut } from "@/ui/SignedOut";
 import { useEffect, useState } from "react";
 
 type HeldPayment = {
@@ -54,7 +54,7 @@ export default function CirclePage() {
     <main>
       <h1>Payments waiting for you</h1>
       {msg && <p role="status" data-testid="decision-result">{msg}</p>}
-      {signedOut && <SessionNotice />}
+      {signedOut && <SignedOut />}
       {failed && !signedOut && <p role="alert">We couldn&apos;t load your payments. Please refresh.</p>}
       {!failed && !signedOut && held.length === 0 && <p>Nothing is waiting.</p>}
       {held.map((p) => (

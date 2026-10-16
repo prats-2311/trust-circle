@@ -1,5 +1,6 @@
 "use client";
-import { SessionNotice, SIGN_IN_AGAIN } from "../../SessionNotice";
+import { SignedOut } from "@/ui/SignedOut";
+import { SIGNED_OUT } from "@/ui/fetchJson";
 import { use, useEffect, useState } from "react";
 
 type PaymentView = { id: string; state: string; coolingOffUntil: string | null };
@@ -21,7 +22,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     fetch("/api/payments")
       .then(async (r) => {
         if (r.status === 401) {
-          if (!cancelled) setError(SIGN_IN_AGAIN);
+          if (!cancelled) setError(SIGNED_OUT);
           return;
         }
         if (!r.ok) throw new Error("load failed");
@@ -41,7 +42,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   async function release() {
     setError(null);
     const r = await fetch(`/api/payments/${id}/release`, { method: "POST" });
-    if (r.status === 401) return setError(SIGN_IN_AGAIN);
+    if (r.status === 401) return setError(SIGNED_OUT);
     const j: unknown = await r.json().catch(() => null);
     if (r.ok) {
       setP(j as PaymentView);
@@ -53,7 +54,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   if (!p) {
     return (
       <main>
-        {error === SIGN_IN_AGAIN ? <SessionNotice /> : error ? <p role="alert">{error}</p> : loaded ? <p role="alert">We couldn&apos;t find this payment.</p> : "Loading…"}
+        {error === SIGNED_OUT ? <SignedOut /> : error ? <p role="alert">{error}</p> : loaded ? <p role="alert">We couldn&apos;t find this payment.</p> : "Loading…"}
       </main>
     );
   }
@@ -66,7 +67,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       {p.state === "held" && (
         <button data-testid="release" onClick={release}>Release now</button>
       )}
-      {error === SIGN_IN_AGAIN ? <SessionNotice /> : error && <p role="alert">{error}</p>}
+      {error === SIGNED_OUT ? <SignedOut /> : error && <p role="alert">{error}</p>}
     </main>
   );
 }

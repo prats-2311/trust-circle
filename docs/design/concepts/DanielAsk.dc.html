@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Did you just ask Margaret for money?</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 24px 24px 28px">
+  <div style="display: flex; align-items: center; justify-content: space-between">
+    <span style="font-size: 17px; font-weight: 700; color: #1E5A47">Trust Circle</span>
+    <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 8px; border-radius: 999px; background: #E6EEF7; color: #24456B; font-size: 16px; font-weight: 700">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5"></rect><rect x="14" y="4" width="4" height="16" rx="1.5"></rect></svg>
+      Waiting for you
+    </span>
+  </div>
+
+  <h1 style="margin: 30px 0 0; font-size: 34px; line-height: 1.12; font-weight: 800; letter-spacing: -0.015em">Did you just ask Margaret for $800?</h1>
+  <p style="margin: 12px 0 0; font-size: 19px; line-height: 1.45; color: #3F4B46">Someone asked her to send it and said they were you. The money is on hold until you answer.</p>
+
+  <div style="margin-top: 24px; background: #FFFFFF; border-radius: 20px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; justify-content: space-between; gap: 12px">
+      <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <span style="font-size: 15px; color: #4A5651">Would go to</span>
+        <span style="font-size: 17px; font-weight: 700; overflow-wrap: anywhere">dhill.urgent@outlook.example</span>
+      </span>
+      <span style="font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums">$800</span>
+    </div>
+    <div style="border-top: 1px solid #E3E8E5; padding-top: 12px; font-size: 16px; color: #4A5651">Asked today at 2:14 pm</div>
+  </div>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 64px; border: 0; border-radius: 14px; background: #A2302A; color: #FFFFFF; font-size: 21px; font-weight: 800">It wasn't me</button>
+    <button style="height: 58px; border: 2px solid #14201B; border-radius: 14px; background: transparent; color: #14201B; font-size: 19px; font-weight: 700">Yes, it was me</button>
+    <p style="margin: 2px 0 0; font-size: 15px; line-height: 1.4; color: #4A5651; text-align: center">If it wasn't you, we stop the payment and warn other families about this account.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

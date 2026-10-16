@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check it is really Daniel</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&amp;display=swap">
+<style>
+body{margin:0;background:#F4F6F4}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #2C5C8F;outline-offset:3px}
+a{color:#1E5A47}a:hover{color:#14402F}
+@media (prefers-reduced-motion: no-preference){
+  .travel{animation:travel 2.4s cubic-bezier(.45,0,.2,1) infinite}
+}
+@keyframes travel{0%{transform:translateX(0);opacity:0}15%{opacity:1}85%{opacity:1}100%{transform:translateX(150px);opacity:0}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F6F4; color: #14201B; font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+  <div style="display: flex; align-items: center; gap: 8px; height: 48px">
+    <button aria-label="Back" style="width: 44px; height: 44px; margin-left: -10px; border: 0; background: transparent; color: #14201B; display: flex; align-items: center; justify-content: center; border-radius: 12px">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <span style="font-size: 18px; font-weight: 700">Check it's really Daniel</span>
+  </div>
+
+  <h1 style="margin: 20px 0 0; font-size: 30px; line-height: 1.18; font-weight: 800; letter-spacing: -0.01em">Ask Daniel, not the person who messaged you</h1>
+  <p style="margin: 10px 0 0; font-size: 18px; line-height: 1.45; color: #3F4B46">We contact the Daniel saved in your phone. Someone pretending to be him can't answer from there.</p>
+
+  <div style="margin-top: 24px; background: #FFFFFF; border-radius: 20px; padding: 20px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div style="width: 52px; height: 52px; border-radius: 999px; background: #E3EDE8; color: #1E5A47; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800">MH</div>
+      <div style="position: relative; flex: 1; height: 52px; margin: 0 10px; overflow: hidden" aria-hidden="true">
+        <div style="position: absolute; left: 0; right: 0; top: 25px; border-top: 2px dashed #B9C4BE"></div>
+        <div class="travel" style="position: absolute; left: 4px; top: 16px; width: 22px; height: 20px; color: #2C5C8F">
+          <svg width="22" height="20" viewBox="0 0 24 22" fill="#FFFFFF" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 4h18v12H8l-5 4z"></path></svg>
+        </div>
+      </div>
+      <div style="width: 52px; height: 52px; border-radius: 999px; background: #E6EEF7; color: #2C5C8F; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800">DH</div>
+    </div>
+    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 20px; font-weight: 700">Daniel Hill</span>
+      <span style="font-size: 16px; color: #4A5651">Saved number ending 4471, in your contacts since 2019</span>
+    </div>
+    <div role="status" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #E3E8E5; font-size: 17px; line-height: 1.4; color: #24456B">Check-in sent at 2:15 pm. Waiting for Daniel to reply.</div>
+  </div>
+
+  <div style="margin-top: 28px; display: flex; flex-direction: column; gap: 10px">
+    <h2 style="margin: 0; font-size: 20px; font-weight: 700">While you wait, ask the caller this</h2>
+    <p style="margin: 0; font-size: 22px; line-height: 1.35; font-weight: 500">"What did Grandpa call the old blue truck?"</p>
+    <p style="margin: 0; font-size: 16px; line-height: 1.45; color: #4A5651">Only the real Daniel would know. If they dodge the question, don't send money.</p>
+  </div>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+    <button style="height: 58px; border: 0; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 19px; font-weight: 700">Use our family safe word</button>
+    <button style="height: 44px; border: 0; background: transparent; color: #3F4B46; font-size: 18px; font-weight: 500; text-decoration: underline; text-underline-offset: 4px">Continue without checking</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1E5A47","options":["#1E5A47","#2C5C8F","#14201B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#1E5A47' };
+  }
+}
+</script>
+</body>
+</html>
