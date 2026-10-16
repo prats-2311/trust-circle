@@ -3,10 +3,11 @@ import { spawnSync } from "node:child_process";
 import { createDb } from "../src/db/client";
 import { createLocalEmbedder } from "../src/patterns/embedder";
 import { seedBaseDemo, seedDemoHistory, seedPatterns } from "../src/server/demoSeed";
+import { localHostRefusal } from "../src/server/deployGuard";
 import { PATTERNS } from "./seed-pattern-list";
 
 // Run once from your machine against the production database:
-//   DATABASE_URL='postgresql://...' npm run deploy:seed
+//   read -rs DATABASE_URL && export DATABASE_URL && npm run deploy:seed
 // The URL must come from the shell, never from .env.local (tsx is started without --env-file on purpose).
 async function main() {
   const url = process.env.DATABASE_URL;
@@ -17,9 +18,8 @@ async function main() {
   } catch {
     throw new Error("DATABASE_URL could not be read as a URL.");
   }
-  if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") {
-    throw new Error("DATABASE_URL points at this machine. This command is only for the production database.");
-  }
+  const refusal = localHostRefusal(host);
+  if (refusal) throw new Error(refusal);
 
   console.log(`About to migrate and seed the database on host: ${host}`);
   const rl = createInterface({ input: process.stdin, output: process.stdout });

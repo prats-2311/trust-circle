@@ -6,7 +6,7 @@ You need a Render account, a Neon account and a GitHub account. Work through the
 
 ## 1. GitHub repo
 
-1. Create an empty repository on GitHub (no README or licence; the repo already has an MIT licence).
+1. Create an empty **public** repository on GitHub (no README or licence; the repo already has an MIT licence). It must be public: the 5-minute `expire holds` workflow is about 8,640 runs a month, and public repos get unlimited Actions minutes. A private free repo would run out in about a week and silently stop hold expiry.
 2. Push this project to it. Render and the workflows both read from this repo.
 
 ## 2. Neon project
@@ -20,10 +20,12 @@ You need a Render account, a Neon account and a GitHub account. Work through the
 Run this once, from your machine, in the project folder:
 
 ```bash
-DATABASE_URL='<the Neon direct connection string>' npm run deploy:seed
+read -rs DATABASE_URL && export DATABASE_URL && npm run deploy:seed
 ```
 
-- The value must come from the shell. The command ignores `.env.local` on purpose, and refuses a localhost database.
+Paste the Neon direct connection string at the silent prompt and press Enter. The password is not echoed and does not land in your shell history. Run `unset DATABASE_URL` afterwards.
+
+- The value must come from the shell environment. The command ignores `.env.local` on purpose, and refuses a localhost database.
 - It prints only the database host and waits. Type that host and press Enter to confirm.
 - It then applies every migration, adds the demo people, loads the scam patterns (the first run downloads a 23 MB model) and seeds the demo history.
 
@@ -87,7 +89,7 @@ BASE_URL=https://<render-host> npx playwright test e2e/smoke.spec.ts
 
 1. Run `npm run vapid:keys` locally. It prints a public and a private key.
 2. In Render set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (public key), `VAPID_PRIVATE_KEY` (private key) and `VAPID_SUBJECT` (`mailto:` or `https:` address you control).
-3. Redeploy, because the public key is read at build time.
+3. Use Render's **Save, rebuild, and deploy** (or a manual deploy that rebuilds), not a plain restart. `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set at build time, so a restart will not pick it up.
 
 ## Notes
 

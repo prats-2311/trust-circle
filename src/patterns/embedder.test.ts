@@ -12,6 +12,5 @@ describe("transformers cache", () => {
   it("keeps downloaded models in .cache/transformers under the working directory", async () => {
     const { env } = await loadTransformers();
     expect(env.cacheDir).toBe(path.join(process.cwd(), ".cache", "transformers"));
-    expect(env.cacheDir?.endsWith(path.join(".cache", "transformers"))).toBe(true);
   });
 });
