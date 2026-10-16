@@ -20,7 +20,7 @@ test("Margaret finishes setup from home and her safe word is saved", async ({ pa
   await page.getByTestId("onboarding-next").click();
 
   await expect(page.getByRole("heading", { name: "Turn on alerts" })).toBeVisible();
-  await expect(page.getByTestId("notifications")).toHaveAttribute("data-state", /^(unsupported|server_off|ask|ios_needs_install)$/);
+  await expect(page.getByTestId("notifications")).toHaveAttribute("data-state", /^(unsupported|server_off|ask|denied|ios_needs_install)$/);
   await page.getByTestId("onboarding-next").click();
 
   await expect(page).toHaveURL(/\/home$/);

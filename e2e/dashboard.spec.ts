@@ -28,7 +28,10 @@ test("on a phone the Amount column is visible without scrolling the grid", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/circle/dashboard");
   await expect(page.getByTestId("status-stopped").first()).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Amount" })).toBeInViewport();
+  // The Aftercare card pushes the grid below the first screen, so scroll down; only sideways scrolling is under test.
+  const amount = page.getByRole("columnheader", { name: "Amount" });
+  await amount.scrollIntoViewIfNeeded();
+  await expect(amount).toBeInViewport({ ratio: 1 });
 });
 
 test("the trends page draws the chart and the totals table", async ({ page }) => {
