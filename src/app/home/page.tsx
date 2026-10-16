@@ -1,4 +1,5 @@
 "use client";
+import { formatDay } from "@/ui/format";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ButtonLink } from "@/ui/Button";
@@ -17,7 +18,7 @@ type Me = { displayName: string; circle: { displayName: string; relationship: st
 type State = { kind: "loading" } | { kind: "signedOut" } | { kind: "error"; message: string } | { kind: "ready"; me: Me; items: ActivityItem[] };
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+const day = formatDay;
 
 export default function HomePage() {
   const [state, setState] = useState<State>({ kind: "loading" });

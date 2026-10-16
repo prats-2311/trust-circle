@@ -1,4 +1,5 @@
 "use client";
+import { formatDayTime, formatTime } from "@/ui/format";
 import { useState, type ReactNode } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import { approvalErrorCopy, cancelErrorCopy } from "@/app/send/riskScreen";
@@ -27,8 +28,8 @@ export type PaymentView = {
 type NoticeState = { tone: "info" | "pending" | "error"; text: string };
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-const weekdayTime = (d: Date) => d.toLocaleString("en-US", { weekday: "long", hour: "numeric", minute: "2-digit" });
-const timeOnly = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+const weekdayTime = formatDayTime;
+const timeOnly = formatTime;
 const HOUR = 3_600_000;
 const ALREADY_DEALT_WITH = "This payment has already been dealt with.";
 const CHALLENGE_FAILED_TO_SAVE = "We couldn't record that just now. Please try again.";
@@ -352,7 +353,7 @@ function NumberedSteps({ steps }: { steps: string[] }) {
 function TimelineItem({ title, sub, filled, last }: { title: string; sub?: string; filled?: boolean; last?: boolean }) {
   return (
     <li className={`grid grid-cols-[28px_minmax(0,1fr)] gap-x-3 ${last ? "" : "pb-4"}`}>
-      <span aria-hidden="true" className={`ml-[7px] mt-[5px] h-[14px] w-[14px] rounded-full ${filled ? "bg-held" : "box-border border-2 border-[#9aa6a0]"}`} />
+      <span aria-hidden="true" className={`ml-[7px] mt-[5px] h-[14px] w-[14px] rounded-full ${filled ? "bg-held" : "box-border border-2 border-line-strong"}`} />
       <div>
         <div className="text-[17px] font-bold">{title}</div>
         {sub && <div className="text-[16px] text-ink-3">{sub}</div>}

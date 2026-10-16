@@ -1,7 +1,8 @@
+import { formatShortDay } from "@/ui/format";
 import type { Trends } from "./dashboardService";
 
 export function weekLabel(isoMonday: string): string {
-  return new Date(`${isoMonday}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return formatShortDay(`${isoMonday}T00:00:00Z`, "UTC");
 }
 
 export function toChartRows(t: Trends): Record<string, string | number>[] {

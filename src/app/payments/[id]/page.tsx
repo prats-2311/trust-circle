@@ -26,15 +26,18 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   const [state, setState] = useState<State>({ kind: "loading" });
   const meRef = useRef<string[] | undefined>(undefined);
   const alive = useRef(true);
+  // Only the newest load may update the screen, so a poll started before an action never undoes that action's reload.
+  const latest = useRef(0);
 
   const load = useCallback(
     async (silent: boolean) => {
+      const seq = ++latest.current;
       const [pay, ver, me] = await Promise.all([
         fetchJson<Loaded>(`/api/payments/${id}`),
         fetchJson<Stage>(`/api/payments/${id}/verification`),
         meRef.current === undefined ? fetchJson<{ circle: { displayName: string }[] }>("/api/me") : Promise.resolve(null),
       ]);
-      if (!alive.current) return;
+      if (!alive.current || seq !== latest.current) return;
       if (!pay.ok && pay.signedOut) return setState({ kind: "signedOut" });
       if (!pay.ok) {
         // A failed background refresh keeps the last good screen rather than replacing it with an error.

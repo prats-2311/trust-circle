@@ -15,7 +15,7 @@ export function CheckForm({
   busy: boolean;
   onSubmit: () => void;
 }) {
-  const hint = "You can paste a text, an email or part of an invoice.";
+  const hint = file ? "We'll check the screenshot. Remove it to paste text instead." : "You can paste a text, an email or part of an invoice.";
   return (
     <Screen
       title="Check a message"
@@ -36,6 +36,7 @@ export function CheckForm({
             id="message"
             rows={6}
             value={text}
+            disabled={file !== null}
             onChange={(e) => onText(e.target.value)}
             aria-describedby={describedBy("message", hint, error)}
             aria-invalid={error ? true : undefined}
@@ -49,7 +50,7 @@ export function CheckForm({
             <div className="flex min-w-0 flex-col items-start gap-1">
               <span className="max-w-full truncate text-[17px] font-bold">{file.name}</span>
               <Button variant="quiet" className="w-auto!" onClick={() => onFile(null)}>
-                Remove
+                Remove screenshot
               </Button>
             </div>
           </div>

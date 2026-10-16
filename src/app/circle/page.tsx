@@ -1,4 +1,5 @@
 "use client";
+import { formatDay } from "@/ui/format";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
@@ -23,7 +24,7 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; me: Me; items: Item[]; alerts: Alert[] };
 
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+const day = formatDay;
 const joinNames = (names: string[]) => names.join(" and ");
 
 export default function CirclePage() {

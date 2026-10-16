@@ -1,3 +1,4 @@
+import { formatTime } from "@/ui/format";
 import type { Stage } from "@/app/payments/[id]/screen";
 
 export type DecisionTone = "safe" | "pending" | "info";
@@ -24,7 +25,7 @@ export function decisionResultCopy(
   return { tone: "safe", title: "Payment approved", lead: `It's on its way to the person ${senderName} wanted to pay.` };
 }
 
-const clock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true });
+const clock = formatTime;
 
 /** The verification note on the review screen. contactName is who was asked; senderName is who is paying. */
 export function verificationNotice(stage: Stage | null, senderName: string, viewerName: string): string | null {

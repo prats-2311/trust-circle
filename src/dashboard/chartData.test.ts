@@ -12,10 +12,10 @@ const trends = {
 
 describe("chart data", () => {
   it("labels weeks by day and short month", () => {
-    expect(weekLabel("2026-10-12")).toBe("12 Oct");
+    expect(weekLabel("2026-10-12")).toBe("Oct 12");
   });
   it("builds one row per week keyed by scam type", () => {
-    expect(toChartRows(trends)[3]).toEqual({ week: "12 Oct", impersonation_family: 3, invoice: 0 });
+    expect(toChartRows(trends)[3]).toEqual({ week: "Oct 12", impersonation_family: 3, invoice: 0 });
   });
   it("totals each scam type with the last four weeks", () => {
     expect(toTotalsRows(trends)).toEqual([

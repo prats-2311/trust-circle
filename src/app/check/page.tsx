@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchJson, jsonBody } from "@/ui/fetchJson";
 import { Lead, Screen } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
@@ -22,10 +22,27 @@ export default function CheckPage() {
   const [picked, setPicked] = useState<{ file: File; preview: string } | null>(null);
   const { busy, run } = useOnce();
 
-  const pick = (f: File | null) => {
-    if (picked) URL.revokeObjectURL(picked.preview);
-    setPicked(f ? { file: f, preview: URL.createObjectURL(f) } : null);
+  // Every object URL we create is revoked when replaced, on reset and on unmount.
+  const pickedUrl = useRef<string | null>(null);
+  const resultUrl = useRef<string | null>(null);
+  const revoke = (ref: { current: string | null }) => {
+    if (ref.current) URL.revokeObjectURL(ref.current);
+    ref.current = null;
   };
+
+  const pick = (f: File | null) => {
+    revoke(pickedUrl);
+    if (f) pickedUrl.current = URL.createObjectURL(f);
+    setPicked(f && pickedUrl.current ? { file: f, preview: pickedUrl.current } : null);
+  };
+
+  useEffect(
+    () => () => {
+      revoke(pickedUrl);
+      revoke(resultUrl);
+    },
+    [],
+  );
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("id");
@@ -45,7 +62,9 @@ export default function CheckPage() {
 
   const submit = (input: Input) =>
     run(async () => {
+      revoke(resultUrl);
       const pv = "file" in input ? URL.createObjectURL(input.file) : null;
+      resultUrl.current = pv;
       setPhase({ kind: "checking", preview: pv });
       let init: RequestInit;
       if ("file" in input) {
@@ -57,7 +76,7 @@ export default function CheckPage() {
       }
       const r = await fetchJson<CheckResponse>("/api/messages/check", init);
       if (r.ok) return setPhase({ kind: "result", check: r.data, preview: pv, justNow: true, retry: input });
-      if (pv) URL.revokeObjectURL(pv);
+      revoke(resultUrl);
       if (r.signedOut) return setPhase({ kind: "signedOut" });
       setPhase({ kind: "input", error: r.status === 400 || r.status === 413 || r.status === 0 ? r.error : "We couldn't check that message. Please try again." });
     });
@@ -105,6 +124,9 @@ export default function CheckPage() {
         onRetry={() => phase.retry && submit(phase.retry)}
         onNewCheck={() => {
           window.history.replaceState(null, "", "/check");
+          revoke(resultUrl);
+          pick(null);
+          setText("");
           setPhase({ kind: "input" });
         }}
       />
