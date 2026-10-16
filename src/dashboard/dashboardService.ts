@@ -4,7 +4,7 @@ import type { PaymentState, RiskLevel, ScamType } from "@/domain/types";
 import type { PaymentRepo } from "@/payments/paymentRepo";
 import { mondayOf, type RegistryRepo } from "@/registry/registryRepo";
 
-export type DashboardStatus = "sent" | "on_hold" | "stopped" | "hold_ended" | "refunded" | "in_progress";
+export type DashboardStatus = "sent" | "on_hold" | "stopped" | "hold_ended" | "refunded" | "in_progress" | "not_approved";
 
 export const STATUS_LABELS: Record<DashboardStatus, string> = {
   sent: "Sent",
@@ -13,6 +13,7 @@ export const STATUS_LABELS: Record<DashboardStatus, string> = {
   hold_ended: "Hold ended",
   refunded: "Refunded",
   in_progress: "In progress",
+  not_approved: "Not approved",
 };
 
 export function dashboardStatus(state: PaymentState, blocked: boolean): DashboardStatus {
@@ -21,6 +22,7 @@ export function dashboardStatus(state: PaymentState, blocked: boolean): Dashboar
   if (state === "blocked") return "stopped";
   if (state === "voided" || state === "expired") return blocked ? "stopped" : "hold_ended";
   if (state === "payout_failed" || state === "refunded") return "refunded";
+  if (state === "created") return "not_approved";
   return "in_progress";
 }
 

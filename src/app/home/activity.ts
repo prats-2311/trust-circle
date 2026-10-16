@@ -16,7 +16,9 @@ export function paymentChip(state: string): ChipView {
   if (state === "paid_out") return { tone: "safe", label: "Sent" };
   if (state === "held") return { tone: "held", label: "On hold" };
   if (state === "blocked" || state === "voided" || state === "expired") return { tone: "neutral", label: "Not sent" };
-  if (state === "refunded" || state === "payout_failed") return { tone: "caution", label: "Refunded" };
+  if (state === "created") return { tone: "neutral", label: "Not approved" };
+  if (state === "refunded") return { tone: "caution", label: "Refunded" };
+  if (state === "payout_failed") return { tone: "caution", label: "Being returned" };
   return { tone: "neutral", label: "In progress" };
 }
 

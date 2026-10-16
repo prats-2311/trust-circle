@@ -9,7 +9,7 @@ describe("screenFor", () => {
     [{ state: "approved", outcome: null }, null, "pending"],
     [{ state: "paid_out", outcome: null }, null, "sent"],
     [{ state: "refunded", outcome: null }, null, "refunded"],
-    [{ state: "payout_failed", outcome: null }, null, "refunded"],
+    [{ state: "payout_failed", outcome: null }, null, "returning"],
     [held, { stage: "waiting_for_person", contactName: "Daniel", askedAt: "x", challengeOpensAt: "y" }, "waiting"],
     [held, { stage: "challenge", method: "memory_question", requesterName: "grandson", guidance: [] }, "challenge_memory"],
     [held, { stage: "challenge", method: "safe_word", requesterName: "grandson", guidance: [] }, "challenge_safe_word"],
@@ -31,7 +31,7 @@ describe("screenFor", () => {
 describe("screenCopy", () => {
   const d = { amount: "$800", payee: "dhill@x.example", contactName: "Daniel" };
   const ALL: ScreenKind[] = [
-    "not_approved", "pending", "waiting", "challenge_memory", "challenge_safe_word", "official_routes", "held", "sent", "refunded",
+    "not_approved", "pending", "waiting", "challenge_memory", "challenge_safe_word", "official_routes", "held", "sent", "refunded", "returning",
     "stopped_by_person", "stopped_by_check", "stopped_by_circle", "cancelled", "hold_ended",
   ];
   it("only says 'Nothing has been sent' when no money can have moved", () => {
@@ -40,6 +40,17 @@ describe("screenCopy", () => {
       if (k === "not_approved") expect(text).toContain("Nothing has been sent");
       else expect(text).not.toContain("Nothing has been sent");
     }
+  });
+  it("says a failed payout is on its way back, not already refunded", () => {
+    expect(screenCopy("returning", d)).toEqual({
+      chipTone: "caution",
+      chip: "Being returned",
+      title: "We're returning this payment to you",
+      lead: "It couldn't be delivered, so the money is on its way back to your account.",
+    });
+  });
+  it("tells the sender not to resend while a payment is going through PayPal", () => {
+    expect(screenCopy("pending", d).lead).toBe("It's going through PayPal. Please don't send it again.");
   });
   it("names the real person when stopped by them", () => {
     expect(screenCopy("stopped_by_person", d)).toMatchObject({

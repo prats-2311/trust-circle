@@ -12,7 +12,7 @@ export type Stage =
 
 export type ScreenKind =
   | "not_approved" | "pending" | "waiting" | "challenge_memory" | "challenge_safe_word" | "official_routes" | "held"
-  | "sent" | "refunded" | "stopped_by_person" | "stopped_by_check" | "stopped_by_circle" | "cancelled" | "hold_ended";
+  | "sent" | "refunded" | "returning" | "stopped_by_person" | "stopped_by_check" | "stopped_by_circle" | "cancelled" | "hold_ended";
 
 export function screenFor(p: { state: string; outcome: Outcome }, stage: Stage | null): ScreenKind {
   switch (p.state) {
@@ -22,8 +22,10 @@ export function screenFor(p: { state: string; outcome: Outcome }, stage: Stage |
       return "pending";
     case "paid_out":
       return "sent";
-    case "refunded": case "payout_failed":
+    case "refunded":
       return "refunded";
+    case "payout_failed":
+      return "returning";
     case "held":
       if (stage?.stage === "waiting_for_person") return "waiting";
       if (stage?.stage === "challenge") return stage.method === "safe_word" ? "challenge_safe_word" : "challenge_memory";
@@ -53,7 +55,7 @@ export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string;
     case "not_approved":
       return { chipTone: "neutral", chip: "Not approved yet", title: "This payment hasn't been approved in PayPal", lead: "Nothing has been sent. You can start again from home." };
     case "pending":
-      return held("We're finishing this payment", "It's on its way through PayPal. Please don't send it again.", "Finishing");
+      return held("We're finishing this payment", "It's going through PayPal. Please don't send it again.", "Finishing");
     case "waiting":
       return held(`We've asked ${d.contactName ?? "the real person"} if it was really them`, "Someone pretending to be them can't answer from there.");
     case "challenge_memory":
@@ -68,6 +70,8 @@ export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string;
       return { chipTone: "safe", chip: "Sent", title: `${d.amount} sent to ${d.payee}`, lead: "The payment went through PayPal." };
     case "refunded":
       return { chipTone: "caution", chip: "Refunded", title: "This payment came back to you", lead: "It couldn't be delivered, so PayPal returned the money to your account." };
+    case "returning":
+      return { chipTone: "caution", chip: "Being returned", title: "We're returning this payment to you", lead: "It couldn't be delivered, so the money is on its way back to your account." };
     case "stopped_by_person":
       return stopped(`${d.contactName ?? "The real person"} told us they didn't ask for this money. The ${d.amount} was never sent.`);
     case "stopped_by_check":

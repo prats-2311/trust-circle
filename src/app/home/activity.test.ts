@@ -8,8 +8,13 @@ describe("chips", () => {
     ["voided", "neutral", "Not sent"],
     ["blocked", "neutral", "Not sent"],
     ["expired", "neutral", "Not sent"],
-    ["refunded", "caution", "Refunded"],
+    ["created", "neutral", "Not approved"],
+    ["approved", "neutral", "In progress"],
+    ["authorised", "neutral", "In progress"],
+    ["released", "neutral", "In progress"],
     ["captured", "neutral", "In progress"],
+    ["refunded", "caution", "Refunded"],
+    ["payout_failed", "caution", "Being returned"],
   ])("payment %s → %s %s", (state, tone, label) => expect(paymentChip(state)).toEqual({ tone, label }));
 
   it("never shows an unchecked message as safe", () => {
