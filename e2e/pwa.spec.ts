@@ -71,7 +71,7 @@ test.describe("opting in to notifications", () => {
     );
     await page.addInitScript(() => {
       let sub: unknown = null;
-      const endpoint = "https://push.example/e2e";
+      const endpoint = "https://fcm.googleapis.com/fcm/send/e2e";
       PushManager.prototype.subscribe = async () => {
         sub = {
           endpoint,
@@ -103,6 +103,30 @@ test.describe("opting in to notifications", () => {
 
     await expect(card).toHaveAttribute("data-state", "on");
     expect(posted).not.toBeNull();
-    expect(posted!.endpoint).toBe("https://push.example/e2e");
+    expect(posted!.endpoint).toBe("https://fcm.googleapis.com/fcm/send/e2e");
+  });
+});
+
+test.describe("signing out", () => {
+  test("takes this device off the account's push list first", async ({ page }) => {
+    const endpoint = "https://fcm.googleapis.com/fcm/send/e2e";
+    await page.addInitScript((ep) => {
+      const sub = { endpoint: ep, toJSON: () => ({ endpoint: ep }), unsubscribe: async () => true };
+      PushManager.prototype.getSubscription = async () => sub as unknown as PushSubscription;
+    }, endpoint);
+    let deleted: { endpoint?: string } | null = null;
+    await page.route("**/api/push/subscription", async (route) => {
+      if (route.request().method() !== "DELETE") return route.continue();
+      deleted = route.request().postDataJSON();
+      await route.fulfill({ status: 200, json: { ok: true } });
+    });
+
+    await signInAs(page, "margaret");
+    await page.goto("/home");
+    await expect.poll(() => page.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration()))).toBe(true);
+    await page.getByRole("button", { name: "Sign out" }).click();
+
+    await expect(page).toHaveURL(/\/$/);
+    expect(deleted).toEqual({ endpoint });
   });
 });
