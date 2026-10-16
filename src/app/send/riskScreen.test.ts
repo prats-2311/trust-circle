@@ -22,9 +22,13 @@ describe("approvalErrorCopy", () => {
   it("does not offer a retry when the payment was already decided", () => {
     expect(approvalErrorCopy(409, "This payment has already been dealt with.")).toEqual({ message: "This payment has already been dealt with.", canRetry: false });
   });
-  it("offers a retry otherwise, keeping the server's calm message", () => {
-    expect(approvalErrorCopy(503, "PayPal didn't answer in time. Nothing has been sent. Please try again in a moment.")).toEqual({
-      message: "PayPal didn't answer in time. Nothing has been sent. Please try again in a moment.", canRetry: true,
-    });
+  const SAFE = "We couldn't confirm this payment just now. You approved it in PayPal, so it may already be in progress. Check your payments before you try again.";
+  it.each([0, 500, 502, 503])("never passes server text through for status %d", (status) => {
+    const r = approvalErrorCopy(status, "Something went wrong. Nothing has been sent.");
+    expect(r).toEqual({ message: SAFE, canRetry: true });
+    expect(r.message).not.toContain("Nothing has been sent");
+  });
+  it("keeps the server's message for other 4xx errors and allows a retry", () => {
+    expect(approvalErrorCopy(400, "Please try again.")).toEqual({ message: "Please try again.", canRetry: true });
   });
 });

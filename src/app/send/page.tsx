@@ -26,10 +26,9 @@ type Phase =
   | { kind: "risk"; result: Result; cents: number }
   | { kind: "approving" }
   | { kind: "approvalError"; message: string; canRetry: boolean }
-  | { kind: "signedOut" };
+  | { kind: "signedOut"; afterApproval?: boolean };
 
 const FIELD_FOR: Record<string, keyof Errors> = { payee: "payee", amount: "amount", amountCents: "amount", note: "note", senderAnswer: "answer", answer: "answer" };
-const SAFE_FALLBACK = "We couldn't finish that just now. Please try again, or check your payments for the latest status.";
 const money = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 export default function SendPage() {
@@ -94,11 +93,9 @@ export default function SendPage() {
     const r = await fetchJson<unknown>(`/api/payments/${id}/approved`, { method: "POST" });
     // A 200 or a 202 both mean PayPal approved it: the payment page shows where it stands.
     if (r.ok) return router.push(`/payments/${id}`);
-    if (r.signedOut) return setPhase({ kind: "signedOut" });
+    if (r.signedOut) return setPhase({ kind: "signedOut", afterApproval: true });
     const copy = approvalErrorCopy(r.status, r.error);
-    // After approval the money may have moved, so never carry a "nothing was sent" message onto this screen.
-    const message = /nothing (has been|was) sent/i.test(copy.message) ? SAFE_FALLBACK : copy.message;
-    setPhase({ kind: "approvalError", message, canRetry: copy.canRetry });
+    setPhase({ kind: "approvalError", message: copy.message, canRetry: copy.canRetry });
   }, [router]);
 
   // Retrying asks the server again about the order PayPal already approved. It never reopens PayPal.
@@ -110,6 +107,9 @@ export default function SendPage() {
   if (phase.kind === "signedOut") {
     return (
       <Screen title="Send money">
+        {phase.afterApproval && (
+          <p className="mt-5 text-[18px] font-bold leading-snug">Your payment may already be in progress. Check your payments before you send it again.</p>
+        )}
         <SignedOut />
       </Screen>
     );
@@ -152,11 +152,11 @@ export default function SendPage() {
           </>
         }
       >
-        <Title>We couldn&apos;t finish that just now</Title>
+        <Title>Your payment needs a second look</Title>
         <div className="mt-5">
           <Notice tone="error">{phase.message}</Notice>
         </div>
-        <Lead>You approved this in PayPal, so it may already be on its way. Check your payments for the latest status before you try anything else.</Lead>
+        <Lead>You approved this in PayPal, so it may already be in progress. Check your payments for the latest status before you try anything else.</Lead>
       </Screen>
     );
   }
