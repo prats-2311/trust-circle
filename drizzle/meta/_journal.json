@@ -43,6 +43,13 @@
       "when": 1792148387828,
       "tag": "0005_curious_doorman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792149196842,
+      "tag": "0006_skinny_bill_hollister",
+      "breakpoints": true
     }
   ]
 }

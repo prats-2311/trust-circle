@@ -76,7 +76,7 @@ export const auditLog = pgTable("audit_log", {
 
 export const verificationMethodEnum = pgEnum("verification_method", ["real_person", "official_routes", "safe_word", "memory_question"]);
 export const verificationStatusEnum = pgEnum("verification_status", ["pending", "confirmed", "denied", "passed", "failed"]);
-export const alertChannelEnum = pgEnum("alert_channel", ["in_app", "email"]);
+export const alertChannelEnum = pgEnum("alert_channel", ["in_app", "push", "email"]);
 export const alertStatusEnum = pgEnum("alert_status", ["sent", "skipped", "failed"]);
 
 export const messageChecks = pgTable("message_checks", {
@@ -179,3 +179,11 @@ export const scamReports = pgTable(
   },
   (t) => [uniqueIndex("scam_reports_check").on(t.messageCheckId)],
 );
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  endpoint: text("endpoint").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("push_subscriptions_user").on(t.userId)]);

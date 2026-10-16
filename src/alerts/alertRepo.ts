@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 export type AlertKind = "payment_held" | "medium_payment_sent" | "verify_request" | "payment_stopped" | "payment_confirmed" | "payment_update";
-export type AlertChannel = "in_app" | "email";
+export type AlertChannel = "in_app" | "push" | "email";
 export type AlertStatus = "sent" | "skipped" | "failed";
 
 export interface AlertPayload {

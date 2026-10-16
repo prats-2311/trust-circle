@@ -28,6 +28,9 @@ import { createDrizzleScamReportRepo } from "@/reports/drizzleScamReportRepo";
 import { createReportService, type ReportService } from "@/reports/reportService";
 import { createDrizzleSettingsRepo } from "@/settings/drizzleSettingsRepo";
 import { createSettingsService, type SettingsService } from "@/settings/settingsService";
+import { createDrizzlePushRepo } from "@/push/drizzlePushRepo";
+import type { PushRepo } from "@/push/pushRepo";
+import { createWebPushSender } from "@/push/pushSender";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -43,6 +46,7 @@ type Container = {
   reports: ReportService;
   dashboard: DashboardService;
   settings: SettingsService;
+  push: PushRepo;
 };
 let container: Container | undefined;
 
@@ -73,10 +77,15 @@ export function getContainer(): Container {
   });
   const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });
   const verificationRepo = createDrizzleVerificationRepo(db);
+  const pushRepo = createDrizzlePushRepo(db);
   const alerts = createAlertService({
     repo: createDrizzleAlertRepo(db),
     users: circle,
     email: env.RESEND_API_KEY ? createResendEmailSender({ apiKey: env.RESEND_API_KEY, from: env.ALERT_FROM_EMAIL }) : undefined,
+    push:
+      env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+        ? { repo: pushRepo, send: createWebPushSender({ publicKey: env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT }) }
+        : undefined,
     appUrl: env.APP_URL,
     // A verify request is only worth showing while the verification is pending and the payment is still held.
     // A hold alert is only worth showing while the payment is still held. Every other kind stays visible.
@@ -134,6 +143,6 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings };
+  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo };
   return container;
 }

@@ -1,4 +1,6 @@
 import type { CircleRepo } from "@/circle/circleRepo";
+import type { PushRepo } from "@/push/pushRepo";
+import type { PushSender } from "@/push/pushSender";
 import { alertCopy } from "./alertCopy";
 import type { AlertKind, AlertPayload, AlertRepo, AlertStatus } from "./alertRepo";
 import type { EmailSender } from "./emailSender";
@@ -19,13 +21,77 @@ export function createAlertService(deps: {
   repo: AlertRepo;
   users: Pick<CircleRepo, "getUser">;
   email?: EmailSender;
+  push?: { repo: PushRepo; send: PushSender };
+  /** How long push and email may each take before they are recorded as failed. */
+  timeoutMs?: number;
   appUrl: string;
   /** Whether an alert still needs attention (a verify request that can be answered, a hold that is still held). Closed ones are left out of the list. */
   isAlertOpen?: (a: { kind: AlertKind; paymentId: string | null; verificationId: string | null }) => Promise<boolean>;
   now?: () => Date;
 }) {
   const now = deps.now ?? (() => new Date());
+  const timeoutMs = deps.timeoutMs ?? 5_000;
   const appUrl = deps.appUrl.replace(/\/+$/, "");
+
+  /** Resolves with the work's result, or "failed" when it throws or takes longer than the timeout. */
+  async function withTimeout(work: () => Promise<AlertStatus>, onError: (e: unknown) => void): Promise<AlertStatus> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cutOff = new Promise<AlertStatus>((resolve) => {
+      timer = setTimeout(() => resolve("failed"), timeoutMs);
+    });
+    try {
+      return await Promise.race([Promise.resolve().then(work), cutOff]);
+    } catch (e) {
+      onError(e);
+      return "failed";
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  type Base = Parameters<typeof alertCopy>[0] & { recipientId: string };
+
+  function sendPush(kind: AlertKind, base: Base): Promise<AlertStatus> {
+    const push = deps.push;
+    if (!push) return Promise.resolve("skipped");
+    return withTimeout(
+      async () => {
+        const subs = await push.repo.listForUser(base.recipientId);
+        if (subs.length === 0) return "skipped";
+        const copy = alertCopy(base);
+        const payload = JSON.stringify({ title: copy.title, body: copy.body, url: copy.path, tag: `${kind}:${base.paymentId ?? base.verificationId}` });
+        const results = await Promise.allSettled(
+          subs.map(async (sub) => {
+            try {
+              await push.send(sub, payload);
+            } catch (e) {
+              const status = (e as { statusCode?: unknown } | null)?.statusCode;
+              console.warn("alert push failed", { kind, status: typeof status === "number" ? status : undefined });
+              if (status === 404 || status === 410) await push.repo.remove(sub.endpoint).catch(() => {});
+              throw e;
+            }
+          }),
+        );
+        return results.some((r) => r.status === "fulfilled") ? "sent" : "failed";
+      },
+      () => console.warn("alert push failed", { kind, status: undefined }),
+    );
+  }
+
+  function sendEmail(kind: AlertKind, base: Base): Promise<AlertStatus> {
+    const email = deps.email;
+    if (!email) return Promise.resolve("skipped");
+    return withTimeout(
+      async () => {
+        const user = await deps.users.getUser(base.recipientId);
+        if (!user) return "skipped";
+        const copy = alertCopy(base);
+        await email({ to: user.email, subject: copy.title, text: `${copy.body}\n\nOpen Trust Circle: ${appUrl}${copy.path}` });
+        return "sent";
+      },
+      (e) => console.warn("alert email failed", { kind, error: e instanceof Error ? e.message : "unknown" }),
+    );
+  }
 
   return {
     async notify(a: { recipientId: string; kind: AlertKind; paymentId?: string; verificationId?: string; payload: AlertPayload }): Promise<void> {
@@ -37,20 +103,10 @@ export function createAlertService(deps: {
         payload: a.payload,
       };
       await deps.repo.insert({ ...base, channel: "in_app", status: "sent" });
-      // Email always goes alongside in-app (push joins in Plan 4). A delivery failure is recorded, never thrown.
-      let status: AlertStatus = "skipped";
-      const user = deps.email ? await deps.users.getUser(a.recipientId) : null;
-      if (deps.email && user) {
-        const copy = alertCopy(base);
-        try {
-          await deps.email({ to: user.email, subject: copy.title, text: `${copy.body}\n\nOpen Trust Circle: ${appUrl}${copy.path}` });
-          status = "sent";
-        } catch (e) {
-          status = "failed";
-          console.warn("alert email failed", { kind: a.kind, error: e instanceof Error ? e.message : "unknown" });
-        }
-      }
-      await deps.repo.insert({ ...base, channel: "email", status });
+      // Push and email go alongside in-app, at the same time. A delivery failure is recorded, never thrown.
+      const [pushStatus, emailStatus] = await Promise.all([sendPush(a.kind, base), sendEmail(a.kind, base)]);
+      await deps.repo.insert({ ...base, channel: "push", status: pushStatus });
+      await deps.repo.insert({ ...base, channel: "email", status: emailStatus });
     },
 
     async list(recipientId: string): Promise<AlertView[]> {
