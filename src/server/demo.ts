@@ -4,6 +4,8 @@ export const DEMO_PERSONAS = {
   sarah: "sarah.demo@trustcircle.example",
   daniel: "daniel.demo@trustcircle.example",
   robert: "robert.demo@trustcircle.example",
+  priya: "priya.demo@trustcircle.example",
+  tom: "tom.demo@trustcircle.example",
 } as const;
 
 export type Persona = keyof typeof DEMO_PERSONAS;
@@ -13,7 +15,7 @@ export function isPersona(x: unknown): x is Persona {
 }
 
 export function homeFor(p: Persona): string {
-  return p === "margaret" || p === "robert" ? "/home" : "/circle";
+  return p === "margaret" || p === "robert" || p === "priya" ? "/home" : "/circle";
 }
 
 export function personaForEmail(email: string): Persona | null {

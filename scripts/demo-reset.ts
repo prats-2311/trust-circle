@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { inArray, sql } from "drizzle-orm";
 import { createDb } from "../src/db/client";
 import { users } from "../src/db/schema";
-import { DEMO_PERSONAS } from "../src/server/demo";
+import { DEMO_PERSONAS, type Persona } from "../src/server/demo";
 
 // Puts the demo back to a clean story: users, circles and known scam patterns stay; everything that happened goes.
 async function main() {
@@ -14,6 +14,10 @@ async function main() {
       sql`TRUNCATE scam_reports, registry_reports, registry_entries, alerts, verifications, message_checks, audit_log, payments CASCADE`,
     );
     await db.update(users).set({ safeWordHash: null, onboardedAt: null, coolingOffHours: 24 }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
+    const presetFor = (names: Persona[]) => names.map((n) => DEMO_PERSONAS[n]);
+    await db.update(users).set({ preset: "family" }).where(inArray(users.email, presetFor(["margaret", "sarah", "daniel"])));
+    await db.update(users).set({ preset: "business" }).where(inArray(users.email, presetFor(["priya", "tom"])));
+    await db.update(users).set({ preset: "solo" }).where(inArray(users.email, presetFor(["robert"])));
   } finally {
     await close();
   }

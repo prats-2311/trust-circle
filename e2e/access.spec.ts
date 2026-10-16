@@ -15,3 +15,12 @@ test("a signed-out visitor is offered the demo accounts", async ({ page }) => {
   await page.goto("/home");
   await expect(page.getByRole("link", { name: "Choose a demo account" })).toBeVisible();
 });
+
+test("Priya signs in to her home and Tom to the circle", async ({ page }) => {
+  await signInAs(page, "priya");
+  await page.goto("/home");
+  await expect(page).toHaveURL(/\/home$/);
+  await signInAs(page, "tom");
+  await page.goto("/circle");
+  await expect(page).toHaveURL(/\/circle$/);
+});

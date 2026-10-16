@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
+import type { Persona } from "../src/server/demo";
 
-export async function signInAs(page: Page, as: "margaret" | "sarah" | "daniel" | "robert") {
+export async function signInAs(page: Page, as: Persona) {
   const r = await page.request.post("/api/demo/login", { data: { as } });
   expect(r.ok()).toBe(true);
 }

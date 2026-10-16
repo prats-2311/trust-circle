@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PERSONAS, homeFor, isPersona } from "./demo";
+import { DEMO_PERSONAS, homeFor, isPersona, personaForEmail } from "./demo";
 
 describe("demo personas", () => {
-  it("knows the four seeded accounts", () => {
-    expect(Object.keys(DEMO_PERSONAS)).toEqual(["margaret", "sarah", "daniel", "robert"]);
+  it("knows the six seeded accounts", () => {
+    expect(Object.keys(DEMO_PERSONAS)).toEqual(["margaret", "sarah", "daniel", "robert", "priya", "tom"]);
     expect(DEMO_PERSONAS.margaret).toBe("margaret.demo@trustcircle.example");
   });
   it("accepts only persona names", () => {
@@ -16,5 +16,11 @@ describe("demo personas", () => {
     expect(homeFor("robert")).toBe("/home");
     expect(homeFor("sarah")).toBe("/circle");
     expect(homeFor("daniel")).toBe("/circle");
+    expect(homeFor("priya")).toBe("/home");
+    expect(homeFor("tom")).toBe("/circle");
+  });
+  it("finds a persona by email, ignoring case", () => {
+    expect(personaForEmail("PRIYA.demo@trustcircle.example")).toBe("priya");
+    expect(personaForEmail("nobody@example.com")).toBeNull();
   });
 });
