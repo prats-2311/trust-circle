@@ -150,20 +150,31 @@ Text from messages, payments and tool results is treated as data. The prompts sa
 
 ## Accuracy
 
-From [docs/eval/results.md](docs/eval/results.md): run 2026-10-16 on 60 invented cases (32 scams, 28 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
+From [docs/eval/results.md](docs/eval/results.md): run 2026-10-16 on 72 invented cases (38 scams, 34 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
 
 | Measure | Result |
 |---|---|
-| Scams flagged (warning or hold) | 32 of 32 (100%) |
-| Scams held | 32 of 32 (100%) |
-| Genuine cases given a warning or hold | 5 of 28 (18%) |
-| Genuine cases held | 1 of 28 (4%) |
-| Cases the AI could not check after one retry | 0 |
-| Cases that needed a retry | 0 (0 recovered) |
+| Scams flagged (warning or hold) | 38 of 38 (100%) |
+| Scams held | 38 of 38 (100%) |
+| Genuine cases given a warning or hold | 11 of 34 (32%) |
+| Genuine cases held | 1 of 34 (3%) |
+| Cases the AI could not check after one retry | 1 (a genuine message, shown as unchecked, never as safe) |
 
 Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Result: pass.
 
-**Reading it honestly.** 4 of the 5 false alarms on genuine cases carry KNOWN_SCAM_PATTERN, and one genuine case was held on that signal alone. The last run with the matcher off had 2 false alarms out of 28, so the matcher catches reworded scams at the cost of more warnings on everyday payments. The seed patterns are likely too broad for some ordinary messages. The set is 60 hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
+### What the AI adds
+
+The same run, scored on payments with the rules alone (first-time payee, unusual amount, circle limit, rapid repeats, the scam list):
+
+| Payments (22 scams, 20 genuine) | Scams held | Genuine held |
+|---|---|---|
+| Rules and AI (as the app runs) | 22 of 22 | 1 of 20 |
+| Rules alone, holding only what they rate high | 0 of 22 | 0 of 20 |
+| Rules alone, holding everything they warn about | 16 of 22 | 7 of 20 |
+
+No rules-only setting matches the AI. Six of the scams are deliberately hard for rules: an everyday amount to a new payee, or a payee already paid (a friend's hacked account). The rules see nothing wrong; the AI reads the sender's own words and holds all six. Scam messages have no rules-only score at all: without AI, nothing reads the text.
+
+**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning; only one genuine payment was held. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 21 of 22 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 72 hand-written cases (the 12 hard payments were committed before the run that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
 
 ## Architecture
 
