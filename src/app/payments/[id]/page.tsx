@@ -1,73 +1,95 @@
 "use client";
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import type { Outcome } from "@/server/paymentOutcome";
+import { ButtonLink } from "@/ui/Button";
+import { fetchJson } from "@/ui/fetchJson";
+import { Notice } from "@/ui/Notice";
+import { Screen, Title } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
-import { SIGNED_OUT } from "@/ui/fetchJson";
-import { use, useEffect, useState } from "react";
+import { Skeleton } from "@/ui/Skeleton";
+import { PaymentScreens, type PaymentView } from "./PaymentScreens";
+import { screenFor, type ScreenKind, type Stage } from "./screen";
 
-type PaymentView = { id: string; state: string; coolingOffUntil: string | null };
+type Loaded = PaymentView & { outcome: Outcome };
+type State =
+  | { kind: "loading" }
+  | { kind: "signedOut" }
+  | { kind: "notFound" }
+  | { kind: "error"; message: string }
+  | { kind: "ready"; p: Loaded; stage: Stage | null; circleFirst: string | null };
 
-function errorText(json: unknown): string {
-  return json && typeof json === "object" && "error" in json && typeof json.error === "string"
-    ? json.error
-    : "Something went wrong. Please try again.";
-}
+const POLL_MS = 5000;
+const POLLED: ScreenKind[] = ["pending", "waiting", "held", "challenge_memory", "challenge_safe_word", "official_routes"];
 
 export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [p, setP] = useState<PaymentView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [state, setState] = useState<State>({ kind: "loading" });
+  const meRef = useRef<string | null | undefined>(undefined);
+  const alive = useRef(true);
+
+  const load = useCallback(
+    async (silent: boolean) => {
+      const [pay, ver, me] = await Promise.all([
+        fetchJson<Loaded>(`/api/payments/${id}`),
+        fetchJson<Stage>(`/api/payments/${id}/verification`),
+        meRef.current === undefined ? fetchJson<{ circle: { displayName: string }[] }>("/api/me") : Promise.resolve(null),
+      ]);
+      if (!alive.current) return;
+      if (!pay.ok && pay.signedOut) return setState({ kind: "signedOut" });
+      if (!pay.ok) {
+        // A failed background refresh keeps the last good screen rather than replacing it with an error.
+        if (silent) return;
+        return setState(pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." });
+      }
+      if (me?.ok) meRef.current = me.data.circle[0]?.displayName ?? null;
+      setState({ kind: "ready", p: pay.data, stage: ver.ok ? ver.data : null, circleFirst: meRef.current ?? null });
+    },
+    [id],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/payments")
-      .then(async (r) => {
-        if (r.status === 401) {
-          if (!cancelled) setError(SIGNED_OUT);
-          return;
-        }
-        if (!r.ok) throw new Error("load failed");
-        const all = (await r.json()) as PaymentView[];
-        if (cancelled) return;
-        setP(all.find((x) => x.id === id) ?? null);
-        setLoaded(true);
-      })
-      .catch(() => {
-        if (!cancelled) setError("We couldn't load this payment. Please refresh.");
-      });
+    alive.current = true;
+    void load(false);
     return () => {
-      cancelled = true;
+      alive.current = false;
     };
-  }, [id]);
+  }, [load]);
 
-  async function release() {
-    setError(null);
-    const r = await fetch(`/api/payments/${id}/release`, { method: "POST" });
-    if (r.status === 401) return setError(SIGNED_OUT);
-    const j: unknown = await r.json().catch(() => null);
-    if (r.ok) {
-      setP(j as PaymentView);
-    } else {
-      setError(errorText(j));
-    }
+  const kind = state.kind === "ready" ? screenFor(state.p, state.stage) : null;
+  const polling = kind !== null && POLLED.includes(kind);
+  useEffect(() => {
+    if (!polling) return;
+    const tick = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = setInterval(tick, POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [polling, load]);
+
+  if (state.kind === "ready" && kind) {
+    const contactName = state.stage?.stage === "waiting_for_person" ? state.stage.contactName : state.circleFirst;
+    return <PaymentScreens kind={kind} p={state.p} stage={state.stage} contactName={contactName} reload={() => load(true)} />;
   }
-
-  if (!p) {
+  if (state.kind === "loading") {
     return (
-      <main>
-        {error === SIGNED_OUT ? <SignedOut /> : error ? <p role="alert">{error}</p> : loaded ? <p role="alert">We couldn&apos;t find this payment.</p> : "Loading…"}
-      </main>
+      <Screen backHref="/home">
+        <p role="status" className="sr-only">Loading your payment…</p>
+        <Skeleton blocks={[228, 40, 80, 120]} />
+      </Screen>
     );
   }
+  if (state.kind === "signedOut") return <Screen><SignedOut /></Screen>;
   return (
-    <main>
-      <h1 data-testid="payment-state">{p.state}</h1>
-      {p.state === "held" && p.coolingOffUntil && (
-        <p>Your circle has been asked. You can release it yourself after {new Date(p.coolingOffUntil).toLocaleString()}.</p>
+    <Screen backHref="/home" footer={<ButtonLink href="/home" variant="secondary">Back to home</ButtonLink>}>
+      {state.kind === "notFound" ? (
+        <Title>We couldn&apos;t find this payment</Title>
+      ) : (
+        <div className="mt-6"><Notice tone="error">{state.kind === "error" ? state.message : ""}</Notice></div>
       )}
-      {p.state === "held" && (
-        <button data-testid="release" onClick={release}>Release now</button>
-      )}
-      {error === SIGNED_OUT ? <SignedOut /> : error && <p role="alert">{error}</p>}
-    </main>
+    </Screen>
   );
 }

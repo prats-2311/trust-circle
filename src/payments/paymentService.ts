@@ -291,6 +291,13 @@ export function createPaymentService(deps: {
       return settle(p, a.senderId);
     },
 
+    /** The sender stops their own held payment: it is blocked first (the claim), then PayPal's authorisation is voided. */
+    async senderCancel(a: { paymentId: string; senderId: string }) {
+      const p = await mustGet(a.paymentId);
+      if (p.senderId !== a.senderId) throw new NotAllowedError("Only the sender can cancel this payment.");
+      return blockHeld({ paymentId: p.id, actorId: a.senderId });
+    },
+
     async expireStale() {
       const expired: string[] = [];
       const voidRetried: string[] = [];

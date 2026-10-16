@@ -799,3 +799,29 @@ describe("settleHeld and blockHeld", () => {
     await expect(service.blockHeld({ paymentId: payment.id, actorId: CONTACT })).rejects.toBeInstanceOf(ConcurrentUpdateError);
   });
 });
+
+describe("senderCancel", () => {
+  it("lets the sender stop a held payment, voiding it and recording them as the actor", async () => {
+    const { service, gateway, repo } = setup({ level: "high" });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    const done = await service.senderCancel({ paymentId: payment.id, senderId: SENDER });
+    expect(done.state).toBe("voided");
+    expect(gateway.voidAuthorization).toHaveBeenCalledTimes(1);
+    const audits = await repo.auditFor(payment.id);
+    expect(audits.find((a) => a.action === "BLOCK")?.actorId).toBe(SENDER);
+  });
+  it("refuses anyone else and payments that are not held", async () => {
+    const { service } = setup({ level: "high" });
+    const { payment } = await service.start(send);
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(ConcurrentUpdateError);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: CONTACT })).rejects.toBeInstanceOf(NotAllowedError);
+  });
+  it("is pending, not failed, when PayPal's void fails after the claim", async () => {
+    const { service } = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValue(new PayPalError("void", 500, undefined, "d")) } });
+    const { payment } = await service.start(send);
+    await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    await expect(service.senderCancel({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+  });
+});
