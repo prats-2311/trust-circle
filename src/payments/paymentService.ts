@@ -53,6 +53,7 @@ export function createPaymentService(deps: {
   now?: () => Date;
   newId?: () => string;
   extraContext?: (senderId: string) => Promise<ExtraContext>;
+  linkedMessage?: (senderId: string, payee: string) => Promise<string | undefined>;
 }) {
   const { repo, gateway, judge } = deps;
   const now = deps.now ?? (() => new Date());
@@ -181,9 +182,11 @@ export function createPaymentService(deps: {
   return {
     async start(a: { senderId: string; payee: string; amountCents: number; note?: string; senderAnswer?: string }) {
       const payee = validate(a);
+      // A failed lookup only loses context for the AI; it must not stop the payment being assessed.
+      const linkedMessage = deps.linkedMessage ? await deps.linkedMessage(a.senderId, payee).catch(() => undefined) : undefined;
       const facts = await repo.senderContextFacts(a.senderId, now());
       const decision: RiskDecision = await assessPayment(
-        { payee, amountCents: a.amountCents, note: a.note, senderAnswer: a.senderAnswer },
+        { payee, amountCents: a.amountCents, note: a.note, senderAnswer: a.senderAnswer, ...(linkedMessage ? { linkedMessage } : {}) },
         { ...facts, ...(await extra(a.senderId)) },
         judge,
         deps.guard,

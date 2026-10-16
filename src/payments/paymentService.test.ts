@@ -45,6 +45,22 @@ describe("start", () => {
     expect(guard).toHaveBeenCalledWith("my grandson");
     expect(decision.level).toBe("high");
   });
+  it("gives the judge the message this payee appeared in", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const judge = judgeSaying("high");
+    const linkedMessage = vi.fn().mockResolvedValue("Grandma it's me, send $800");
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge, linkedMessage });
+    await service.start(send);
+    expect(linkedMessage).toHaveBeenCalledWith(SENDER, "grandson@example.com");
+    expect(judge.mock.calls[0]![0]).toMatchObject({ linkedMessage: "Grandma it's me, send $800" });
+  });
+  it("still assesses the payment when looking up the linked message fails", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const service = createPaymentService({
+      repo, gateway: fakeGateway(), judge: judgeSaying("low"), linkedMessage: vi.fn().mockRejectedValue(new Error("db down")),
+    });
+    await expect(service.start(send)).resolves.toBeTruthy();
+  });
   it("stores who the AI thinks is being impersonated", async () => {
     const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
     const judge = vi.fn().mockResolvedValue({

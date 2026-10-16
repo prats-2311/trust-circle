@@ -5,6 +5,7 @@ export interface PaymentRiskInput {
   amountCents: number;
   note?: string;
   senderAnswer?: string;
+  linkedMessage?: string;
 }
 
 export interface SenderContext {
