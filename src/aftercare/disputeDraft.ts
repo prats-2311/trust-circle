@@ -14,7 +14,7 @@ export function draftDispute(p: { senderName: string; payee: string; amountCents
     `Amount: ${amount}`,
     `Date: ${date}`,
     "",
-    "Why: this account has since been reported as a scam by other people in Trust Circle, a scam-protection service for PayPal payments. I did not know when I sent it.",
+    "Why: this account has since been reported as a scam to Trust Circle, a scam-protection service for PayPal payments. I did not know when I sent it.",
     "",
     "Please open a dispute and tell me what else you need from me.",
   ].join("\n");

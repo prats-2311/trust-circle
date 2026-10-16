@@ -22,14 +22,17 @@ function toolLine(t: AftercareReport["toolCalls"][number]): string {
 
 function Finding({ f, row, senderName }: { f: AftercareFinding; row: DashboardRow | undefined; senderName: string }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const canDraft = f.severity === "act" && f.title === SCAM_PAYEE_TITLE && row !== undefined;
+  const draft = row ? draftDispute({ senderName, payee: row.payee, amountCents: row.amountCents, date: new Date(row.createdAt) }) : "";
   const copy = async () => {
-    if (!row) return;
     try {
-      await navigator.clipboard.writeText(draftDispute({ senderName, payee: row.payee, amountCents: row.amountCents, date: new Date(row.createdAt) }));
+      await navigator.clipboard.writeText(draft);
       setCopied(true);
+      setCopyFailed(false);
     } catch {
       setCopied(false);
+      setCopyFailed(true);
     }
   };
   const { tone, label } = SEVERITY[f.severity];
@@ -43,6 +46,12 @@ function Finding({ f, row, senderName }: { f: AftercareFinding; row: DashboardRo
         <Button variant="secondary" onClick={copy}>
           {copied ? "Copied" : "Copy dispute draft"}
         </Button>
+      )}
+      {copyFailed && (
+        <>
+          <Notice tone="error">We couldn&apos;t copy it. Select the text below instead.</Notice>
+          <textarea readOnly rows={9} value={draft} aria-label="Dispute draft" className="w-full rounded-control border-2 border-line-strong bg-surface p-3 text-[17px]" />
+        </>
       )}
     </li>
   );

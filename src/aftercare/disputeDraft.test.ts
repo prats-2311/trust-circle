@@ -7,6 +7,6 @@ describe("dispute draft", () => {
     expect(t).toContain("Paid to: scam@x.com");
     expect(t).toContain("Amount: $800.50");
     expect(t).toContain("Date: 2026-10-11");
-    expect(t).toContain("reported as a scam");
+    expect(t).toContain("reported as a scam to Trust Circle");
   });
 });

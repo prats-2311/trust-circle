@@ -30,7 +30,9 @@ export function createAftercareService(deps: {
           createdAt: p.createdAt.toISOString(),
           confirmedScamPayee: matchKeys(p.payee).some((k) => confirmed.has(k)),
         }));
-      return deps.agent({ senderName: sender?.displayName ?? "This person", payments });
+      const inWindow = new Set(payments.map((p) => p.id));
+      const paypalOrderIds = all.filter((p) => inWindow.has(p.id) && p.paypalOrderId).map((p) => p.paypalOrderId!);
+      return deps.agent({ senderName: sender?.displayName ?? "This person", payments, paypalOrderIds });
     },
   };
 }

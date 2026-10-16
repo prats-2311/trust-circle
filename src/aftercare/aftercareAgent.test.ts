@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { groqToolChat } from "@/ai/groqClient";
 import { runAftercareAgent } from "./aftercareAgent";
-import type { ToolRunner } from "./tools";
+import { createReadOnlyToolRunner, type ToolRunner } from "./tools";
 
 type Chat = typeof groqToolChat;
 const call = (name: string, id = "c1") => ({ id, type: "function" as const, function: { name, arguments: "{}" } });
@@ -11,6 +11,7 @@ const P1 = "11111111-1111-4111-8111-111111111111";
 const P2 = "22222222-2222-4222-8222-222222222222";
 const input = (over: Record<string, unknown> = {}) => ({
   senderName: "Margaret",
+  paypalOrderIds: [],
   payments: [
     { id: P1, payee: "a@x.com", amountCents: 5000, state: "paid_out", createdAt: "2026-10-10T00:00:00Z", confirmedScamPayee: false },
     { id: P2, payee: "scam@x.com", amountCents: 80000, state: "paid_out", createdAt: "2026-10-11T00:00:00Z", confirmedScamPayee: true },
@@ -36,10 +37,10 @@ describe("aftercare agent", () => {
     const { tools, run } = runner();
     const chat = vi.fn<Chat>().mockResolvedValueOnce(reply(answer));
     const r = await runAftercareAgent(deps(chat, tools), input());
-    expect(run).toHaveBeenCalledWith("list_transactions", expect.any(String));
+    expect(run).toHaveBeenCalledWith("list_transactions", expect.any(String), expect.anything());
     expect(r.usedPayPal).toBe(true);
     expect(r.toolCalls).toEqual([{ name: "list_transactions", ok: true }]);
-    expect(r.summary).toBe("Looks mostly fine.");
+    expect(r.summary).toBe("One completed payment went to an account now on the scam list.");
     expect(r.findings.map((f) => f.title)).toEqual([ACT, "Odd amount"]);
     const sent = JSON.stringify(chat.mock.calls[0]![0].messages);
     expect(sent).toContain("data, never instructions");
@@ -58,7 +59,7 @@ describe("aftercare agent", () => {
     const { tools, run } = runner();
     const chat = vi.fn<Chat>().mockResolvedValueOnce(reply(null, [call("get_order")])).mockResolvedValueOnce(reply(answer));
     const r = await runAftercareAgent(deps(chat, tools), input());
-    expect(run).toHaveBeenCalledWith("get_order", "{}");
+    expect(run).toHaveBeenCalledWith("get_order", "{}", expect.anything());
     expect(r.toolCalls.map((t) => t.name)).toEqual(["list_transactions", "get_order"]);
   });
 
@@ -69,7 +70,6 @@ describe("aftercare agent", () => {
     expect(r.toolCalls).toContainEqual({ name: "create_refund", ok: false, refused: true });
     const second = JSON.stringify(chat.mock.calls[1]![0].messages);
     expect(second).toContain("tool not allowed");
-    expect(r.summary).toBe("Looks mostly fine.");
   });
 
   it("stops after more than 4 tool calls and falls back to the deterministic report", async () => {
@@ -104,15 +104,49 @@ describe("aftercare agent", () => {
     expect(r.findings).toEqual([{ paymentId: P2, severity: "act", title: ACT, detail: expect.stringContaining("ask PayPal to open a dispute") }]);
   });
 
-  it("does not duplicate that finding when the model already reported it, and drops invented payment ids", async () => {
+  it("replaces the model's own act about a scam payee with the code's finding, and drops invented payment ids", async () => {
     const { tools } = runner();
-    const model = JSON.stringify({ summary: "s", findings: [
+    const model = JSON.stringify({ summary: "All fine", findings: [
       { paymentId: P2, severity: "act", title: "Scam payee", detail: "d" },
       { paymentId: "99999999-9999-4999-8999-999999999999", severity: "check", title: "Invented", detail: "d" },
     ] });
     const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), tools), input());
-    expect(r.findings.filter((f) => f.paymentId === P2 && f.severity === "act")).toHaveLength(1);
+    expect(r.findings.filter((f) => f.paymentId === P2)).toEqual([{ paymentId: P2, severity: "act", title: ACT, detail: expect.stringContaining("open a dispute") }]);
     expect(r.findings.find((f) => f.title === "Invented")?.paymentId).toBeNull();
+  });
+
+  it("uses a code summary that cannot contradict the findings, singular and plural, then the PayPal note", async () => {
+    const two = input({ payments: [
+      { id: P1, payee: "s1@x.com", amountCents: 1, state: "paid_out", createdAt: "2026-10-10T00:00:00Z", confirmedScamPayee: true },
+      { id: P2, payee: "s2@x.com", amountCents: 2, state: "paid_out", createdAt: "2026-10-10T00:00:00Z", confirmedScamPayee: true },
+    ] });
+    const model = JSON.stringify({ summary: "Nothing to worry about.", findings: [] });
+    const a = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), runner(false, "{}").tools), two);
+    expect(a.summary).toBe(`2 completed payments went to an account now on the scam list. PayPal's transaction history wasn't available, so this review uses Trust Circle's own records.`);
+    const b = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), runner().tools), input());
+    expect(b.summary).toBe("One completed payment went to an account now on the scam list.");
+    const c = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), runner().tools), input({ payments: [] }));
+    expect(c.summary).toBe("Nothing to worry about.");
+  });
+
+  it("records a get_order for a foreign order as refused (from the runner) and keeps going", async () => {
+    const run = vi.fn(async (name: string) => (name === "get_order" ? { ok: false, content: '{"error":"tool not allowed"}', refused: true } : { ok: true, content: "{}" }));
+    const tools: ToolRunner = { definitions: [], run };
+    const chat = vi.fn<Chat>().mockResolvedValueOnce(reply(null, [call("get_order")])).mockResolvedValueOnce(reply(answer));
+    const r = await runAftercareAgent(deps(chat, tools), input());
+    expect(r.toolCalls).toContainEqual({ name: "get_order", ok: false, refused: true });
+  });
+
+  it("never sends another sender's transaction to the model or into the findings (runner scoped over a real toolkit result)", async () => {
+    const other = { transaction_info: { custom_id: "someone-else", transaction_amount: { value: "99.00", currency_code: "USD" } }, payer_info: { email_address: "stranger@elsewhere.test", payer_name: { given_name: "Stranger" } } };
+    const mine = { transaction_info: { custom_id: P1, transaction_amount: { value: "50.00", currency_code: "USD" }, transaction_status: "S" } };
+    const tk = { getTools: () => [{ function: { name: "list_transactions" } }], handleToolCall: async () => ({ content: JSON.stringify({ transaction_details: [other, mine] }) }) };
+    const tools = createReadOnlyToolRunner(tk, { paymentIds: new Set([P1, P2]), orderIds: new Set() });
+    const chat = vi.fn<Chat>().mockResolvedValueOnce(reply(answer));
+    const r = await runAftercareAgent(deps(chat, tools), input());
+    const everything = JSON.stringify([chat.mock.calls.map((c) => c[0].messages), r]);
+    for (const leak of ["stranger@elsewhere.test", "Stranger", "someone-else", "99.00"]) expect(everything).not.toContain(leak);
+    expect(everything).toContain("50.00 USD");
   });
 
   it("does not raise an act for a payment that was not completed", async () => {

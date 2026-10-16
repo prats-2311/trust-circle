@@ -14,8 +14,8 @@ async function setup() {
   const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: MARGARET, contactId: SARAH }] });
   const base = { senderId: MARGARET, note: null, senderAnswer: null, state: "paid_out" as const, riskLevel: "low" as const, scamType: "none" as const, reasons: [], impersonatedRequester: null,
     paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null, authorisedAt: null, coolingOffUntil: null };
-  const old = await repo.insert({ ...base, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", payee: "old@x.com", amountCents: 100 });
-  const recent = await repo.insert({ ...base, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", payee: "+1 (555) 010-9999", amountCents: 200 });
+  const old = await repo.insert({ ...base, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", payee: "old@x.com", amountCents: 100, paypalOrderId: "ORDER-OLD" });
+  const recent = await repo.insert({ ...base, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", payee: "+1 (555) 010-9999", amountCents: 200, paypalOrderId: "ORDER-RECENT" });
   const circle = createMemoryCircleRepo({
     users: [{ id: MARGARET, email: "m@x", displayName: "Margaret", safeWordHash: null }, { id: SARAH, email: "s@x", displayName: "Sarah", safeWordHash: null }],
     links: [{ senderId: MARGARET, contactId: SARAH, relationship: "daughter" }],
@@ -45,6 +45,7 @@ describe("aftercare service", () => {
     await svc.review({ contactId: SARAH, senderId: MARGARET });
     const arg = (agent.mock.calls[0] as unknown as [{ senderName: string; payments: { id: string; confirmedScamPayee: boolean; createdAt: string }[] }])[0];
     expect(arg.senderName).toBe("Margaret");
+    expect((arg as unknown as { paypalOrderIds: string[] }).paypalOrderIds).toEqual(["ORDER-RECENT"]);
     expect(arg.payments.map((p) => p.id)).toEqual([recent.id]);
     expect(arg.payments[0]).toMatchObject({ confirmedScamPayee: true, createdAt: new Date(NOW.getTime() - 2 * DAY).toISOString() });
   });

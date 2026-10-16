@@ -18,6 +18,8 @@ export interface AftercareReport {
 export interface AftercareInput {
   senderName: string;
   payments: { id: string; payee: string; amountCents: number; state: string; createdAt: string; confirmedScamPayee: boolean }[];
+  /** The PayPal order ids of these payments. The only orders the agent may look at. */
+  paypalOrderIds: string[];
 }
 
 const SYSTEM_PROMPT = [
@@ -72,6 +74,7 @@ export async function runAftercareAgent(
   const history = await deps.tools.run(
     "list_transactions",
     JSON.stringify({ start_date: isoSeconds(new Date(now.getTime() - 31 * DAY_MS)), end_date: isoSeconds(now), fields: "all", page_size: 100 }),
+    { timeoutMs: Math.max(deadline - Date.now(), 0) },
   );
   toolCalls.push({ name: "list_transactions", ok: history.ok });
   const usedPayPal = history.ok;
@@ -115,8 +118,8 @@ export async function runAftercareAgent(
         messages.push({ role: "tool", tool_call_id: c.id, content: '{"error":"tool not allowed"}' });
         continue;
       }
-      const out = await deps.tools.run(c.function.name, c.function.arguments);
-      toolCalls.push({ name: c.function.name, ok: out.ok });
+      const out = await deps.tools.run(c.function.name, c.function.arguments, { timeoutMs: Math.max(deadline - Date.now(), 0) });
+      toolCalls.push({ name: c.function.name, ok: out.ok, ...(out.refused ? { refused: true } : {}) });
       messages.push({ role: "tool", tool_call_id: c.id, content: out.content });
     }
   }
@@ -140,11 +143,16 @@ function finish(content: string | null, input: AftercareInput, toolCalls: Afterc
     title: f.title,
     detail: f.detail,
   }));
-  const mandatory = mandatoryFindings(input).filter((m) => !fromModel.some((f) => f.paymentId === m.paymentId && f.severity === "act"));
-  return {
-    findings: [...mandatory, ...fromModel],
-    toolCalls,
-    usedPayPal,
-    summary: `${parsed.summary}${usedPayPal ? "" : ` ${NO_PAYPAL}`}`,
-  };
+  // The code's own finding is the one that shows. A model "act" about the same payment would only repeat or soften it.
+  const mandatory = mandatoryFindings(input);
+  const flagged = new Set(mandatory.map((m) => m.paymentId));
+  const others = fromModel.filter((f) => !(f.severity === "act" && f.paymentId !== null && flagged.has(f.paymentId)));
+  // With a code finding, the summary is code's too, so it can't contradict the findings.
+  const summary =
+    mandatory.length === 0
+      ? parsed.summary
+      : mandatory.length === 1
+        ? "One completed payment went to an account now on the scam list."
+        : `${mandatory.length} completed payments went to an account now on the scam list.`;
+  return { findings: [...mandatory, ...others], toolCalls, usedPayPal, summary: `${summary}${usedPayPal ? "" : ` ${NO_PAYPAL}`}` };
 }

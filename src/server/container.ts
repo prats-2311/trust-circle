@@ -176,7 +176,10 @@ export function getContainer(): Container {
           chat: groqToolChat,
           apiKey: env.GROQ_API_KEY,
           model: env.GROQ_TEXT_MODEL,
-          tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET })),
+          tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }), {
+            paymentIds: new Set(input.payments.map((p) => p.id)),
+            orderIds: new Set(input.paypalOrderIds),
+          }),
         },
         input,
       ),

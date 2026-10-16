@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
-    "@paypal/agent-toolkit": "^1.11.0",
+    "@paypal/agent-toolkit": "1.11.0",
     "@paypal/paypal-server-sdk": "^2.5.0",
     "@phosphor-icons/react": "^2.1.10",
     "ag-charts-community": "^14.2.0",
