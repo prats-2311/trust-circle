@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAs } from "./helpers";
 
 // New headless Chromium: the old headless shell refuses notification permission.
 test.use({ channel: "chromium" });
@@ -57,4 +58,51 @@ test("a push shows a notification, even when its url points elsewhere", async ({
       }),
     )
     .toContain("T");
+});
+
+test.describe("opting in to notifications", () => {
+  test.use({ permissions: ["notifications"] });
+
+  test("turning on alerts sends this device's subscription to the server", async ({ page }) => {
+    await page.route("**/api/push/config", (route) =>
+      route.fulfill({
+        json: { publicKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" },
+      }),
+    );
+    await page.addInitScript(() => {
+      let sub: unknown = null;
+      const endpoint = "https://push.example/e2e";
+      PushManager.prototype.subscribe = async () => {
+        sub = {
+          endpoint,
+          toJSON: () => ({
+            endpoint,
+            keys: {
+              p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+              auth: "tBHItJI5svbpez7KI4CCXg",
+            },
+          }),
+          unsubscribe: async () => true,
+        };
+        return sub as PushSubscription;
+      };
+      PushManager.prototype.getSubscription = async () => sub as PushSubscription | null;
+    });
+    let posted: { endpoint?: string } | null = null;
+    await page.route("**/api/push/subscription", async (route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      posted = route.request().postDataJSON();
+      await route.fulfill({ status: 201, json: { ok: true } });
+    });
+
+    await signInAs(page, "sarah");
+    await page.goto("/settings");
+    const card = page.getByTestId("notifications");
+    await expect(card).toHaveAttribute("data-state", "ask");
+    await page.getByTestId("notifications-action").click();
+
+    await expect(card).toHaveAttribute("data-state", "on");
+    expect(posted).not.toBeNull();
+    expect(posted!.endpoint).toBe("https://push.example/e2e");
+  });
 });

@@ -10,6 +10,7 @@ import { holdProgress, timeLeftText } from "@/ui/holdProgress";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
+import { SettingsLink } from "../SettingsLink";
 import { SignOutButton } from "../SignOutButton";
 
 type Held = { id: string; payee: string; amountCents: number; reasons: string[]; authorisedAt: string | null; coolingOffUntil: string | null };
@@ -62,7 +63,10 @@ export default function CirclePage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
       <div className="flex items-center justify-between">
         <span className="text-[17px] font-bold text-evergreen">Trust Circle</span>
-        <SignOutButton />
+        <div className="flex items-center">
+          <SettingsLink />
+          <SignOutButton />
+        </div>
       </div>
       {state.kind === "loading" && (
         <>

@@ -1,16 +1,19 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ButtonLink } from "@/ui/Button";
+import { Card } from "@/ui/Card";
 import { Chip } from "@/ui/Chip";
 import { fetchJson } from "@/ui/fetchJson";
 import { ArrowRightIcon, ChatCircleTextIcon, LockSimpleIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
+import { SettingsLink } from "../SettingsLink";
 import { SignOutButton } from "../SignOutButton";
 import { recentActivity, type ActivityItem, type CheckLike, type PaymentLike } from "./activity";
 
-type Me = { displayName: string; circle: { displayName: string; relationship: string }[]; safeWordSet: boolean };
+type Me = { displayName: string; circle: { displayName: string; relationship: string }[]; safeWordSet: boolean; onboarded: boolean };
 type State = { kind: "loading" } | { kind: "signedOut" } | { kind: "error"; message: string } | { kind: "ready"; me: Me; items: ActivityItem[] };
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
@@ -43,7 +46,10 @@ export default function HomePage() {
     <main className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-6">
       <div className="flex items-center justify-between">
         <span className="text-[17px] font-bold text-evergreen">Trust Circle</span>
-        <SignOutButton />
+        <div className="flex items-center">
+          <SettingsLink />
+          <SignOutButton />
+        </div>
       </div>
       {state.kind === "loading" && (
         <>
@@ -61,6 +67,15 @@ export default function HomePage() {
       )}
       {state.kind === "ready" && (
         <>
+          {!state.me.onboarded && (
+            <Card className="mt-5">
+              <div data-testid="setup-card" className="flex flex-col gap-3">
+                <h2 className="text-[22px] font-extrabold leading-snug">Finish setting up Trust Circle</h2>
+                <p className="text-[17px] text-ink-2">Takes about a minute.</p>
+                <ButtonLink href="/onboarding" data-testid="setup-start">Set up</ButtonLink>
+              </div>
+            </Card>
+          )}
           <h1 className="mt-5 text-[32px] font-extrabold leading-tight tracking-[-0.01em]">Hello, {state.me.displayName}</h1>
           <div className="mt-3 flex items-center gap-2.5">
             {state.me.circle.length > 0 ? (
@@ -123,10 +138,10 @@ export default function HomePage() {
           )}
 
           <div className="mt-auto pt-8">
-            <div className="flex items-center gap-3 rounded-control bg-surface px-4 py-3.5 text-[16px] text-ink-2">
+            <Link href="/onboarding?step=safe_word" data-testid="safe-word-row" className="flex min-h-[56px] items-center gap-3 rounded-control bg-surface px-4 py-3.5 text-[16px] text-ink-2 no-underline">
               <LockSimpleIcon aria-hidden="true" size={22} className="flex-none text-evergreen" />
               <span>{state.me.safeWordSet ? "Your family safe word is set." : "You haven't set a family safe word yet."}</span>
-            </div>
+            </Link>
           </div>
         </>
       )}
