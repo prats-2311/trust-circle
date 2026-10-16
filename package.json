@@ -12,6 +12,7 @@
     "test:watch": "vitest --project unit",
     "test:int": "vitest run --project integration",
     "test:e2e": "playwright test",
+    "icons": "tsx scripts/make-icons.ts",
     "vapid:keys": "tsx scripts/vapid-keys.ts",
     "db:up": "docker compose up -d db",
     "db:generate": "drizzle-kit generate",

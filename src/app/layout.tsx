@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Atkinson_Hyperlegible_Next } from "next/font/google";
 import "./globals.css";
+import { ServiceWorker } from "./ServiceWorker";
 
 const atkinson = Atkinson_Hyperlegible_Next({
   subsets: ["latin"],
@@ -19,7 +20,10 @@ export const viewport: Viewport = { themeColor: "#f4f6f4" };
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={atkinson.variable}>
-      <body className="min-h-dvh antialiased">{children}</body>
+      <body className="min-h-dvh antialiased">
+        <ServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }
