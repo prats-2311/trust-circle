@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
 import { inArray, sql } from "drizzle-orm";
 import { createDb } from "../src/db/client";
-import { users } from "../src/db/schema";
+import { pushSubscriptions, users } from "../src/db/schema";
+import { isAllowedPushEndpoint } from "../src/push/subscription";
 import { DEMO_PERSONAS, type Persona } from "../src/server/demo";
 
 // Puts the demo back to a clean story: users, circles and known scam patterns stay; everything that happened goes.
@@ -13,6 +14,10 @@ async function main() {
     await db.execute(
       sql`TRUNCATE scam_reports, registry_reports, registry_entries, alerts, verifications, message_checks, audit_log, payments`,
     );
+    // Subscriptions survive a reset, except any stored before endpoints had to be canonical push-service URLs.
+    const stored = await db.select({ endpoint: pushSubscriptions.endpoint }).from(pushSubscriptions);
+    const bad = stored.map((r) => r.endpoint).filter((e) => !isAllowedPushEndpoint(e));
+    if (bad.length > 0) await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, bad));
     await db.update(users).set({ safeWordHash: null, onboardedAt: null, coolingOffHours: 24 }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
     const presetFor = (names: Persona[]) => names.map((n) => DEMO_PERSONAS[n]);
     await db.update(users).set({ preset: "family" }).where(inArray(users.email, presetFor(["margaret", "sarah", "daniel"])));
