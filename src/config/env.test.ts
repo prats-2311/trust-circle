@@ -54,4 +54,11 @@ describe("loadEnv", () => {
     expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
     expect(env.APP_URL).toBe("http://localhost:3000");
   });
+
+  it("treats empty guard model, from address and app url as unset", () => {
+    const env = loadEnv({ ...valid, GROQ_GUARD_MODEL: "", ALERT_FROM_EMAIL: "", APP_URL: "" });
+    expect(env.GROQ_GUARD_MODEL).toBe("meta-llama/llama-prompt-guard-2-86m");
+    expect(env.ALERT_FROM_EMAIL).toBe("Trust Circle <onboarding@resend.dev>");
+    expect(env.APP_URL).toBe("http://localhost:3000");
+  });
 });

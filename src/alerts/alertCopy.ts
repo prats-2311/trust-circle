@@ -20,7 +20,7 @@ export function alertCopy(a: {
     case "payment_held":
       return {
         title: `${sender}'s payment of ${amount} is on hold`,
-        body: `${sender} tried to send ${amount} to ${payee}. We've paused it so you can take a look. Nothing is sent unless you approve it.`,
+        body: `${sender} tried to send ${amount} to ${payee}. We've paused it so you can take a look. The money stays in their account while you take a look.`,
         path: `/circle/payments/${a.paymentId}`,
       };
     case "medium_payment_sent":

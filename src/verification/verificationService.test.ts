@@ -3,7 +3,7 @@ import { createMemoryCircleRepo } from "@/circle/circleRepo";
 import type { Requester } from "@/domain/types";
 import { createMemoryPaymentRepo } from "@/payments/memoryPaymentRepo";
 import { ConcurrentUpdateError } from "@/payments/paymentRepo";
-import { createPaymentService, NotAllowedError } from "@/payments/paymentService";
+import { createPaymentService, NotAllowedError, PaymentPendingError } from "@/payments/paymentService";
 import type { PayPalGateway } from "@/payments/paypalGateway";
 import { createMemoryVerificationRepo } from "./verificationRepo";
 import {
@@ -118,6 +118,40 @@ describe("verify the real person", () => {
       paymentState: "paid_out",
     });
     expect(s.alerts.notify).toHaveBeenLastCalledWith(expect.objectContaining({ recipientId: MARGARET, kind: "payment_confirmed" }));
+  });
+
+  it("still answers a settled payment when the follow-up fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const yes = setup();
+    const p1 = await yes.held();
+    const [v1] = await yes.verifications.listForPayment(p1.id);
+    yes.alerts.notify.mockRejectedValue(new Error("mail down"));
+    expect(await yes.verification.respond({ verificationId: v1!.id, responderId: DANIEL, answer: "me" })).toEqual({
+      status: "confirmed",
+      paymentState: "paid_out",
+    });
+    const no = setup();
+    const p2 = await no.held();
+    const [v2] = await no.verifications.listForPayment(p2.id);
+    no.alerts.notify.mockRejectedValue(new Error("mail down"));
+    expect(await no.verification.respond({ verificationId: v2!.id, responderId: DANIEL, answer: "not_me" })).toEqual({
+      status: "denied",
+      paymentState: "voided",
+    });
+  });
+
+  it("rethrows the pending error when the follow-up also fails", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const s = setup();
+    const p = await s.held();
+    const [v] = await s.verifications.listForPayment(p.id);
+    const pending = new PaymentPendingError(p.id);
+    const svc = createVerificationService({
+      verifications: s.verifications, payments: s.repo, circle: s.circle,
+      paymentOps: { settleHeld: vi.fn(), blockHeld: vi.fn().mockRejectedValue(pending) },
+      alerts: { notify: vi.fn().mockRejectedValue(new Error("mail down")) },
+    });
+    await expect(svc.respond({ verificationId: v!.id, responderId: DANIEL, answer: "not_me" })).rejects.toBe(pending);
   });
 
   it("refuses anyone but the asked person, and a second answer", async () => {
@@ -254,6 +288,24 @@ describe("the challenge", () => {
       outcome: "passed",
     });
     expect((await right.repo.get(p2.id))!.state).toBe("held");
+  });
+
+  it("keeps a failed challenge final even if the block did not go through", async () => {
+    const s = setup({ requester: { kind: "person", name: "nephew" } });
+    const p = await s.held();
+    const real = s.payments.blockHeld;
+    const blockHeld = vi.fn().mockRejectedValueOnce(new Error("db")).mockImplementation(real);
+    const svc = createVerificationService({
+      verifications: s.verifications, payments: s.repo, circle: s.circle,
+      paymentOps: { settleHeld: s.payments.settleHeld, blockHeld }, alerts: s.alerts,
+    });
+    await expect(svc.challenge({ paymentId: p.id, senderId: MARGARET, method: "memory_question", outcome: "excuse" })).rejects.toThrow("db");
+    expect((await s.repo.get(p.id))!.state).toBe("held");
+    expect(await svc.stage({ paymentId: p.id, viewerId: MARGARET })).toEqual({ stage: "resolved", outcome: "failed" });
+    expect(await svc.challenge({ paymentId: p.id, senderId: MARGARET, method: "memory_question", outcome: "answered" })).toEqual({ outcome: "failed" });
+    expect(blockHeld).toHaveBeenCalledTimes(2);
+    expect((await s.repo.get(p.id))!.state).toBe("voided");
+    expect((await s.verifications.listForPayment(p.id)).some((v) => v.status === "passed")).toBe(false);
   });
 
   it("rejects an empty safe-word answer and challenges from anyone but the sender", async () => {

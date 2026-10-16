@@ -72,15 +72,36 @@ export function createVerificationService(deps: {
     };
   }
 
-  /** Runs a held-payment operation. The follow-up still happens if PayPal is finishing the step in the background. */
-  async function thenFinish(op: () => Promise<PaymentRecord>, finish: () => Promise<void>): Promise<PaymentRecord> {
+  /**
+   * Runs a held-payment operation. The follow-up still happens if PayPal is finishing the step in the background.
+   * A failing follow-up is logged by name only: it must never change the result once money may have moved.
+   */
+  async function thenFinish(op: () => Promise<PaymentRecord>, finish: () => Promise<void>, verificationId: string): Promise<PaymentRecord> {
+    const followUp = async () => {
+      try {
+        await finish();
+      } catch (e) {
+        console.warn("verification follow-up failed", { verificationId, error: e instanceof Error ? e.name : "unknown" });
+      }
+    };
+    let done: PaymentRecord;
     try {
-      const done = await op();
-      await finish();
-      return done;
+      done = await op();
     } catch (e) {
-      if (e instanceof PaymentPendingError) await finish();
+      if (e instanceof PaymentPendingError) await followUp();
       throw e;
+    }
+    await followUp();
+    return done;
+  }
+
+  const isChallenge = (v: { method: string }) => v.method === "safe_word" || v.method === "memory_question";
+
+  async function blockQuietly(paymentId: string, actorId: string): Promise<void> {
+    try {
+      await paymentOps.blockHeld({ paymentId, actorId });
+    } catch (e) {
+      if (!(e instanceof PaymentPendingError)) throw e;
     }
   }
 
@@ -95,9 +116,10 @@ export function createVerificationService(deps: {
       const decided = [...vs].reverse().find((v) => v.status === "confirmed" || v.status === "denied" || v.status === "failed");
       return decided ? { stage: "resolved", outcome: decided.status as "confirmed" | "denied" | "failed" } : { stage: "none" };
     }
+    if (vs.some((v) => isChallenge(v) && v.status === "failed")) return { stage: "resolved", outcome: "failed" };
     const official = vs.find((v) => v.method === "official_routes");
     if (official) return { stage: "official_routes", ...officialRouteFor(official.requesterName) };
-    if (vs.some((v) => (v.method === "safe_word" || v.method === "memory_question") && v.status === "passed")) {
+    if (vs.some((v) => isChallenge(v) && v.status === "passed")) {
       return { stage: "challenge_passed" };
     }
     const asked = vs.find((v) => v.method === "real_person" && v.status === "pending");
@@ -160,6 +182,7 @@ export function createVerificationService(deps: {
               console.warn("impersonation report failed", { paymentId: payment.id, error: e instanceof Error ? e.name : "unknown" });
             }
           },
+          v.id,
         );
         return { status: "denied", paymentState: done.state };
       }
@@ -169,6 +192,7 @@ export function createVerificationService(deps: {
           await verifications.resolve(v.id, "confirmed", now());
           await alerts.notify({ recipientId: payment.senderId, kind: "payment_confirmed", paymentId: payment.id, payload: await payloadFor(payment, realName) });
         },
+        v.id,
       );
       return { status: "confirmed", paymentState: done.state };
     },
@@ -178,6 +202,11 @@ export function createVerificationService(deps: {
     async challenge(a: ChallengeRequest): Promise<{ outcome: "passed" | "failed" }> {
       const p = await payments.get(a.paymentId);
       if (!p || p.senderId !== a.senderId) throw new NotAllowedError("Only the sender can do this check.");
+      // One-way: once a challenge has failed, no new answer is accepted; only the block is retried.
+      if (p.state === "held" && (await verifications.listForPayment(p.id)).some((v) => isChallenge(v) && v.status === "failed")) {
+        await blockQuietly(p.id, a.senderId);
+        return { outcome: "failed" };
+      }
       const current = await stage({ paymentId: p.id, viewerId: a.senderId });
       if (current.stage !== "challenge" || current.method !== a.method) throw new NotAllowedError("This check isn't available right now.");
       let passed: boolean;
@@ -195,11 +224,7 @@ export function createVerificationService(deps: {
       });
       // One-way: a wrong answer or an excuse stops the payment; a right answer never releases it.
       if (!passed) {
-        try {
-          await paymentOps.blockHeld({ paymentId: p.id, actorId: a.senderId });
-        } catch (e) {
-          if (!(e instanceof PaymentPendingError)) throw e;
-        }
+        await blockQuietly(p.id, a.senderId);
       }
       return { outcome: passed ? "passed" : "failed" };
     },

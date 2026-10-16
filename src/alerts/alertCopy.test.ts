@@ -16,7 +16,7 @@ describe("alertCopy", () => {
   it("tells the circle a payment is on hold", () => {
     expect(alertCopy({ kind: "payment_held", payload, ...ids })).toEqual({
       title: "Margaret's payment of $800 is on hold",
-      body: "Margaret tried to send $800 to dhill.urgent@outlook.example. We've paused it so you can take a look. Nothing is sent unless you approve it.",
+      body: "Margaret tried to send $800 to dhill.urgent@outlook.example. We've paused it so you can take a look. The money stays in their account while you take a look.",
       path: "/circle/payments/p1",
     });
   });

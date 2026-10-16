@@ -25,6 +25,7 @@ export async function verifySafeWord(s: string, stored: string): Promise<boolean
   const [scheme, salt, key] = stored.split("$");
   if (scheme !== "scrypt" || !salt || !key) return false;
   const expected = Buffer.from(key, "base64url");
+  if (expected.length !== KEY_BYTES) return false;
   const actual = await scryptAsync(normaliseSafeWord(s), Buffer.from(salt, "base64url"), expected.length);
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }

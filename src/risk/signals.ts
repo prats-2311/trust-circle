@@ -81,10 +81,10 @@ export function computeSignals(input: PaymentRiskInput, ctx: SenderContext): Sig
   return signals;
 }
 
-export const HIDDEN_INSTRUCTIONS_SIGNAL: Signal = {
+export const HIDDEN_INSTRUCTIONS_SIGNAL: Signal = Object.freeze({
   code: "HIDDEN_INSTRUCTIONS",
   detail: "This contains hidden instructions meant to trick safety checks, which is a common scam trick.",
-};
+} as const);
 
 export function ruleLevel(signals: Signal[]): RiskLevel {
   const has = (c: SignalCode) => signals.some((s) => s.code === c);

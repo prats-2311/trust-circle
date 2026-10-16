@@ -16,6 +16,9 @@ describe("safe word", () => {
   it("rejects a malformed stored value", async () => {
     expect(await verifySafeWord("heron", "plain-text")).toBe(false);
   });
+  it("rejects a stored key of the wrong length", async () => {
+    expect(await verifySafeWord("x", "scrypt$abc$!!!")).toBe(false);
+  });
   it("validates length", () => {
     expect(validateSafeWord("ab")).toBe("Please choose a safe word with at least 3 letters.");
     expect(validateSafeWord("x".repeat(41))).toBe("Please choose a safe word of 40 letters or fewer.");

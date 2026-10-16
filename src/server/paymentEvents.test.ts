@@ -24,7 +24,8 @@ describe("payment event handler", () => {
     const verification = { startForHeld: vi.fn(async () => void order.push("verify")) };
     const alerts = { notify: vi.fn(async (a: { recipientId: string }) => void order.push(`alert:${a.recipientId}`)) };
     await createPaymentEventHandler({ circle, alerts, verification })({ type: "held", payment });
-    expect(order).toEqual(["verify", "alert:s", "alert:d"]);
+    expect(order[0]).toBe("verify");
+    expect(new Set(order.slice(1))).toEqual(new Set(["alert:s", "alert:d"]));
     expect(alerts.notify).toHaveBeenCalledWith({ recipientId: "s", kind: "payment_held", paymentId: "p1", payload });
   });
   it("tells the circle about a medium payment without verification", async () => {
@@ -40,5 +41,24 @@ describe("payment event handler", () => {
     const alerts = { notify: vi.fn().mockRejectedValueOnce(new Error("db")).mockResolvedValue(undefined) };
     await createPaymentEventHandler({ circle, alerts, verification })({ type: "held", payment });
     expect(alerts.notify).toHaveBeenCalledTimes(2);
+  });
+  it("notifies contacts concurrently and logs the payment id on failure", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const verification = { startForHeld: vi.fn().mockResolvedValue(undefined) };
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const started: string[] = [];
+    const alerts = {
+      notify: vi.fn(async (a: { recipientId: string }) => {
+        started.push(a.recipientId);
+        if (a.recipientId === "s") throw new Error("db");
+        await gate;
+      }),
+    };
+    const done = createPaymentEventHandler({ circle, alerts, verification })({ type: "held", payment });
+    await vi.waitFor(() => expect(started.sort()).toEqual(["d", "s"]));
+    release();
+    await done;
+    expect(warn).toHaveBeenCalledWith("payment event step failed", { step: "alert", paymentId: "p1", error: "Error" });
   });
 });
