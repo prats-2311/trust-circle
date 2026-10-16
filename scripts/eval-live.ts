@@ -7,6 +7,7 @@ import { createLocalEmbedder } from "../src/patterns/embedder";
 import { createMemoryPatternMatcher } from "../src/eval/memoryPatterns";
 import { PATTERNS } from "./seed-pattern-list";
 import { matcherEffect } from "../src/eval/matcherEffect";
+import { rulesOnlyComparison } from "../src/eval/rulesOnly";
 import { PATTERN_THRESHOLD } from "../src/patterns/patternService";
 import { runEval, type EvalResult } from "../src/eval/runEval";
 
@@ -41,6 +42,9 @@ async function main() {
   const unchecked = results.filter((r) => !r.checked);
   const retried = results.filter((r) => r.attempts > 1);
   const effect = matcherEffect(results);
+  const cmp = rulesOnlyComparison(results);
+  const p = cmp.payments;
+  const of = (n: number, d: number) => `${n} of ${d}`;
   const ids = (l: string[]) => (l.length ? ` (${l.join(", ")})` : "");
   const recovered = retried.filter((r) => r.checked).length;
   const passed = metrics.catchRate >= CATCH_GATE && metrics.falseHoldRate <= FALSE_HOLD_GATE;
@@ -72,13 +76,25 @@ async function main() {
       ? ["| Case | Label | Level shown | Cause |", "|---|---|---|---|", ...unchecked.map((r) => `| ${r.id} | ${r.label} | ${r.level} | ${r.uncheckedCause ?? "unknown"} |`)]
       : ["None."]),
     "",
+    "## What the AI adds",
+    "",
+    `Scored from the same run, with no extra AI calls. "Rules alone" uses only the rule signals (first-time payee, unusual amount, over the circle limit, rapid repeats, the scam list), without Prompt Guard or the pattern matcher. "AI unavailable" is the app's fallback: any rule signal holds the payment.`,
+    "",
+    `| Payments (${p.scams} scams, ${p.genuine} genuine) | Scams held | Scams flagged | Genuine held | Genuine flagged |`,
+    "|---|---|---|---|---|",
+    `| Rules and AI (as the app runs) | ${of(p.withAi.scamsHeld, p.scams)} | ${of(p.withAi.scamsFlagged, p.scams)} | ${of(p.withAi.genuineHeld, p.genuine)} | ${of(p.withAi.genuineFlagged, p.genuine)} |`,
+    `| Rules alone | ${of(p.rulesAlone.scamsHeld, p.scams)} | ${of(p.rulesAlone.scamsFlagged, p.scams)} | ${of(p.rulesAlone.genuineHeld, p.genuine)} | ${of(p.rulesAlone.genuineFlagged, p.genuine)} |`,
+    `| AI unavailable (fallback) | ${of(p.aiUnavailable.scamsHeld, p.scams)} | ${of(p.aiUnavailable.scamsFlagged, p.scams)} | ${of(p.aiUnavailable.genuineHeld, p.genuine)} | ${of(p.aiUnavailable.genuineFlagged, p.genuine)} |`,
+    "",
+    `Scam payments only the AI held${ids(p.onlyAiHeld)}: ${p.onlyAiHeld.length}. Messages have no rules-only score: without AI nothing reads the text, so 0 of ${cmp.messages.scams} scam messages would be flagged (the AI flagged ${cmp.messages.withAiFlagged}).`,
+    "",
     "## Pattern matcher's effect",
     "",
-    `${effect.withPattern.length} of the ${effect.falseAlarms} false alarms on genuine cases carry KNOWN_SCAM_PATTERN${ids(effect.withPattern)}. ${effect.heldOnPatternAlone.length} genuine case(s) were held on that signal alone${ids(effect.heldOnPatternAlone)}. The last run with the matcher off (${BASELINE_DATE}) had ${BASELINE_FALSE_ALARMS} false alarms out of 28, so the matcher catches reworded scams at the cost of more warnings on everyday payments. The seed patterns are likely too broad for some ordinary messages.`,
+    `${effect.withPattern.length} of the ${effect.falseAlarms} false alarms on genuine cases carry KNOWN_SCAM_PATTERN${ids(effect.withPattern)}. ${effect.heldOnPatternAlone.length} genuine case(s) were held on that signal alone${ids(effect.heldOnPatternAlone)}. The last run with the matcher off (${BASELINE_DATE}) had ${BASELINE_FALSE_ALARMS} false alarms out of 28 genuine cases (the 60-case set before the hard cases were added), so the matcher catches reworded scams at the cost of more warnings on everyday payments. The seed patterns are likely too broad for some ordinary messages.`,
     "",
     "## What these numbers mean",
     "",
-    `When the AI cannot check a payment, Trust Circle fails closed: the rules hold it, so an unchecked scam payment counts as held and an unchecked genuine payment counts as a false hold. A message the AI cannot check is shown as unchecked, never as safe, but the scoring here still counts an unchecked scam message as a miss. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is 60 hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run: ${retried.length} of the ${metrics.total} cases needed a retry, and a repeat run can differ slightly.`,
+    `When the AI cannot check a payment, Trust Circle fails closed: the rules hold it, so an unchecked scam payment counts as held and an unchecked genuine payment counts as a false hold. A message the AI cannot check is shown as unchecked, never as safe, but the scoring here still counts an unchecked scam message as a miss. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is ${metrics.total} hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run: ${retried.length} of the ${metrics.total} cases needed a retry, and a repeat run can differ slightly.`,
     "",
   ].join("\n");
   mkdirSync("docs/eval", { recursive: true });

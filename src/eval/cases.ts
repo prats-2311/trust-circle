@@ -59,6 +59,22 @@ export const EVAL_CASES: EvalCase[] = [
   pay("g13", "solo", "genuine", { payee: "sam.friend@example.com", amountCents: 8000, note: "Concert tickets", senderAnswer: "My friend Sam bought tickets for both of us and I'm paying him back." }),
   pay("g14", "family", "genuine", { payee: "vet.clinic@example.com", amountCents: 32000, note: "Dog's surgery", senderAnswer: "Our vet clinic. I was there this morning." }, known("vet.clinic@example.com")),
 
+  // Hard payments, added 2026-10-17 before the run that scored them. Scams the rules alone rate low: a new payee
+  // for an everyday amount, or a payee already paid. Genuine payments the rules alone warn about: a new payee for
+  // a large amount. Only the story tells them apart.
+  pay("h01", "family", "scam", { payee: "danny.newnumber@mail.example", amountCents: 9000, senderAnswer: "My grandson texted from a new number. He needs $90 for his phone bill and asked me not to tell his mom." }),
+  pay("h02", "family", "scam", { payee: "linda.bookclub@example.com", amountCents: 10000, senderAnswer: "Linda from book club messaged me on Facebook. She's stuck abroad and needs money for her hotel. She can't talk on the phone right now." }, known("linda.bookclub@example.com")),
+  pay("h03", "family", "scam", { payee: "secure.test@bank-protect.example", amountCents: 5000, senderAnswer: "The bank's fraud team is connected to my computer. They asked me to send a small test payment to their secure account to check it works." }),
+  pay("h04", "business", "scam", { payee: "payments@northwind-supplies-new.example", amountCents: 240000, note: "Invoice 4502", senderAnswer: "Northwind emailed that they moved banks, so this month's invoice goes to their new account." }, { recentAmountsCents: [180000, 45000, 120000, 60000] }),
+  pay("h05", "solo", "scam", { payee: "tickets.resale99@mail.example", amountCents: 9500, note: "2 concert tickets", senderAnswer: "A seller on a marketplace group. He asked me to pay as friends and family to avoid fees and won't meet in person." }),
+  pay("h06", "family", "scam", { payee: "hurricane.relief.now@mail.example", amountCents: 8000, senderAnswer: "A woman from a hurricane relief charity called. She needs the donation today through PayPal and said they don't send receipts." }),
+  pay("k01", "family", "genuine", { payee: "office@hillsroofing.example", amountCents: 250000, note: "Roof repair deposit", senderAnswer: "The roofer came out last week and gave us a written quote. My son found him and met him at the house with me." }),
+  pay("k02", "family", "genuine", { payee: "arrangements@oakwoodfuneral.example", amountCents: 400000, note: "Service for my sister", senderAnswer: "The funeral home for my sister's service. I met the director there yesterday with my daughter." }),
+  pay("k03", "business", "genuine", { payee: "jordan.dev@example.com", amountCents: 300000, note: "Website build, first milestone", senderAnswer: "Jordan is the developer we hired last week. We signed the contract on a video call and this is the first milestone." }, { recentAmountsCents: [180000, 45000, 120000, 60000] }),
+  pay("k04", "solo", "genuine", { payee: "lettings@parkviewhomes.example", amountCents: 180000, note: "Security deposit", senderAnswer: "I viewed the apartment in person and signed the lease at the agency's office this morning." }),
+  pay("k05", "family", "genuine", { payee: "service@mainstreetgarage.example", amountCents: 120000, note: "Car repair", senderAnswer: "My car broke down and the garage near my house fixed it. I picked it up today." }),
+  pay("k06", "solo", "genuine", { payee: "maya.friend@example.com", amountCents: 90000, note: "My share of the cabin", senderAnswer: "My college friend Maya booked the cabin for our group trip. We talked on the phone and I'm paying my share." }),
+
   // Messages: scams
   msg("m01", "family", "scam", "Hi Grandma it's me, I lost my phone so this is my new number. I'm in trouble and need $800 in gift cards today. Please don't tell mom, I'll explain later. Text me back at +1 (415) 555-0199"),
   msg("m02", "family", "scam", "PayPal: Your account has been limited due to unusual activity. Verify your identity within 24 hours to avoid permanent suspension: http://paypal-secure-verify.example/login"),
