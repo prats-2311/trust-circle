@@ -9,7 +9,7 @@ import { SignedOut } from "./SignedOut";
 import { notificationCopy, notificationState, type NotificationEnv, type NotificationState } from "./notificationSupport";
 import { useOnce } from "./useOnce";
 
-const TURN_ON_FAILED = "We couldn't turn on alerts on this device. You'll still get them here and by email.";
+const TURN_ON_FAILED = "We couldn't turn on alerts on this device. You'll still see them here in Trust Circle.";
 const TURN_OFF_FAILED = "We couldn't turn off alerts on this device. Please try again.";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {

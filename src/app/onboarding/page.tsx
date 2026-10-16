@@ -293,7 +293,7 @@ export default function OnboardingPage() {
         {step === "alerts" && (
           <>
             <Title>Turn on alerts</Title>
-            <Lead>So you hear straight away when a payment needs a look. You&apos;ll always see them in the app and by email too.</Lead>
+            <Lead>So you hear straight away when a payment needs a look. You&apos;ll always see them in the app too.</Lead>
             <div className="mt-6">
               <EnableNotifications onDone={() => finishRef.current?.focus()} />
             </div>

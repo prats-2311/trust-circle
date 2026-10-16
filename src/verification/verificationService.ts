@@ -29,7 +29,7 @@ export type ChallengeMethod = "safe_word" | "memory_question";
 
 export const CHALLENGE_GUIDANCE: Record<ChallengeMethod, string[]> = {
   safe_word: [
-    "Ask the caller for your family's safe word. Don't say it first or give any hints.",
+    "Ask the caller for your safe word. Don't say it first or give any hints.",
     "Type exactly what they said.",
   ],
   memory_question: [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadEnv } from "./env";
+import { loadEnv, loadEnvSafe } from "./env";
 
 const valid = {
   PAYPAL_CLIENT_ID: "id",
@@ -69,9 +69,45 @@ describe("loadEnv", () => {
     expect(env.VAPID_SUBJECT).toBe("mailto:alerts@trustcircle.example");
   });
 
-  it("accepts a mailto: or https: VAPID subject and refuses anything else", () => {
+  it("accepts a mailto: or https: VAPID subject and turns push off for anything else", () => {
     expect(loadEnv({ ...valid, VAPID_SUBJECT: "https://tc.example" }).VAPID_SUBJECT).toBe("https://tc.example");
     expect(loadEnv({ ...valid, VAPID_SUBJECT: "mailto:me@tc.example" }).VAPID_SUBJECT).toBe("mailto:me@tc.example");
-    expect(() => loadEnv({ ...valid, VAPID_SUBJECT: "tel:123" })).toThrow(/VAPID_SUBJECT/);
+    const bad = loadEnvSafe({ ...valid, VAPID_SUBJECT: "tel:123" });
+    expect(bad.warnings[0]).toMatch(/VAPID_SUBJECT/);
+  });
+});
+
+describe("loadEnvSafe", () => {
+  it("a bad VAPID_SUBJECT turns push off with one warning", () => {
+    const r = loadEnvSafe({ ...valid, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "pk", VAPID_PRIVATE_KEY: "sk", VAPID_SUBJECT: "alerts@x.com" });
+    expect(r.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY).toBeUndefined();
+    expect(r.env.VAPID_PRIVATE_KEY).toBeUndefined();
+    expect(r.warnings).toEqual(["Push alerts are off: VAPID_SUBJECT must start with mailto: or https:"]);
+  });
+  it("a bad APP_URL falls back with a warning", () => {
+    const r = loadEnvSafe({ ...valid, APP_URL: "not a url" });
+    expect(r.env.APP_URL).toBe("http://localhost:3000");
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toMatch(/APP_URL/);
+  });
+  it("a complete, valid push group passes with no warnings", () => {
+    const r = loadEnvSafe({ ...valid, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "pk", VAPID_PRIVATE_KEY: "sk", VAPID_SUBJECT: "mailto:a@x.com" });
+    expect(r.warnings).toEqual([]);
+    expect(r.env.VAPID_PRIVATE_KEY).toBe("sk");
+  });
+  it("a missing required variable still throws with its name", () => {
+    const rest = { ...valid, GROQ_API_KEY: undefined };
+    expect(() => loadEnvSafe(rest)).toThrow("Invalid or missing environment variables: GROQ_API_KEY");
+  });
+  it("a required failure alongside a bad optional one still throws", () => {
+    const rest = { ...valid, GROQ_API_KEY: undefined };
+    expect(() => loadEnvSafe({ ...rest, VAPID_SUBJECT: "bad", NEXT_PUBLIC_VAPID_PUBLIC_KEY: "pk", VAPID_PRIVATE_KEY: "sk" })).toThrow(
+      "Invalid or missing environment variables: GROQ_API_KEY",
+    );
+  });
+  it("never puts a value in a warning", () => {
+    const r = loadEnvSafe({ ...valid, NEXT_PUBLIC_VAPID_PUBLIC_KEY: "pk", VAPID_PRIVATE_KEY: "secret-value", VAPID_SUBJECT: "bad" });
+    expect(r.warnings.join(" ")).not.toContain("secret-value");
+    expect(r.warnings.join(" ")).not.toContain("bad\n");
   });
 });

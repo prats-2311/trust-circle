@@ -6,7 +6,7 @@ import { createGroqMessageJudge } from "@/ai/groqMessageJudge";
 import { createGroqPatternDescriber } from "@/ai/patternDescriber";
 import { createPromptGuard } from "@/ai/promptGuard";
 import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
-import { loadEnv, type Env } from "@/config/env";
+import { loadEnvSafe, type Env } from "@/config/env";
 import { createDb } from "@/db/client";
 import { createDashboardService, type DashboardService } from "@/dashboard/dashboardService";
 import { createDrizzleMessageRepo } from "@/messages/drizzleMessageRepo";
@@ -52,7 +52,8 @@ let container: Container | undefined;
 
 export function getContainer(): Container {
   if (container) return container;
-  const env = loadEnv();
+  const { env, warnings } = loadEnvSafe();
+  for (const warning of warnings) console.warn("config", warning);
   const { db } = createDb(env.DATABASE_URL);
   const repo = createDrizzlePaymentRepo(db);
   const circle = createDrizzleCircleRepo(db);

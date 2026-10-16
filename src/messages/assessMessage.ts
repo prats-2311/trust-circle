@@ -40,8 +40,10 @@ async function injectionSignals(guard: PromptGuard | undefined, text: string): P
   if (!guard || !text) return [];
   try {
     const score = await guard(text);
+    if (score === null) console.warn("prompt guard unavailable", { where: "message", error: "no score" });
     return score !== null && score >= INJECTION_THRESHOLD ? [HIDDEN_INSTRUCTIONS_SIGNAL] : [];
-  } catch {
+  } catch (e) {
+    console.warn("prompt guard unavailable", { where: "message", error: e instanceof Error ? e.name : "unknown" });
     return [];
   }
 }

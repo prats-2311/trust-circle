@@ -95,6 +95,21 @@ describe("assessPayment with the prompt guard", () => {
       expect(d.level).toBe("low");
     }
   });
+  it("logs the outage without the checked text and leaves the result unchanged", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const secret = "private words about grandma";
+    for (const [guard, error] of [
+      [vi.fn().mockRejectedValue(new Error("down")), "Error"],
+      [vi.fn().mockResolvedValue(null), "no score"],
+    ] as const) {
+      warn.mockClear();
+      const d = await assessPayment({ payee: "known@example.com", amountCents: 1000, senderAnswer: secret }, known, lowJudge(), guard);
+      expect(d.level).toBe("low");
+      expect(warn).toHaveBeenCalledWith("prompt guard unavailable", { where: "payment", error });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    }
+    warn.mockRestore();
+  });
 });
 
 describe("assessPayment with known scam patterns", () => {

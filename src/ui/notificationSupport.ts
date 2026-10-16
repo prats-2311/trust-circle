@@ -48,7 +48,7 @@ const COPY: Record<NotificationState, { title: string; body: string; action: str
     body: "We'll only alert you about payments and checks in your circle.",
     action: "Turn on alerts",
   },
-  on: { title: "Alerts are on for this device", body: "We'll alert you here and by email.", action: "Turn off alerts" },
+  on: { title: "Alerts are on for this device", body: "We'll alert you on this device and in Trust Circle.", action: "Turn off alerts" },
 };
 
 export function notificationCopy(s: NotificationState): { title: string; body: string; action: string | null } {

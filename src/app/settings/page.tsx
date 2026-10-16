@@ -132,7 +132,7 @@ export default function SettingsPage() {
             <p className="text-[18px]" data-testid="circle-limit">{limitLine(load.prefs)}</p>
           </Section>
 
-          <Section title="Family safe word">
+          <Section title="Safe word">
             <Link
               href="/onboarding?step=safe_word"
               className="flex min-h-[56px] items-center gap-3 rounded-control bg-surface px-4 text-[18px] font-bold text-ink no-underline"

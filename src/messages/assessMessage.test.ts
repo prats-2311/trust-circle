@@ -98,6 +98,22 @@ describe("assessMessage", () => {
     const r = await assessMessage({ kind: "text", text: "See you at dinner" }, empty, { judge, guard: vi.fn().mockResolvedValue(null) });
     expect(r).toMatchObject({ checked: true, level: "low", scamType: "none" });
   });
+  it("logs a guard outage without the message text", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const text = "See you at dinner, private words";
+    const low = ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null });
+    for (const [guard, error] of [
+      [vi.fn().mockRejectedValue(new TypeError("down")), "TypeError"],
+      [vi.fn().mockResolvedValue(null), "no score"],
+    ] as const) {
+      warn.mockClear();
+      const r = await assessMessage({ kind: "text", text }, empty, { judge: vi.fn().mockResolvedValue(low), guard });
+      expect(r).toMatchObject({ checked: true, level: "low" });
+      expect(warn).toHaveBeenCalledWith("prompt guard unavailable", { where: "message", error });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(text);
+    }
+    warn.mockRestore();
+  });
   it("adds KNOWN_SCAM_PATTERN for a pasted message and for a screenshot transcript", async () => {
     const patterns = vi.fn().mockResolvedValue({ patternId: "p1", scamType: "impersonation_family", similarity: 0.45 });
     const low = ok({ level: "low", scamType: "none", reasons: [], impersonatedRequester: null });

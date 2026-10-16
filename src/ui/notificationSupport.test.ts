@@ -48,7 +48,7 @@ describe("notificationCopy", () => {
     ["server_off", "Phone alerts aren't set up on this server", "You'll still see every alert here in Trust Circle.", null],
     ["denied", "Alerts are blocked for this site", "To turn them on, allow notifications for Trust Circle in your browser settings, then come back.", null],
     ["ask", "Get an alert when something needs you", "We'll only alert you about payments and checks in your circle.", "Turn on alerts"],
-    ["on", "Alerts are on for this device", "We'll alert you here and by email.", "Turn off alerts"],
+    ["on", "Alerts are on for this device", "We'll alert you on this device and in Trust Circle.", "Turn off alerts"],
   ];
   it.each(rows)("%s", (state, title, body, action) => {
     expect(notificationCopy(state)).toEqual({ title, body, action });

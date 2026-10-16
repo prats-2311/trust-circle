@@ -76,7 +76,7 @@ export function screenCopy(
     case "challenge_memory":
       return held(`Ask the caller something only ${d.requesterName ? cleanRequesterName(d.requesterName) : "they"} would know`, "Let's check another way while we wait.");
     case "challenge_safe_word":
-      return held("Ask the caller for your family's safe word", "Don't say it first or give any hints. Type exactly what they say.");
+      return held("Ask the caller for your safe word", "Don't say it first or give any hints. Type exactly what they say.");
     case "official_routes":
       return held("Check with them yourself", "Reach them through their official app or website, never through the message.");
     case "held":
