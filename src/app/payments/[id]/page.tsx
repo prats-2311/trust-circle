@@ -16,7 +16,7 @@ type State =
   | { kind: "signedOut" }
   | { kind: "notFound" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; p: Loaded; stage: Stage | null; circleFirst: string | null };
+  | { kind: "ready"; p: Loaded; stage: Stage | null; circleNames: string[] };
 
 const POLL_MS = 5000;
 const POLLED: ScreenKind[] = ["pending", "returning", "waiting", "held", "challenge_memory", "challenge_safe_word", "official_routes"];
@@ -24,7 +24,7 @@ const POLLED: ScreenKind[] = ["pending", "returning", "waiting", "held", "challe
 export default function PaymentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [state, setState] = useState<State>({ kind: "loading" });
-  const meRef = useRef<string | null | undefined>(undefined);
+  const meRef = useRef<string[] | undefined>(undefined);
   const alive = useRef(true);
 
   const load = useCallback(
@@ -41,8 +41,8 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
         if (silent) return;
         return setState(pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." });
       }
-      if (me?.ok) meRef.current = me.data.circle[0]?.displayName ?? null;
-      setState({ kind: "ready", p: pay.data, stage: ver.ok ? ver.data : null, circleFirst: meRef.current ?? null });
+      if (me?.ok) meRef.current = me.data.circle.map((c) => c.displayName);
+      setState({ kind: "ready", p: pay.data, stage: ver.ok ? ver.data : null, circleNames: meRef.current ?? [] });
     },
     [id],
   );
@@ -74,8 +74,8 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     const st = state.stage;
     // Name the person who actually answered; a decided check never falls back to the first circle member (that could name the wrong person).
     const contactName =
-      st?.stage === "waiting_for_person" ? st.contactName : st?.stage === "resolved" && st.outcome !== "failed" ? st.contactName : state.circleFirst;
-    return <PaymentScreens kind={kind} p={state.p} stage={state.stage} contactName={contactName} reload={() => load(true)} />;
+      st?.stage === "waiting_for_person" ? st.contactName : st?.stage === "resolved" && st.outcome !== "failed" ? st.contactName : (state.circleNames[0] ?? null);
+    return <PaymentScreens kind={kind} p={state.p} stage={state.stage} contactName={contactName} circleNames={state.circleNames} reload={() => load(true)} />;
   }
   if (state.kind === "loading") {
     return (

@@ -13,7 +13,7 @@ import { ChatCircleTextIcon, CheckCircleIcon, CheckIcon, InfoIcon, LockSimpleIco
 import { Notice } from "@/ui/Notice";
 import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { useOnce } from "@/ui/useOnce";
-import { screenCopy, type ScreenKind, type Stage } from "./screen";
+import { circleNamesText, screenCopy, type ScreenKind, type Stage } from "./screen";
 
 export type PaymentView = {
   id: string;
@@ -71,10 +71,11 @@ function CancelButton({ action }: { action: ReturnType<typeof useAction> & { id:
   );
 }
 
-export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: ScreenKind; p: PaymentView; stage: Stage | null; contactName: string | null; reload: () => Promise<void> }) {
+export function PaymentScreens({ kind, p, stage, contactName, circleNames, reload }: { kind: ScreenKind; p: PaymentView; stage: Stage | null; contactName: string | null; circleNames: string[]; reload: () => Promise<void> }) {
   const action = { ...useAction(reload), id: p.id };
   const requesterName = stage?.stage === "challenge" ? stage.requesterName : null;
-  const copy = screenCopy(kind, { amount: formatUsd(p.amountCents), payee: p.payee, contactName, requesterName });
+  const spanHours = p.authorisedAt && p.coolingOffUntil ? Math.round((new Date(p.coolingOffUntil).getTime() - new Date(p.authorisedAt).getTime()) / HOUR) : 24;
+  const copy = screenCopy(kind, { amount: formatUsd(p.amountCents), payee: p.payee, contactName, requesterName, circleNames, coolingOffHours: spanHours });
   const chip = <Chip tone={copy.chipTone}>{copy.chip}</Chip>;
   const screenProps = { backHref: "/home" };
   const holdChip = <Chip tone="held">{formatUsd(p.amountCents)} on hold</Chip>;
@@ -88,9 +89,7 @@ export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: 
     case "held": {
       const prog = holdProgress({ authorisedAt: p.authorisedAt, coolingOffUntil: p.coolingOffUntil, now: new Date() });
       const authorised = p.authorisedAt ? new Date(p.authorisedAt) : null;
-      const spanHours = p.authorisedAt && p.coolingOffUntil ? Math.round((new Date(p.coolingOffUntil).getTime() - new Date(p.authorisedAt).getTime()) / HOUR) : 24;
       const usedHours = Math.min(spanHours, Math.floor(prog.fractionUsed * spanHours));
-      const who = contactName ?? "Your circle";
       return (
         <Screen {...screenProps} title={`Payment to ${p.payee}`} footer={
           <>
@@ -114,7 +113,7 @@ export function PaymentScreens({ kind, p, stage, contactName, reload }: { kind: 
               <p className="mx-auto mt-2.5 max-w-[320px] text-center text-[18px] leading-relaxed text-ink-2">{copy.lead}</p>
               <ol className="mt-7 flex list-none flex-col p-0">
                 <TimelineItem filled title="Held in PayPal" sub={authorised ? weekdayTime(authorised) : undefined} />
-                <TimelineItem filled title={`${who} has been asked`} sub="They can approve or stop it" />
+                <TimelineItem filled title={`${circleNamesText(circleNames)} ${circleNames.length > 1 ? "have" : "has"} been asked`} sub="They can approve or stop it" />
                 <TimelineItem
                   title={authorised ? `If no one decides by ${weekdayTime(new Date(authorised.getTime() + 72 * HOUR))}` : "If no one decides in time"}
                   sub="The hold ends and the money stays yours"

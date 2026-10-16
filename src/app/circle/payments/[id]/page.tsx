@@ -30,7 +30,7 @@ type State =
   | { kind: "signedOut" }
   | { kind: "notFound" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; p: Payment; senderName: string; stage: Stage | null };
+  | { kind: "ready"; p: Payment; senderName: string; viewerName: string; stage: Stage | null };
 type Result = { decision: "approve" | "block"; status: number } | { failed: string; uncertain: boolean };
 
 const TILE: Record<DecisionTone, { cls: string; Icon: typeof InfoIcon }> = {
@@ -46,15 +46,16 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
   const once = useOnce();
 
   const load = useCallback(async (): Promise<State> => {
-    const [pay, ver] = await Promise.all([
+    const [pay, ver, me] = await Promise.all([
       fetchJson<{ payment: Payment; senderName: string }>(`/api/circle/payments/${id}`),
       fetchJson<Stage>(`/api/payments/${id}/verification`),
+      fetchJson<{ displayName: string }>("/api/me"),
     ]);
     if (!pay.ok && pay.signedOut) return { kind: "signedOut" };
     if (!pay.ok) {
       return pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." };
     }
-    return { kind: "ready", p: pay.data.payment, senderName: pay.data.senderName, stage: ver.ok ? ver.data : null };
+    return { kind: "ready", p: pay.data.payment, senderName: pay.data.senderName, viewerName: me.ok ? me.data.displayName : "", stage: ver.ok ? ver.data : null };
   }, [id]);
 
   useEffect(() => {
@@ -107,13 +108,13 @@ export default function ReviewPage({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  const { p, senderName, stage } = state;
+  const { p, senderName, viewerName, stage } = state;
   const held = p.state === "held";
   const left = timeLeftText(holdProgress({ authorisedAt: p.authorisedAt, coolingOffUntil: p.coolingOffUntil, now: new Date() }).msLeft);
   const done = result && "decision" in result ? decisionResultCopy(result.decision, result.status, senderName) : null;
   const closed = !held && !done ? { tone: "info" as const, ...closedCopy(p.state, stage, senderName) } : null;
   const shown = done ?? closed;
-  const notice = held ? verificationNotice(stage, senderName) : null;
+  const notice = held ? verificationNotice(stage, senderName, viewerName) : null;
 
   return (
     <Screen

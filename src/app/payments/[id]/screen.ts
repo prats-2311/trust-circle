@@ -49,7 +49,16 @@ export function screenFor(p: { state: string; outcome: Outcome }, stage: Stage |
 
 type Copy = { chipTone: ChipTone; chip: string; title: string; lead: string };
 
-export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string; contactName: string | null; requesterName?: string | null }): Copy {
+/** "Sarah", "Sarah and Daniel", "A, B and C". An empty circle reads as "Your circle". */
+export function circleNamesText(names: string[]): string {
+  if (names.length === 0) return "Your circle";
+  return names.length === 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.slice(-1).join("")}`;
+}
+
+export function screenCopy(
+  kind: ScreenKind,
+  d: { amount: string; payee: string; contactName: string | null; requesterName?: string | null; circleNames: string[]; coolingOffHours: number },
+): Copy {
   const held = (title: string, lead: string, chip = "On hold"): Copy => ({ chipTone: "held", chip, title, lead });
   const stopped = (lead: string): Copy => ({ chipTone: "safe", chip: "Stopped", title: "Payment stopped. Your money is safe.", lead });
   switch (kind) {
@@ -66,7 +75,7 @@ export function screenCopy(kind: ScreenKind, d: { amount: string; payee: string;
     case "official_routes":
       return held("Check with them yourself", "Reach them through their official app or website, never through the message.");
     case "held":
-      return held("Your money hasn't left your account", `${d.contactName ?? "Your circle"} is looking at this payment. Nothing is sent unless it's approved.`);
+      return held("Your money hasn't left your account", `${circleNamesText(d.circleNames)} can approve or stop this payment. If nobody decides, you can release it yourself after ${d.coolingOffHours} hours.`);
     case "sent":
       return { chipTone: "safe", chip: "Sent", title: `${d.amount} sent to ${d.payee}`, lead: "The payment went through PayPal." };
     case "refunded":

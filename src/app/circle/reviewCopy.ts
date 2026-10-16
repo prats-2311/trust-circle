@@ -27,9 +27,13 @@ export function decisionResultCopy(
 const clock = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true });
 
 /** The verification note on the review screen. contactName is who was asked; senderName is who is paying. */
-export function verificationNotice(stage: Stage | null, senderName: string): string | null {
+export function verificationNotice(stage: Stage | null, senderName: string, viewerName: string): string | null {
   if (!stage) return null;
-  if (stage.stage === "waiting_for_person") return `We asked ${stage.contactName} at ${clock(stage.askedAt)}. No reply yet.`;
+  if (stage.stage === "waiting_for_person") {
+    return stage.contactName === viewerName
+      ? `We asked you at ${clock(stage.askedAt)}. Answer from your circle page.`
+      : `We asked ${stage.contactName} at ${clock(stage.askedAt)}. No reply yet.`;
+  }
   if (stage.stage === "challenge_passed") return `${senderName} checked with the caller, and they answered. It's still your decision.`;
   if (stage.stage === "resolved" && stage.outcome === "failed") return "The caller couldn't pass the check, so the payment is being stopped.";
   return null;
@@ -44,8 +48,11 @@ export function closedCopy(paymentState: string, stage: Stage | null, senderName
   if (stage?.stage === "resolved" && stage.outcome === "denied") {
     return { title, lead: `${stage.contactName ?? "The real person"} said they didn't ask for this money, so the payment was stopped.` };
   }
-  if ((stage?.stage === "resolved" && stage.outcome === "confirmed") || ["paid_out", "released", "captured"].includes(paymentState)) {
-    return { title, lead: "This payment has already gone through." };
-  }
+  if (stage?.stage === "resolved" && stage.outcome === "confirmed") return { title, lead: "This payment has already gone through." };
+  if (paymentState === "paid_out") return { title, lead: "This payment has already gone through." };
+  if (paymentState === "refunded") return { title, lead: `It couldn't be delivered, so PayPal returned the money to ${senderName}.` };
+  if (paymentState === "payout_failed") return { title, lead: `It couldn't be delivered, so the money is on its way back to ${senderName}.` };
+  if (paymentState === "created") return { title, lead: `${senderName} didn't approve it in PayPal, so nothing was sent.` };
+  if (["approved", "authorised", "released", "captured"].includes(paymentState)) return { title, lead: "It's going through PayPal now." };
   return { title, lead: `It was stopped, and the money stayed in ${senderName}'s account.` };
 }

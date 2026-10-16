@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryCircleRepo } from "@/circle/circleRepo";
 import type { PaymentRecord } from "@/payments/paymentRepo";
-import { createDashboardService, dashboardStatus } from "./dashboardService";
+import { createDashboardService, dashboardStatus, STATUS_LABELS } from "./dashboardService";
 
 const MARGARET = "00000000-0000-4000-8000-000000000001";
 const pay = (id: string, state: PaymentRecord["state"], amountCents: number, createdAt: string): PaymentRecord =>
@@ -23,11 +23,18 @@ describe("dashboardStatus", () => {
     ["voided", false, "hold_ended"],
     ["expired", false, "hold_ended"],
     ["refunded", false, "refunded"],
-    ["payout_failed", false, "refunded"],
+    ["payout_failed", false, "returning"],
     ["created", false, "not_approved"],
     ["captured", false, "in_progress"],
   ] as const)("%s (blocked=%s) is %s", (state, blocked, status) => {
     expect(dashboardStatus(state, blocked)).toBe(status);
+  });
+});
+
+describe("STATUS_LABELS", () => {
+  it("calls a failed payout 'Being returned' and a finished refund 'Refunded'", () => {
+    expect(STATUS_LABELS.returning).toBe("Being returned");
+    expect(STATUS_LABELS.refunded).toBe("Refunded");
   });
 });
 

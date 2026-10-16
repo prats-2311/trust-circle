@@ -18,7 +18,7 @@ import { approvalErrorCopy, riskScreen } from "./riskScreen";
 
 type Level = "low" | "medium" | "high";
 type Result = { paymentId: string; orderId: string; risk: { level: Level; reasons: string[] } };
-type Me = { circle: { displayName: string }[] };
+type Me = { circle: { displayName: string }[]; coolingOffHours?: number };
 type Errors = Partial<Record<"payee" | "amount" | "answer" | "note", string>>;
 type Phase =
   | { kind: "form" }
@@ -41,6 +41,7 @@ export default function SendPage() {
   const [errors, setErrors] = useState<Errors>({});
   const [formNotice, setFormNotice] = useState<string | null>(null);
   const [circleName, setCircleName] = useState<string | null>(null);
+  const [coolingOffHours, setCoolingOffHours] = useState(24);
   const [confirmedMedium, setConfirmedMedium] = useState(false);
   const [signedOutNotice, setSignedOutNotice] = useState(false);
   const approvedFor = useRef<string | null>(null);
@@ -51,7 +52,10 @@ export default function SendPage() {
     let cancelled = false;
     (async () => {
       const r = await fetchJson<Me>("/api/me");
-      if (!cancelled && r.ok) setCircleName(r.data.circle[0]?.displayName ?? null);
+      if (!cancelled && r.ok) {
+        setCircleName(r.data.circle[0]?.displayName ?? null);
+        setCoolingOffHours(r.data.coolingOffHours ?? 24);
+      }
     })();
     return () => {
       cancelled = true;
@@ -164,7 +168,7 @@ export default function SendPage() {
   if (phase.kind === "risk") {
     const { result, cents } = phase;
     const level = result.risk.level;
-    const copy = riskScreen(level, { circleName });
+    const copy = riskScreen(level, { circleName, coolingOffHours });
     const showPayPal = level !== "medium" || confirmedMedium;
     return (
       <Screen

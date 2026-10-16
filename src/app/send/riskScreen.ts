@@ -1,6 +1,6 @@
 import type { ChipTone } from "@/ui/Chip";
 
-export function riskScreen(level: "low" | "medium" | "high", opts: { circleName: string | null }) {
+export function riskScreen(level: "low" | "medium" | "high", opts: { circleName: string | null; coolingOffHours: number }) {
   if (level === "low") {
     return { chipTone: "safe" as ChipTone, chip: "No warning signs", title: "This payment looks fine", lead: "Approve it in PayPal to send it.", continueLabel: "Continue to PayPal", holdNote: null };
   }
@@ -9,14 +9,15 @@ export function riskScreen(level: "low" | "medium" | "high", opts: { circleName:
     return { chipTone: "caution" as ChipTone, chip: "Paused for a check", ...paused, continueLabel: "I understand, continue to PayPal", holdNote: null };
   }
   const who = opts.circleName;
+  const hours = opts.coolingOffHours;
   return {
     chipTone: "held" as ChipTone,
     chip: "We'll hold this payment",
     ...paused,
-    continueLabel: who ? `Continue, and let ${who} review it` : "Continue, and hold it for 24 hours",
+    continueLabel: who ? `Continue, and let ${who} review it` : `Continue, and hold it for ${hours} hours`,
     holdNote: who
-      ? `If you continue, PayPal holds the money. It isn't sent until ${who} approves it.`
-      : "If you continue, PayPal holds the money. It isn't sent until the waiting time is over and you release it.",
+      ? `If you continue, PayPal holds the money. ${who} can approve or stop it. If nobody decides, you can release it yourself after ${hours} hours.`
+      : `If you continue, PayPal holds the money for ${hours} hours. After that you can release it yourself.`,
   };
 }
 
