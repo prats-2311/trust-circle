@@ -185,6 +185,7 @@ export const webhookEvents = pgTable("webhook_events", {
   type: text("type").notNull(),
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true }),
+  attempts: integer("attempts").notNull().default(0),
   result: text("result"), // "applied" | "ignored" | "failed:<ErrorName>"
 });
 

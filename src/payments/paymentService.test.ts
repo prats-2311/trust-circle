@@ -946,4 +946,14 @@ describe("payoutOutcome", () => {
     const row = (await ctx.repo.auditFor(ctx.id)).find((a) => a.action === action);
     expect(row).toMatchObject({ fromState: "paid_out", toState: "paid_out", actorId: null, detail: { eventId: "WH-1" } });
   });
+
+  it("defers a failed outcome while the payout is still uncertain (captured)", async () => {
+    const ctx = setup({ level: "low", gateway: { sendPayout: vi.fn().mockRejectedValue(new PayPalError("payout", 500, undefined, "d", true)) } });
+    const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
+    await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+    expect((await ctx.repo.get(payment.id))?.state).toBe("captured");
+    expect(await ctx.service.payoutOutcome({ paymentId: payment.id, outcome: "failed", eventId: "WH-1" })).toBe("deferred");
+    expect((await ctx.repo.get(payment.id))?.state).toBe("captured");
+    expect(await ctx.service.payoutOutcome({ paymentId: payment.id, outcome: "succeeded", eventId: "WH-2" })).toBe("ignored");
+  });
 });

@@ -2,17 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const verify = vi.fn();
 const handle = vi.fn();
-const markFailed = vi.fn();
-const claim = vi.fn();
 let webhookId: string | undefined = "WID1";
 vi.mock("@/server/container", () => ({
   getContainer: () => ({
     env: { PAYPAL_WEBHOOK_ID: webhookId },
     gateway: { verifyWebhookSignature: verify },
     webhooks: { handle },
-    webhookRepo: { markFailed, claim },
   }),
 }));
+import { WebhookFailedError } from "@/webhooks/webhookService";
 import { POST } from "./route";
 
 const goodHeaders = {
@@ -30,7 +28,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   webhookId = "WID1";
   verify.mockResolvedValue(true);
-  handle.mockResolvedValue("processed");
+  handle.mockResolvedValue({ result: "processed", attempts: 1 });
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -50,7 +48,6 @@ describe("POST /api/paypal/webhook", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Invalid signature." });
     expect(handle).not.toHaveBeenCalled();
-    expect(claim).not.toHaveBeenCalled();
   });
 
   it("answers 400 when verification throws", async () => {
@@ -64,6 +61,7 @@ describe("POST /api/paypal/webhook", () => {
     delete partial["paypal-transmission-sig"];
     const res = await post(body, partial);
     expect(res.status).toBe(400);
+    expect(verify).not.toHaveBeenCalled();
     expect(handle).not.toHaveBeenCalled();
   });
 
@@ -90,14 +88,41 @@ describe("POST /api/paypal/webhook", () => {
     expect(console.info).toHaveBeenCalledWith("paypal webhook", { type: "PAYMENT.PAYOUTS-ITEM.RETURNED", id: "WH-1", result: "processed" });
   });
 
-  it("answers 200 and marks the event failed when handling throws", async () => {
-    class Boom extends Error { constructor() { super("secret receiver a@b.com"); this.name = "Boom"; } }
-    handle.mockRejectedValue(new Boom());
+  it("answers 500 when handling fails below the attempt cap, so PayPal redelivers", async () => {
+    handle.mockRejectedValue(new WebhookFailedError(1, "Boom"));
+    expect((await post()).status).toBe(500);
+    handle.mockRejectedValue(new WebhookFailedError(4, "Boom"));
+    expect((await post()).status).toBe(500);
+  });
+
+  it("answers 200 on the fifth failure so a poisoned event stops", async () => {
+    handle.mockRejectedValue(new WebhookFailedError(5, "Boom"));
+    expect((await post()).status).toBe(200);
+  });
+
+  it("answers 500 when the store itself fails before the claim", async () => {
+    handle.mockRejectedValue(new Error("db down"));
+    expect((await post()).status).toBe(500);
+  });
+
+  it("answers 500 for a deferred outcome below the cap and 200 at it", async () => {
+    handle.mockResolvedValue({ result: "deferred", attempts: 2 });
+    expect((await post()).status).toBe(500);
+    handle.mockResolvedValue({ result: "deferred", attempts: 5 });
+    expect((await post()).status).toBe(200);
+  });
+
+  it("answers 200 for a duplicate", async () => {
+    handle.mockResolvedValue({ result: "duplicate", attempts: 0 });
     const res = await post();
     expect(res.status).toBe(200);
-    expect(markFailed).toHaveBeenCalledWith("WH-1", expect.any(Date), "Boom");
-    const logged = JSON.stringify((console.warn as ReturnType<typeof vi.fn>).mock.calls);
-    expect(logged).not.toContain("a@b.com");
+    expect(await res.json()).toEqual({ result: "duplicate" });
+  });
+
+  it("never logs the error message or body when handling fails", async () => {
+    handle.mockRejectedValue(new WebhookFailedError(1, "Boom"));
+    await post();
+    expect(JSON.stringify((console.warn as ReturnType<typeof vi.fn>).mock.calls)).not.toContain("resource");
   });
 
   it("answers 413 for a body over 256 KB without verifying", async () => {
@@ -106,9 +131,10 @@ describe("POST /api/paypal/webhook", () => {
     expect(verify).not.toHaveBeenCalled();
   });
 
-  it("answers 400 for a verified body that is not an event", async () => {
+  it("answers 200 ignored for a verified body that is not an event", async () => {
     const res = await post("[1,2]");
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ result: "ignored" });
     expect(handle).not.toHaveBeenCalled();
   });
 });

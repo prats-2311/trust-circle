@@ -290,8 +290,10 @@ export function createPaymentService(deps: {
       outcome: "failed" | "unclaimed" | "succeeded";
       eventId: string;
       eventType?: string;
-    }): Promise<"applied" | "ignored"> {
+    }): Promise<"applied" | "ignored" | "deferred"> {
       const p = await repo.get(a.paymentId);
+      // A failed outcome that arrives while the payout is still uncertain (captured) must not be lost: retry it later.
+      if (p?.state === "captured" && a.outcome === "failed") return "deferred";
       if (!p || p.state !== "paid_out") return "ignored";
       if (a.outcome === "failed") {
         try {
