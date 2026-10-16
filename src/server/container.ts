@@ -26,6 +26,8 @@ import { createRegistryHooks } from "@/registry/hooks";
 import { createRegistryService, type RegistryService } from "@/registry/registryService";
 import { createDrizzleScamReportRepo } from "@/reports/drizzleScamReportRepo";
 import { createReportService, type ReportService } from "@/reports/reportService";
+import { createDrizzleSettingsRepo } from "@/settings/drizzleSettingsRepo";
+import { createSettingsService, type SettingsService } from "@/settings/settingsService";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -40,6 +42,7 @@ type Container = {
   patterns: PatternService;
   reports: ReportService;
   dashboard: DashboardService;
+  settings: SettingsService;
 };
 let container: Container | undefined;
 
@@ -68,6 +71,7 @@ export function getContainer(): Container {
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
   });
+  const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });
   const verificationRepo = createDrizzleVerificationRepo(db);
   const alerts = createAlertService({
     repo: createDrizzleAlertRepo(db),
@@ -90,7 +94,10 @@ export function getContainer(): Container {
     guard,
     linkedMessage: messages.linkedMessage,
     patterns: patterns.match,
-    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists() }),
+    extraContext: async (senderId) => ({ flaggedPayees: await messages.flaggedPayees(senderId), registry: await registryLists(),
+      circleLimitCents: (await settings.circleLimitCents(senderId)) ?? undefined,
+    }),
+    coolingOffMs: settings.coolingOffMs,
     onEvent: (e) => onEvent(e),
   });
   const verification = createVerificationService({
@@ -119,6 +126,6 @@ export function getContainer(): Container {
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
-  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard };
+  container = { env, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings };
   return container;
 }

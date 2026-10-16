@@ -9,14 +9,20 @@ export const paymentStateEnum = pgEnum("payment_state", [
 ]);
 export const riskLevelEnum = pgEnum("risk_level", ["low", "medium", "high"]);
 
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  preset: presetEnum("preset").notNull().default("family"),
-  safeWordHash: text("safe_word_hash"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    preset: presetEnum("preset").notNull().default("family"),
+    safeWordHash: text("safe_word_hash"),
+    coolingOffHours: integer("cooling_off_hours").notNull().default(24),
+    onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("users_cooling_off_choice", sql`${t.coolingOffHours} in (12, 24, 48)`)],
+);
 
 export const trustLinks = pgTable(
   "trust_links",

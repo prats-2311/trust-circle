@@ -36,6 +36,13 @@
       "when": 1792113110857,
       "tag": "0004_left_swarm",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792148387828,
+      "tag": "0005_curious_doorman",
+      "breakpoints": true
     }
   ]
 }

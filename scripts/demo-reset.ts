@@ -13,7 +13,7 @@ async function main() {
     await db.execute(
       sql`TRUNCATE scam_reports, registry_reports, registry_entries, alerts, verifications, message_checks, audit_log, payments CASCADE`,
     );
-    await db.update(users).set({ safeWordHash: null }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
+    await db.update(users).set({ safeWordHash: null, onboardedAt: null, coolingOffHours: 24 }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
   } finally {
     await close();
   }

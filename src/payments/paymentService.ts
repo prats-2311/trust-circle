@@ -58,12 +58,15 @@ export function createPaymentService(deps: {
   now?: () => Date;
   newId?: () => string;
   extraContext?: (senderId: string) => Promise<ExtraContext>;
+  /** How long a new hold for this sender cools off. Read once, when the hold starts; never applied to an existing hold. */
+  coolingOffMs?: (senderId: string) => Promise<number>;
   linkedMessage?: (senderId: string, payee: string) => Promise<string | undefined>;
   onEvent?: (e: PaymentServiceEvent) => Promise<void>;
 }) {
   const { repo, gateway, judge } = deps;
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? randomUUID;
+  const coolingOffMs = deps.coolingOffMs ?? (async () => COOLING_OFF_MS);
   const extra = deps.extraContext ?? (async () => ({ flaggedPayees: [], registry: { confirmed: [], unconfirmed: [] } }));
 
   async function step(
@@ -250,7 +253,7 @@ export function createPaymentService(deps: {
         const authorisedAt = now();
         p = await step(p, "AUTHORISE", a.senderId, { authorizationId, authorisedAt });
         if (p.riskLevel === "high") {
-          return hold(p, null, new Date(authorisedAt.getTime() + COOLING_OFF_MS));
+          return hold(p, null, new Date(authorisedAt.getTime() + (await coolingOffMs(p.senderId))));
         }
         const settled = await settle(p, a.senderId);
         if (settled.riskLevel === "medium") await emit({ type: "medium_sent", payment: settled });
@@ -366,12 +369,12 @@ export function createPaymentService(deps: {
         const { authorizationId } = await gateway.authorizeOrder({ paymentId: p.id, orderId: p.paypalOrderId });
         const authorisedAt = now();
         const auth = await step(p, "AUTHORISE", null, { authorizationId, authorisedAt });
-        await hold(auth, null, new Date(authorisedAt.getTime() + COOLING_OFF_MS));
+        await hold(auth, null, new Date(authorisedAt.getTime() + (await coolingOffMs(p.senderId))));
         recovered.push(p.id);
       });
       await each("authorised", (await repo.listByStates(["authorised"])).filter(isStale), async (p) => {
         const base = (p.authorisedAt ?? now()).getTime();
-        await hold(p, null, new Date(base + COOLING_OFF_MS));
+        await hold(p, null, new Date(base + (await coolingOffMs(p.senderId))));
         recovered.push(p.id);
       });
       return { expired, voidRetried, payoutRetried, refundRetried, recovered, captureRetried, needsAttention };

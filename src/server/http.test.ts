@@ -5,6 +5,7 @@ import { NotAllowedError, PaymentInputError, PaymentPendingError } from "@/payme
 import { PayPalError } from "@/payments/paypalGateway";
 import { ReportError } from "@/reports/reportService";
 import { MessageInputError } from "@/messages/messageService";
+import { SettingsInputError } from "@/settings/settingsService";
 import { VerificationClosedError, VerificationInputError } from "@/verification/verificationService";
 import { errorResponse, readJsonObject } from "./http";
 
@@ -41,6 +42,11 @@ describe("errorResponse", () => {
     const closed = errorResponse(new VerificationClosedError());
     expect(closed.status).toBe(409);
     expect(await closed.json()).toEqual({ error: "This has already been answered." });
+  });
+  it("maps settings input errors to 400", async () => {
+    const r = errorResponse(new SettingsInputError("Please choose 12, 24 or 48 hours."));
+    expect(r.status).toBe(400);
+    expect(await r.json()).toEqual({ error: "Please choose 12, 24 or 48 hours." });
   });
   it("maps not-allowed to 403", () => {
     expect(errorResponse(new NotAllowedError("No.")).status).toBe(403);

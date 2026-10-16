@@ -230,6 +230,29 @@ describe("contactDecision", () => {
   });
 });
 
+describe("a settings change mid-hold", () => {
+  it("never moves a hold that already exists", async () => {
+    let hours = 12;
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    let clock = new Date("2026-11-01T10:00:00Z");
+    let n = 0;
+    const service = createPaymentService({
+      repo, gateway: fakeGateway(), judge: judgeSaying("high"),
+      now: () => clock,
+      newId: () => `00000000-0000-4000-9000-${String(++n).padStart(12, "0")}`,
+      coolingOffMs: async () => hours * 3_600_000,
+    });
+    const { payment } = await service.start(send);
+    const held = await service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+    expect(held.coolingOffUntil?.toISOString()).toBe("2026-11-01T22:00:00.000Z");
+
+    hours = 48;
+    clock = new Date(clock.getTime() + 13 * 3_600_000);
+    expect((await service.senderRelease({ paymentId: payment.id, senderId: SENDER })).state).toBe("paid_out");
+    expect((await repo.get(payment.id))!.coolingOffUntil?.toISOString()).toBe("2026-11-01T22:00:00.000Z");
+  });
+});
+
 describe("senderRelease and expiry", () => {
   async function held() {
     const ctx = setup({ level: "high" });
