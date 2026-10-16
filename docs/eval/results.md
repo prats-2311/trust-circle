@@ -10,8 +10,8 @@ Pattern matcher: on (10 known patterns, threshold 0.35).
 | Scams held | 32 of 32 (100%) |
 | Genuine cases given a warning or hold | 5 of 28 (18%) |
 | Genuine cases held | 1 of 28 (4%) |
-| Cases the AI could not check after one retry | 1 |
-| Cases that needed a retry | 5 (4 recovered) |
+| Cases the AI could not check after one retry | 0 |
+| Cases that needed a retry | 0 (0 recovered) |
 
 Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Result: pass.
 
@@ -19,19 +19,20 @@ Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Resul
 
 | Case | Kind | Preset | Label | Level | Attempts | Signals |
 |---|---|---|---|---|---|---|
-| p12 | payment | business | scam | high (unchecked) | 2 | FIRST_TIME_PAYEE, UNUSUAL_AMOUNT, KNOWN_SCAM_PATTERN |
 | g10 | payment | business | genuine | medium | 1 | FIRST_TIME_PAYEE, UNUSUAL_AMOUNT |
 | g11 | payment | business | genuine | high | 1 | KNOWN_SCAM_PATTERN |
 | g13 | payment | solo | genuine | medium | 1 | FIRST_TIME_PAYEE, KNOWN_SCAM_PATTERN |
-| n07 | message | business | genuine | medium | 2 | KNOWN_SCAM_PATTERN |
+| n07 | message | business | genuine | medium | 1 | KNOWN_SCAM_PATTERN |
 | n12 | message | solo | genuine | medium | 1 | KNOWN_SCAM_PATTERN |
 
 ## Unchecked after retry
 
-| Case | Label | Level shown | Cause |
-|---|---|---|---|
-| p12 | scam | high | TimeoutError |
+None.
+
+## Pattern matcher's effect
+
+4 of the 5 false alarms on genuine cases carry KNOWN_SCAM_PATTERN (g11, g13, n07, n12). 1 genuine case(s) were held on that signal alone (g11). The last run with the matcher off (2026-10-16) had 2 false alarms out of 28, so the matcher catches reworded scams at the cost of more warnings on everyday payments. The seed patterns are likely too broad for some ordinary messages.
 
 ## What these numbers mean
 
-Trust Circle fails closed: when the AI cannot check a case, an unchecked scam is counted as caught (the rules hold it) and an unchecked genuine payment is counted as a false hold. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is 60 hand-written cases, so these numbers show behaviour on known situations, not real-world rates.
+When the AI cannot check a payment, Trust Circle fails closed: the rules hold it, so an unchecked scam payment counts as held and an unchecked genuine payment counts as a false hold. A message the AI cannot check is shown as unchecked, never as safe, but the scoring here still counts an unchecked scam message as a miss. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is 60 hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run: 0 of the 60 cases needed a retry, and a repeat run can differ slightly.
