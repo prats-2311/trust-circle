@@ -75,7 +75,7 @@ Every payment is assessed before PayPal is involved. Signals are computed in cod
 
 <img src="docs/images/verify-ask.png" alt="Daniel's screen: Did you just ask Margaret for $800? with It wasn't me and Yes, it was me" width="300" align="right">
 
-When the sender's answer names someone ("my grandson Daniel"), the AI identifies who is being impersonated. If that person is in the circle, they get an alert: "Did you just ask Margaret for $800?" **It wasn't me** voids the payment and puts the payee on the shared scam list. **Yes, it was me** releases it. If the claimed requester is an organisation, such as a bank or PayPal support, the app shows how to reach it through official routes and keeps the payment held.
+When the sender's answer names someone ("my grandson Daniel"), the AI identifies who is being impersonated. If that person is in the circle, they get an alert: "Did you just ask Margaret for $800?" **It wasn't me** voids the payment and puts the payee on the shared scam list. **Yes, it was me** releases it. If the claimed requester is an organisation, such as a bank or PayPal support, the app shows how to reach it through official routes and keeps the payment held. If the caller is connected to the sender's computer or phone (the remote-access "refund" scam, where a fake balance is shown on screen), the first step is to hang up and switch the device off. The decision is made on another person's phone, which the scammer can't control.
 
 <br clear="right">
 
@@ -150,15 +150,15 @@ Text from messages, payments and tool results is treated as data. The prompts sa
 
 ## Accuracy
 
-From [docs/eval/results.md](docs/eval/results.md): run 2026-10-16 on 72 invented cases (38 scams, 34 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
+From [docs/eval/results.md](docs/eval/results.md): run 2026-10-16 on 76 invented cases (41 scams, 35 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
 
 | Measure | Result |
 |---|---|
-| Scams flagged (warning or hold) | 38 of 38 (100%) |
-| Scams held | 38 of 38 (100%) |
-| Genuine cases given a warning or hold | 11 of 34 (32%) |
-| Genuine cases held | 1 of 34 (3%) |
-| Cases the AI could not check after one retry | 1 (a genuine message, shown as unchecked, never as safe) |
+| Scams flagged (warning or hold) | 41 of 41 (100%) |
+| Scams held | 41 of 41 (100%) |
+| Genuine cases given a warning or hold | 11 of 35 (31%) |
+| Genuine cases held | 1 of 35 (3%) |
+| Cases the AI could not check after one retry | 2 (Groq timeouts: the payment was held and the message was shown as unchecked, never as safe) |
 
 Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Result: pass.
 
@@ -166,15 +166,15 @@ Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Resul
 
 The same run, scored on payments with the rules alone (first-time payee, unusual amount, circle limit, rapid repeats, the scam list):
 
-| Payments (22 scams, 20 genuine) | Scams held | Genuine held |
+| Payments (23 scams, 20 genuine) | Scams held | Genuine held |
 |---|---|---|
-| Rules and AI (as the app runs) | 22 of 22 | 1 of 20 |
-| Rules alone, holding only what they rate high | 0 of 22 | 0 of 20 |
-| Rules alone, holding everything they warn about | 16 of 22 | 7 of 20 |
+| Rules and AI (as the app runs) | 23 of 23 | 1 of 20 |
+| Rules alone, holding only what they rate high | 0 of 23 | 0 of 20 |
+| Rules alone, holding everything they warn about | 17 of 23 | 7 of 20 |
 
 No rules-only setting matches the AI. Six of the scams are deliberately hard for rules: an everyday amount to a new payee, or a payee already paid (a friend's hacked account). The rules see nothing wrong; the AI reads the sender's own words and holds all six. Scam messages have no rules-only score at all: without AI, nothing reads the text.
 
-**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning; only one genuine payment was held. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 21 of 22 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 72 hand-written cases (the 12 hard payments were committed before the run that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
+**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning; only one genuine payment was held. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 76 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
 
 ## Architecture
 

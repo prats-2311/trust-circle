@@ -21,7 +21,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 
 - **Check a message.** Paste a text or a screenshot. Groq judges it and explains, in plain words, what gave the scam away. Meta's Prompt Guard screens the text for instructions aimed at the AI first.
 - **Guarded send.** Each payment is assessed by rules in code and then by the AI. The AI can raise the risk level, never lower it, and if it's unavailable the payment is held. A high-risk payment can still go ahead, but it is only authorised in PayPal and held. The sender feels they've "done it", so the pressure is off, yet the money hasn't left.
-- **Ask the real person.** When the sender says "my grandson Daniel asked", the AI identifies who is being impersonated. If Daniel is in the circle, he gets "Did you just ask Margaret for $800?" One tap on **It wasn't me** voids the authorisation. For a claimed bank or PayPal support, the app shows official routes and keeps the hold.
+- **Ask the real person.** When the sender says "my grandson Daniel asked", the AI identifies who is being impersonated. If Daniel is in the circle, he gets "Did you just ask Margaret for $800?" One tap on **It wasn't me** voids the authorisation. For a claimed bank or PayPal support, the app shows official routes and keeps the hold. In the remote-access "refund" scam, where a caller controls the sender's computer and shows a fake balance, the first step is to hang up and switch it off, and the decision is made on someone else's phone, which the scammer can't touch.
 - **Safe word and memory challenge.** If the real person doesn't answer in 10 minutes, the sender is coached to ask the caller for the safe word or a memory question. The challenge is one-way: a wrong answer or an excuse stops the payment, and a right one never releases a high-risk payment by itself.
 - **The circle decides.** A trusted contact (Sarah, the daughter) can stop or approve. Approve captures the authorisation and pays the payee out with PayPal Payouts. If nobody decides, the sender can release it after a cooling-off period (24 hours by default), and the hold is voided after 72 hours.
 - **A shared scam list that learns.** A payee confirmed as a scam (stopped by a contact, denied by the real person, or reported by two people) is high risk for everyone. The AI writes an anonymised description of each reported script, embedded locally and matched in pgvector, so reworded versions are caught too. Trends are charted with AG Charts.
@@ -35,7 +35,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 - **AI:** Groq for the text and vision judgements, the aftercare tool loop and the pattern descriptions; `meta-llama/llama-prompt-guard-2-86m` on Groq as an injection screen; `all-MiniLM-L6-v2` running inside the server for embeddings, stored in pgvector.
 - **Money safety:** a payment state machine (`created → approved → authorised → held → released → captured → paid_out`, with `blocked`, `expired`, `voided`, `payout_failed` and `refunded`). Each decision is claimed in the database before PayPal is called, and a sweep every 5 minutes finishes anything interrupted.
 - **Hosting:** Render free web service, Neon free Postgres with pgvector, and GitHub Actions schedules for hold expiry and a daily demo reset.
-- **Testing:** Vitest unit and integration tests, Playwright end-to-end stories against the real sandbox, a production smoke test, and a live evaluation on 72 labelled cases, with a rules-only comparison.
+- **Testing:** Vitest unit and integration tests, Playwright end-to-end stories against the real sandbox, a production smoke test, and a live evaluation on 76 labelled cases, with a rules-only comparison.
 
 ### Challenges we ran into
 
@@ -48,7 +48,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 ### Accomplishments that we're proud of
 
 - The whole lead story works end to end on real sandbox money movement: check, send, hold, Daniel says "It wasn't me", the authorisation is voided and the scammer goes on the shared list.
-- On 72 hand-written cases, all 38 scams were flagged and held, and 1 of 34 genuine cases was held. The AI earns its place: on the same payments, rules alone hold at best 16 of 22 scams while holding 7 of 20 genuine ones, and miss every scam that uses an everyday amount or a payee already paid. We publish the cost too: 11 of 34 genuine cases got a warning, mostly large first payments to new payees.
+- On 76 hand-written cases, all 41 scams were flagged and held, and 1 of 35 genuine cases was held. The AI earns its place: on the same payments, rules alone hold at best 17 of 23 scams while holding 7 of 20 genuine ones, and miss every scam that uses an everyday amount or a payee already paid. We publish the cost too: 11 of 35 genuine cases got a warning, mostly large first payments to new payees.
 - Calm, blame-free screens with large type and big tap targets, checked with an automated accessibility pass.
 
 ### What we learned
