@@ -29,7 +29,7 @@ const ruleSignals = (r: EvalResult): Signal[] =>
 /**
  * What the AI adds, scored from one run with no extra AI calls. Payments are scored three ways: as the app ran
  * (rules plus AI), by the rules alone, and by the fallback the app uses when the AI is unavailable (any rule
- * signal holds the payment). Messages have no rule-only score: without AI nothing reads the text.
+ * signal holds the payment). Messages have no rule-only score: the rules only look at payments.
  */
 export function rulesOnlyComparison(results: EvalResult[]) {
   const payments = results.filter((r) => r.kind === "payment");
@@ -47,7 +47,9 @@ export function rulesOnlyComparison(results: EvalResult[]) {
     messages: {
       scams: messages.filter((r) => r.label === "scam").length,
       genuine: messages.filter((r) => r.label === "genuine").length,
-      withAiFlagged: messages.filter((r) => r.label === "scam" && r.level !== "low").length,
+      // Only messages the AI actually checked: a timed-out message flagged by the pattern matcher is not the AI's catch.
+      aiChecked: messages.filter((r) => r.label === "scam" && r.checked).length,
+      withAiFlagged: messages.filter((r) => r.label === "scam" && r.checked && r.level !== "low").length,
     },
   };
 }

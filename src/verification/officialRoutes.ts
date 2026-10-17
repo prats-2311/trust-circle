@@ -41,7 +41,18 @@ const DEFAULT_STEPS = [
   "Find the organisation's official contact details yourself, on its website or a letter you trust, and ask them directly.",
 ];
 
-export function officialRouteFor(name: string): OfficialRoute {
+const DISCONNECT_STEP =
+  "Hang up and end the connection: close the remote app, or switch off the computer it's on. Anything they showed you on screen, like a balance or a refund, may be fake. Have the app removed before you bank on that device again.";
+
+// The disconnect step already hangs up, so later steps don't say it again.
+function afterHangingUp(step: string): string {
+  if (step === "Close the message or hang up.") return "Close the message.";
+  const m = /^Hang up and (.)(.*)$/.exec(step);
+  return m ? m[1]!.toUpperCase() + m[2] : step;
+}
+
+export function officialRouteFor(name: string, opts: { remoteAccess?: boolean } = {}): OfficialRoute {
   const route = ROUTES.find((r) => r.match.test(name));
-  return { organisation: name.trim(), steps: route ? route.steps : DEFAULT_STEPS };
+  const steps = route ? route.steps : DEFAULT_STEPS;
+  return { organisation: name.trim(), steps: opts.remoteAccess ? [DISCONNECT_STEP, ...steps.map(afterHangingUp)] : steps };
 }

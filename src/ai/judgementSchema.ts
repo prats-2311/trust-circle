@@ -6,6 +6,6 @@ export const JudgementSchema = z.object({
   scamType: z.enum(SCAM_TYPES),
   reasons: z.array(z.string().min(1).max(240)).max(10),
   impersonatedRequester: z
-    .object({ kind: z.enum(["person", "organisation"]), name: z.string().min(1).max(80) })
+    .object({ kind: z.enum(["person", "organisation"]), name: z.string().min(1).max(80), remoteAccess: z.boolean().optional() })
     .nullable(),
 });

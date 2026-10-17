@@ -88,7 +88,7 @@ async function main() {
     "",
     `No rules-only setting matches the AI. Holding only what the rules rate high holds ${p.rulesAlone.scamsHeld} of ${p.scams} scams. Holding everything the rules warn about holds ${p.rulesAlone.scamsFlagged} of ${p.scams} scams and ${p.rulesAlone.genuineFlagged} of ${p.genuine} genuine payments. The AI can only raise a rule's level, never lower it, so genuine payments the rules warn about keep their warning (they still go through).`,
     "",
-    `Scam payments only the AI held${ids(p.onlyAiHeld)}: ${p.onlyAiHeld.length}. Messages have no rules-only score: without AI nothing reads the text, so 0 of ${cmp.messages.scams} scam messages would be flagged (the AI flagged ${cmp.messages.withAiFlagged}).`,
+    `Scam payments only the AI held${ids(p.onlyAiHeld)}: ${p.onlyAiHeld.length}. Messages have no rules-only score: the rules only look at payments. Of the ${cmp.messages.scams} scam messages, the AI checked ${cmp.messages.aiChecked} and flagged ${cmp.messages.withAiFlagged} of those${cmp.messages.aiChecked < cmp.messages.scams ? " (the rest timed out and were shown as unchecked, never as safe)" : ""}.`,
     "",
     "## Pattern matcher's effect",
     "",

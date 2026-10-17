@@ -79,4 +79,24 @@ describe("decide", () => {
     const many: Signal[] = [confirmed, first, unusual, { code: "RAPID_REPEAT", detail: "R" }];
     expect(decide(many, { ok: false, error: "x" }).reasons).toHaveLength(3);
   });
+
+  it("holds a payment when a claimed organisation is connected to the sender's device", () => {
+    const remote: AiOutcome = {
+      ok: true,
+      judgement: { level: "medium", scamType: "impersonation_organisation", reasons: ["Says it's your bank"], impersonatedRequester: { kind: "organisation", name: "bank", remoteAccess: true } },
+    };
+    const d = decide([], remote);
+    expect(d.level).toBe("high");
+    expect(d.scamType).toBe("impersonation_organisation");
+    expect(d.reasons[0]).toContain("connected to your computer or phone");
+    expect(d.reasons).toContain("Says it's your bank");
+  });
+
+  it("does not raise for remote access by a person, such as family tech help", () => {
+    const helper: AiOutcome = {
+      ok: true,
+      judgement: { level: "low", scamType: "none", reasons: [], impersonatedRequester: { kind: "person", name: "daughter", remoteAccess: true } },
+    };
+    expect(decide([], helper).level).toBe("low");
+  });
 });
