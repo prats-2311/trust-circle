@@ -48,7 +48,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 ### Accomplishments that we're proud of
 
 - The whole lead story works end to end on real sandbox money movement: check, send, hold, Daniel says "It wasn't me", the authorisation is voided and the scammer goes on the shared list.
-- On 76 hand-written cases, all 41 scams were flagged and held, and 1 of 35 genuine cases was held. The AI earns its place: on the same payments, rules alone hold at best 17 of 23 scams while holding 7 of 20 genuine ones, and miss every scam that uses an everyday amount or a payee already paid. We publish the cost too: 11 of 35 genuine cases got a warning, mostly large first payments to new payees.
+- On 76 hand-written cases, all 41 scams were flagged and held, and 2 of 35 genuine cases were held (one only because the AI timed out and the app held it to be safe). The AI earns its place: on the same payments, rules alone hold at best 17 of 23 scams while holding 7 of 20 genuine ones, and miss every scam that uses an everyday amount or a payee already paid. We publish the cost too: 11 of 35 genuine cases got a warning, mostly large first payments to new payees.
 - Calm, blame-free screens with large type and big tap targets, checked with an automated accessibility pass.
 
 ### What we learned

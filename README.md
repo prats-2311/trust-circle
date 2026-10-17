@@ -157,7 +157,7 @@ From [docs/eval/results.md](docs/eval/results.md): run 2026-10-16 on 76 invented
 | Scams flagged (warning or hold) | 41 of 41 (100%) |
 | Scams held | 41 of 41 (100%) |
 | Genuine cases given a warning or hold | 11 of 35 (31%) |
-| Genuine cases held | 1 of 35 (3%) |
+| Genuine cases held | 2 of 35 (6%): one by the pattern matcher, one because the AI timed out and the app held it to be safe |
 | Cases the AI could not check after one retry | 2 (Groq timeouts: the payment was held and the message was shown as unchecked, never as safe) |
 
 Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Result: pass.
@@ -168,13 +168,13 @@ The same run, scored on payments with the rules alone (first-time payee, unusual
 
 | Payments (23 scams, 20 genuine) | Scams held | Genuine held |
 |---|---|---|
-| Rules and AI (as the app runs) | 23 of 23 | 1 of 20 |
+| Rules and AI (as the app runs) | 23 of 23 | 2 of 20 (one after an AI timeout) |
 | Rules alone, holding only what they rate high | 0 of 23 | 0 of 20 |
 | Rules alone, holding everything they warn about | 17 of 23 | 7 of 20 |
 
 No rules-only setting matches the AI. Six of the scams are deliberately hard for rules: an everyday amount to a new payee, or a payee already paid (a friend's hacked account). The rules see nothing wrong; the AI reads the sender's own words and holds all six. Scam messages have no rules-only score at all: without AI, nothing reads the text.
 
-**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning; only one genuine payment was held. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 76 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
+**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning. In this run one of them was held only because the AI timed out, which is the app's safe fallback. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 76 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
 
 ## Architecture
 
