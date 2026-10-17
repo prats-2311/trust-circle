@@ -10,5 +10,7 @@ describe("remote-access scams in the prompts", () => {
   });
   it("teaches the message judge the pattern", () => {
     expect(MESSAGE_SYSTEM_PROMPT).toMatch(/AnyDesk|TeamViewer/);
+    // Family tech help is not a scam: the sign is a caller, company or stranger asking.
+    expect(MESSAGE_SYSTEM_PROMPT).toMatch(/Family or friends offering to fix/);
   });
 });
