@@ -25,6 +25,8 @@ describe("rulesOnlyComparison", () => {
       r("g2", "payment", "genuine", "medium", ["KNOWN_SCAM_PATTERN"]),
       r("g3", "payment", "genuine", "low", []),
       r("m1", "message", "scam", "high", []),
+      // Flagged by the pattern matcher while the AI timed out: not the AI's catch.
+      { ...r("m2", "message", "scam", "high", ["KNOWN_SCAM_PATTERN"]), checked: false },
     ]);
     expect(c.payments).toEqual({
       scams: 3,
@@ -34,7 +36,7 @@ describe("rulesOnlyComparison", () => {
       aiUnavailable: { scamsHeld: 2, scamsFlagged: 2, genuineHeld: 1, genuineFlagged: 1 },
       onlyAiHeld: ["s1", "s3"],
     });
-    expect(c.messages).toEqual({ scams: 1, genuine: 0, withAiFlagged: 1 });
+    expect(c.messages).toEqual({ scams: 2, genuine: 0, aiChecked: 1, withAiFlagged: 1 });
   });
 
   it("keeps rule signals that are not AI-derived, such as a confirmed scam payee", () => {
@@ -47,7 +49,7 @@ describe("rulesOnlyComparison", () => {
     const zero = { scamsHeld: 0, scamsFlagged: 0, genuineHeld: 0, genuineFlagged: 0 };
     expect(rulesOnlyComparison([])).toEqual({
       payments: { scams: 0, genuine: 0, withAi: zero, rulesAlone: zero, aiUnavailable: zero, onlyAiHeld: [] },
-      messages: { scams: 0, genuine: 0, withAiFlagged: 0 },
+      messages: { scams: 0, genuine: 0, aiChecked: 0, withAiFlagged: 0 },
     });
   });
 });

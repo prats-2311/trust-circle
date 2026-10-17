@@ -20,6 +20,7 @@ export interface RiskDecision {
 }
 
 const MAX_REASONS = 3;
+const REMOTE_ACCESS_REASON = "Someone claiming to be a company is connected to your computer or phone. Real banks and support teams never ask for money this way.";
 
 function sanitiseReasons(raw: string[]): string[] {
   const cleaned = raw.map((r) => r.trim()).filter((r) => r.length > 0);
@@ -30,10 +31,15 @@ function sanitiseReasons(raw: string[]): string[] {
 export function decide(signals: Signal[], ai: AiOutcome, patternScamType?: ScamType): RiskDecision {
   const rule = ruleLevel(signals);
   if (ai.ok) {
-    const level = maxLevel(rule, ai.judgement.level);
+    const requester = ai.judgement.impersonatedRequester;
+    // A claimed organisation connected to the sender's device is the remote-access scam: always hold. Family tech help is a person.
+    const remote = requester?.kind === "organisation" && requester.remoteAccess === true;
+    const aiLevel = remote ? maxLevel(ai.judgement.level, "high") : ai.judgement.level;
+    const level = maxLevel(rule, aiLevel);
     const details = signals.map((s) => s.detail).slice(0, MAX_REASONS);
-    const overridden = level !== ai.judgement.level;
+    const overridden = level !== aiLevel;
     let reasons = overridden ? details : sanitiseReasons(ai.judgement.reasons);
+    if (remote && aiLevel !== ai.judgement.level) reasons = [REMOTE_ACCESS_REASON, ...reasons].slice(0, MAX_REASONS);
     if (level !== "low" && reasons.length === 0) reasons = details;
     return {
       level,

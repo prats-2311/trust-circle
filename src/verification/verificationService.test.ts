@@ -264,7 +264,7 @@ describe("organisations and people outside the circle", () => {
     const p = await s.held();
     const stage = await s.verification.stage({ paymentId: p.id, viewerId: MARGARET });
     expect(stage).toMatchObject({ stage: "official_routes", organisation: "bank fraud team" });
-    expect(stage.stage === "official_routes" && stage.steps[0]).toContain("switch off");
+    expect(stage.stage === "official_routes" && stage.steps[0]).toContain("close the remote app");
   });
   it("shows official routes for an organisation and offers no challenge", async () => {
     const s = setup({ requester: { kind: "organisation", name: "PayPal support" } });

@@ -42,10 +42,17 @@ const DEFAULT_STEPS = [
 ];
 
 const DISCONNECT_STEP =
-  "Hang up, and switch off the computer or phone they were connected to. Someone who controls your screen can show you a fake balance or a fake refund.";
+  "Hang up and end the connection: close the remote app, or switch off the computer it's on. Anything they showed you on screen, like a balance or a refund, may be fake. Have the app removed before you bank on that device again.";
+
+// The disconnect step already hangs up, so later steps don't say it again.
+function afterHangingUp(step: string): string {
+  if (step === "Close the message or hang up.") return "Close the message.";
+  const m = /^Hang up and (.)(.*)$/.exec(step);
+  return m ? m[1]!.toUpperCase() + m[2] : step;
+}
 
 export function officialRouteFor(name: string, opts: { remoteAccess?: boolean } = {}): OfficialRoute {
   const route = ROUTES.find((r) => r.match.test(name));
   const steps = route ? route.steps : DEFAULT_STEPS;
-  return { organisation: name.trim(), steps: opts.remoteAccess ? [DISCONNECT_STEP, ...steps] : steps };
+  return { organisation: name.trim(), steps: opts.remoteAccess ? [DISCONNECT_STEP, ...steps.map(afterHangingUp)] : steps };
 }
