@@ -75,7 +75,7 @@ Every payment is assessed before PayPal is involved. Signals are computed in cod
 
 <img src="docs/images/verify-ask.png" alt="Daniel's screen: Did you just ask Margaret for $800? with It wasn't me and Yes, it was me" width="300" align="right">
 
-When the sender's answer names someone ("my grandson Daniel"), the AI identifies who is being impersonated. If that person is in the circle, they get an alert: "Did you just ask Margaret for $800?" **It wasn't me** voids the payment and puts the payee on the shared scam list. **Yes, it was me** releases it. If the claimed requester is an organisation, such as a bank or PayPal support, the app shows how to reach it through official routes and keeps the payment held. If the caller is connected to the sender's computer or phone (the remote-access "refund" scam, where a fake balance is shown on screen), the first step is to hang up and switch the device off. The decision is made on another person's phone, which the scammer can't control.
+When the sender's answer names someone ("my grandson Daniel"), the AI identifies who is being impersonated. If that person is in the circle, they get an alert: "Did you just ask Margaret for $800?" **It wasn't me** voids the payment and puts the payee on the shared scam list. **Yes, it was me** releases it. If the claimed requester is an organisation, such as a bank or PayPal support, the app shows how to reach it through official routes and keeps the payment held. If the caller is connected to the sender's computer or phone (the remote-access "refund" scam, where a fake balance is shown on screen), the first step is to hang up and switch the device off. With a circle, the decision is made on another person's phone, which the scammer can't control.
 
 <br clear="right">
 
