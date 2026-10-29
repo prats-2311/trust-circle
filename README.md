@@ -1,5 +1,7 @@
 # Trust Circle
 
+[![ci](https://github.com/prats-2311/trust-circle/actions/workflows/ci.yml/badge.svg)](https://github.com/prats-2311/trust-circle/actions/workflows/ci.yml)
+
 **Scammers pretend to be someone you trust. So we ask that person.**
 
 <p align="center">
@@ -121,7 +123,7 @@ From the dashboard, Sarah can ask an agent to review Margaret's recent payments 
 |---|---|---|
 | Orders v2, intent `AUTHORIZE` | Creates an order for each payment, with the payment id as `custom_id` | `src/payments/paypalGateway.ts` (`createAuthorizeOrder`) |
 | JavaScript SDK v6 | The sender approves in PayPal's own window | `src/app/send/PayPalApprove.tsx`, `src/app/send/sdkLoader.ts` |
-| Authorize, capture, void | Authorise after approval and hold; capture on approval; void on stop or expiry | `src/payments/paypalGateway.ts`, `src/payments/paymentService.ts` |
+| Authorize, capture, void | Authorise after approval and hold; capture on approval; void on stop or expiry. The void asks for PayPal's reply (`Prefer: return=representation`), and the stopped screen says "PayPal confirmed it" only when that reply is `VOIDED` | `src/payments/paypalGateway.ts`, `src/payments/paymentService.ts` |
 | Payouts | Pays the payee by email or phone after capture | `src/payments/paypalGateway.ts` (`sendPayout`) |
 | Refunds | Refunds the sender when a payout fails | `src/payments/paypalGateway.ts` (`refundCapture`), `src/payments/paymentService.ts` |
 | Webhooks, verified online | Checks every event with `/v1/notifications/verify-webhook-signature`, stores it once per event id, and turns a returned, failed, blocked, canceled or refunded payout into `payout_failed`, which the sweep then refunds | `src/app/api/paypal/webhook/route.ts`, `src/webhooks/webhookService.ts` |
@@ -243,6 +245,13 @@ flowchart LR
 | UI | `src/app`, `src/ui` | Next.js App Router screens, AG Grid and AG Charts |
 
 The lead-story sequence diagram, the payment state machine and the webhook and aftercare details are in [docs/architecture.md](docs/architecture.md).
+
+The main design decisions, with their reasons and costs:
+
+1. [The hold is a PayPal authorisation](docs/adr/0001-hold-is-a-paypal-authorisation.md)
+2. [Payouts and webhook verification use REST](docs/adr/0002-payouts-and-webhook-verification-use-rest.md), because the Server SDK has no calls for them
+3. [The AI can raise the risk, never lower it](docs/adr/0003-ai-can-raise-risk-never-lower-it.md)
+4. [The aftercare agent is read-only](docs/adr/0004-aftercare-agent-is-read-only.md)
 
 ## Sponsor tools
 

@@ -1,6 +1,6 @@
 # Devpost submission drafts
 
-Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. `{{REPO_URL}}`, `{{DEMO_URL}}` and `{{VIDEO_URL}}` are replaced in Plan 5 Tasks 8 and 9.
+Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. `{{DEMO_URL}}` and `{{VIDEO_URL}}` are replaced in Plan 5 Tasks 8 and 9.
 
 ## Project name and tagline
 
@@ -83,7 +83,7 @@ The same engine already runs a Business preset, where a freelancer's accountant 
 | 28783 | Existing work | N/A |
 | 28784 | Main technology requirement | See below |
 | 28786 | Sponsor tools | AG Grid, Render |
-| 28788 | Repo URL | `{{REPO_URL}}` |
+| 28788 | Repo URL | https://github.com/prats-2311/trust-circle |
 | 28787 | Demo URL | `{{DEMO_URL}}` |
 | 28798 | Testing instructions | See below |
 | 28790 | PayPal experience rating | **USER TO FILL** |
