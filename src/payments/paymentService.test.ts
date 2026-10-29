@@ -13,7 +13,7 @@ function fakeGateway(over: Partial<PayPalGateway> = {}): PayPalGateway {
     createAuthorizeOrder: vi.fn().mockResolvedValue({ orderId: "ORDER1" }),
     authorizeOrder: vi.fn().mockResolvedValue({ authorizationId: "AUTH1" }),
     captureAuthorization: vi.fn().mockResolvedValue({ captureId: "CAP1" }),
-    voidAuthorization: vi.fn().mockResolvedValue(undefined),
+    voidAuthorization: vi.fn().mockResolvedValue({ status: null }),
     sendPayout: vi.fn().mockResolvedValue({ payoutBatchId: "BATCH1" }),
     refundCapture: vi.fn().mockResolvedValue({ refundId: "REF1" }),
     verifyWebhookSignature: vi.fn().mockResolvedValue(true),
@@ -200,6 +200,20 @@ describe("contactDecision", () => {
     expect(gateway.voidAuthorization).toHaveBeenCalledWith({ paymentId: id, authorizationId: "AUTH1" });
   });
 
+  it("records PayPal's own status for the void in the audit trail", async () => {
+    const { service, gateway, repo, id } = await held();
+    (gateway.voidAuthorization as ReturnType<typeof vi.fn>).mockResolvedValue({ status: "VOIDED" });
+    await service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" });
+    const voidRow = (await repo.auditFor(id)).find((a) => a.action === "VOID");
+    expect(voidRow?.detail).toEqual({ paypalStatus: "VOIDED" });
+  });
+
+  it("records no PayPal status when PayPal sent none", async () => {
+    const { service, repo, id } = await held();
+    await service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" });
+    expect((await repo.auditFor(id)).find((a) => a.action === "VOID")?.detail).toEqual({ paypalStatus: null });
+  });
+
   it("refuses someone outside the circle", async () => {
     const { service, gateway, id } = await held();
     await expect(service.contactDecision({ paymentId: id, contactId: STRANGER, decision: "approve" })).rejects.toBeInstanceOf(NotAllowedError);
@@ -218,7 +232,7 @@ describe("contactDecision", () => {
   });
 
   it("keeps a blocked payment for retry when void fails", async () => {
-    const ctx = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue(undefined) } });
+    const ctx = setup({ level: "high", gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue({ status: null }) } });
     const { payment } = await ctx.service.start(send);
     await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
     const err = await ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" }).catch((e) => e);
@@ -365,7 +379,7 @@ describe("expireStale self-healing", () => {
   });
 
   it("keeps sweeping when one row's void throws", async () => {
-    const voidAuthorization = vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d", true)).mockResolvedValue(undefined);
+    const voidAuthorization = vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d", true)).mockResolvedValue({ status: null });
     const ctx = setup({ level: "high", gateway: { voidAuthorization } });
     const ids: string[] = [];
     for (let i = 0; i < 2; i++) {
@@ -662,7 +676,7 @@ describe("sweep failure records", () => {
   });
 
   it("does not touch a fresh blocked row", async () => {
-    const ctx = setup({ level: "high", start: new Date(), gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue(undefined) } });
+    const ctx = setup({ level: "high", start: new Date(), gateway: { voidAuthorization: vi.fn().mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d")).mockResolvedValue({ status: null }) } });
     const { payment } = await ctx.service.start(send);
     await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
     await ctx.service.contactDecision({ paymentId: payment.id, contactId: CONTACT, decision: "block" }).catch(() => undefined);

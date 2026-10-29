@@ -1,7 +1,7 @@
 import { NotAllowedError } from "@/payments/paymentService";
 import { getContainer } from "@/server/container";
 import { currentUserId, errorResponse } from "@/server/http";
-import { paymentOutcome } from "@/server/paymentOutcome";
+import { paymentOutcome, paypalVoided } from "@/server/paymentOutcome";
 import { toSenderView } from "@/server/paymentView";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +12,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { repo } = getContainer();
     const p = await repo.get(id);
     if (!p || p.senderId !== userId) throw new NotAllowedError("Payment not found");
-    return Response.json({ ...toSenderView(p), outcome: paymentOutcome(await repo.auditFor(p.id), p.senderId) });
+    const audits = await repo.auditFor(p.id);
+    return Response.json({ ...toSenderView(p), outcome: paymentOutcome(audits, p.senderId), paypalVoided: paypalVoided(audits) });
   } catch (e) {
     return errorResponse(e);
   }

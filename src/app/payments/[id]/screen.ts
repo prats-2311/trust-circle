@@ -104,3 +104,10 @@ export function screenCopy(
       return { chipTone: "neutral", chip: "Hold ended", title: "The hold ended", lead: "Nobody decided within 3 days, so the payment was not sent. The money stayed in your account." };
   }
 }
+
+const VOIDED_KINDS: ScreenKind[] = ["stopped_by_person", "stopped_by_check", "stopped_by_circle", "cancelled", "hold_ended"];
+
+/** PayPal's own confirmation, shown only once PayPal's reply to the void said VOIDED. */
+export function paypalProofLine(kind: ScreenKind, paypalVoided: boolean): string | null {
+  return paypalVoided && VOIDED_KINDS.includes(kind) ? "PayPal confirmed it: this payment is voided." : null;
+}

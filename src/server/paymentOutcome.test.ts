@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paymentOutcome } from "./paymentOutcome";
+import { paymentOutcome, paypalVoided } from "./paymentOutcome";
 
 const S = "sender";
 describe("paymentOutcome", () => {
@@ -13,5 +13,15 @@ describe("paymentOutcome", () => {
 
   it("uses the last stopping event", () => {
     expect(paymentOutcome([{ action: "BLOCK", actorId: "sarah" }, { action: "EXPIRE", actorId: null }], S)).toBe("expired");
+  });
+});
+
+describe("paypalVoided", () => {
+  it("is true only when PayPal itself answered VOIDED", () => {
+    expect(paypalVoided([{ action: "VOID", detail: { paypalStatus: "VOIDED" } }])).toBe(true);
+    expect(paypalVoided([{ action: "VOID", detail: { paypalStatus: null } }])).toBe(false);
+    expect(paypalVoided([{ action: "VOID", detail: {} }])).toBe(false);
+    expect(paypalVoided([{ action: "BLOCK", detail: { paypalStatus: "VOIDED" } }])).toBe(false);
+    expect(paypalVoided([])).toBe(false);
   });
 });

@@ -182,11 +182,16 @@ export function createPaymentService(deps: {
     }
   }
 
+  /** Voids at PayPal; the audit detail keeps PayPal's own word for it, which the stopped screen shows. */
+  async function voidAt(p: PaymentRecord): Promise<{ paypalStatus: string | null }> {
+    const { status } = await gateway.voidAuthorization({ paymentId: p.id, authorizationId: p.authorizationId! });
+    return { paypalStatus: status };
+  }
+
   async function voidHeld(p: PaymentRecord, event: "BLOCK" | "EXPIRE", actorId: string | null): Promise<PaymentRecord> {
     const stopped = await step(p, event, actorId);
     return afterClaim(p.id, async () => {
-      await gateway.voidAuthorization({ paymentId: stopped.id, authorizationId: stopped.authorizationId! });
-      return step(stopped, "VOID", actorId);
+      return step(stopped, "VOID", actorId, {}, await voidAt(stopped));
     });
   }
 
@@ -328,8 +333,7 @@ export function createPaymentService(deps: {
       const stopped = await step(p, "BLOCK", null);
       return afterClaim(p.id, async () => {
         await repo.audit({ paymentId: p.id, actorId: null, action: "demo_reset_void", fromState: "held", toState: stopped.state, detail: {} });
-        await gateway.voidAuthorization({ paymentId: stopped.id, authorizationId: stopped.authorizationId! });
-        return step(stopped, "VOID", null);
+        return step(stopped, "VOID", null, {}, await voidAt(stopped));
       });
     },
 
@@ -398,8 +402,7 @@ export function createPaymentService(deps: {
         }
       });
       await each("blocked", (await repo.listByStates(["blocked", "expired"])).filter(isStale), async (p) => {
-        await gateway.voidAuthorization({ paymentId: p.id, authorizationId: p.authorizationId! });
-        await step(p, "VOID", null);
+        await step(p, "VOID", null, {}, await voidAt(p));
         voidRetried.push(p.id);
       });
       await each("released", (await repo.listByStates(["released"])).filter(isStale), async (p) => {

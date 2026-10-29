@@ -14,10 +14,12 @@ import { ChatCircleTextIcon, CheckCircleIcon, CheckIcon, InfoIcon, LockSimpleIco
 import { Notice } from "@/ui/Notice";
 import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { useOnce } from "@/ui/useOnce";
-import { circleNamesText, screenCopy, toldLine, type ScreenKind, type Stage } from "./screen";
+import { circleNamesText, paypalProofLine, screenCopy, toldLine, type ScreenKind, type Stage } from "./screen";
 
 export type PaymentView = {
   id: string;
+  /** PayPal's reply to the void said VOIDED. */
+  paypalVoided?: boolean;
   payee: string;
   amountCents: number;
   state: string;
@@ -269,6 +271,7 @@ export function PaymentScreens({ kind, p, stage, contactName, circleNames, reloa
         ...(person ? ["This account is on the shared scam list now, so other families are warned."] : []),
         ...(kind === "stopped_by_check" ? ["The payment won't be sent."] : []),
       ];
+      const proof = paypalProofLine(kind, p.paypalVoided === true);
       const Icon = safe ? ShieldCheckIcon : kind === "sent" ? CheckCircleIcon : InfoIcon;
       const tone = safe || kind === "sent" ? "bg-evergreen-tint text-evergreen" : "bg-neutral-tint text-ink-2";
       return (
@@ -285,6 +288,12 @@ export function PaymentScreens({ kind, p, stage, contactName, circleNames, reloa
               </div>
               <h1 className="mt-6 text-center [overflow-wrap:anywhere] text-[30px] font-extrabold leading-[1.17] tracking-[-0.01em]">{copy.title}</h1>
               <p className="mt-2.5 text-center text-[18px] leading-relaxed text-ink-2">{copy.lead}</p>
+              {proof && (
+                <p data-testid="paypal-voided" className="mt-4 flex items-center justify-center gap-2 text-center text-[17px] font-semibold text-evergreen">
+                  <CheckIcon aria-hidden="true" size={20} weight="bold" className="flex-none" />
+                  {proof}
+                </p>
+              )}
               {next.length > 0 && (
                 <Card className="mt-7">
                   <h2 className="text-[19px] font-bold">What happens next</h2>

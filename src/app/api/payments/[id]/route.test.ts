@@ -27,6 +27,13 @@ describe("GET /api/payments/:id", () => {
     const body = await res.json();
     expect(body).toMatchObject({ id: "p1", state: "voided", outcome: "sender" });
     expect(body).not.toHaveProperty("senderAnswer");
+    expect(body.paypalVoided).toBe(false);
+  });
+  it("says when PayPal itself confirmed the void", async () => {
+    userId.mockReturnValue("u1");
+    get.mockResolvedValue(rec());
+    auditFor.mockResolvedValue([{ action: "BLOCK", actorId: "u1", detail: {} }, { action: "VOID", actorId: "u1", detail: { paypalStatus: "VOIDED" } }]);
+    expect((await (await call()).json()).paypalVoided).toBe(true);
   });
   it("answers 403 'Payment not found' to anyone else, with no payment data", async () => {
     userId.mockReturnValue("u2");

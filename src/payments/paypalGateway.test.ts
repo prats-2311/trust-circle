@@ -80,6 +80,24 @@ describe("paypal gateway", () => {
     expect(seen.map((s) => s.requestId)).toEqual(["tc-p1-capture", "tc-p1-capture", "tc-p2-void"]);
   });
 
+  it("asks PayPal to return the voided authorisation and reports its status", async () => {
+    let prefer: string | null = null;
+    server.use(
+      token(),
+      http.post(`${BASE}/v2/payments/authorizations/AUTH3/void`, ({ request }) => {
+        prefer = request.headers.get("prefer");
+        return HttpResponse.json({ id: "AUTH3", status: "VOIDED" }, { status: 200 });
+      }),
+    );
+    expect(await gw.voidAuthorization({ paymentId: "p3", authorizationId: "AUTH3" })).toEqual({ status: "VOIDED" });
+    expect(prefer).toBe("return=representation");
+  });
+
+  it("reports no status when PayPal answers a void with no body", async () => {
+    server.use(token(), http.post(`${BASE}/v2/payments/authorizations/AUTH4/void`, () => new HttpResponse(null, { status: 204 })));
+    expect(await gw.voidAuthorization({ paymentId: "p4", authorizationId: "AUTH4" })).toEqual({ status: null });
+  });
+
   it("sends a payout to an email with the request id as batch id", async () => {
     seen.length = 0;
     server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({ batch_header: { payout_batch_id: "BATCH1" } }, { status: 201 })));

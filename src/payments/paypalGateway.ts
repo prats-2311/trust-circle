@@ -14,7 +14,8 @@ export interface PayPalGateway {
   createAuthorizeOrder(a: { paymentId: string; amountCents: number }): Promise<{ orderId: string }>;
   authorizeOrder(a: { paymentId: string; orderId: string }): Promise<{ authorizationId: string }>;
   captureAuthorization(a: { paymentId: string; authorizationId: string }): Promise<{ captureId: string }>;
-  voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<void>;
+  /** status is PayPal's own word for the authorisation afterwards ("VOIDED"), or null when it sent no body. */
+  voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<{ status: string | null }>;
   sendPayout(a: { paymentId: string; receiver: string; amountCents: number }): Promise<{ payoutBatchId: string }>;
   refundCapture(a: { paymentId: string; captureId: string }): Promise<{ refundId: string }>;
   /** True only when PayPal itself says the signature is valid. Any other answer or failure is false. */
@@ -164,7 +165,12 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
 
     async voidAuthorization({ paymentId, authorizationId }) {
       try {
-        await payments.voidPayment({ authorizationId, paypalRequestId: requestId(paymentId, "void") });
+        const { result } = await payments.voidPayment({
+          authorizationId,
+          paypalRequestId: requestId(paymentId, "void"),
+          prefer: "return=representation",
+        });
+        return { status: result?.status ?? null };
       } catch (e) {
         throw toPayPalError(e, "voidAuthorization");
       }

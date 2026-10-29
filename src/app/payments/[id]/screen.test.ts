@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { circleNamesText, screenCopy, screenFor, toldLine, type ScreenKind } from "./screen";
+import { circleNamesText, paypalProofLine, screenCopy, screenFor, toldLine, type ScreenKind } from "./screen";
 
 const held = { state: "held", outcome: null };
 describe("screenFor", () => {
@@ -100,4 +100,17 @@ describe("toldLine", () => {
     [["Sarah"], "Sarah has been told."],
     [["Sarah", "Daniel"], "Sarah and Daniel have been told."],
   ] as const)("%j → %s", (names, line) => expect(toldLine([...names])).toBe(line));
+});
+
+describe("paypalProofLine", () => {
+  it.each(["stopped_by_person", "stopped_by_check", "stopped_by_circle", "cancelled", "hold_ended"] as const)("%s shows PayPal's confirmation", (kind) => {
+    expect(paypalProofLine(kind, true)).toBe("PayPal confirmed it: this payment is voided.");
+  });
+  it("shows nothing until PayPal has confirmed", () => {
+    expect(paypalProofLine("stopped_by_person", false)).toBeNull();
+  });
+  it("shows nothing on screens where nothing was voided", () => {
+    expect(paypalProofLine("sent", true)).toBeNull();
+    expect(paypalProofLine("held", true)).toBeNull();
+  });
 });

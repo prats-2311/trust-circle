@@ -48,4 +48,6 @@ test("a grandson scam is held, the real Daniel says it wasn't him, and the money
 
   await expect(page.getByTestId("payment-screen-stopped_by_person")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("heading", { name: "Payment stopped. Your money is safe." })).toBeVisible();
+  // PayPal's own reply to the void, not just our record of it.
+  await expect(page.getByTestId("paypal-voided")).toHaveText("PayPal confirmed it: this payment is voided.");
 });
