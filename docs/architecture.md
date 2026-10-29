@@ -138,7 +138,7 @@ stateDiagram-v2
 - `RELEASE` and `BLOCK` are the claims. They are written before any PayPal call, so two people tapping at once can't both move money. After a claim, an error answers 202 ("we're finishing this payment for you") rather than inviting a second payment.
 - `captured → payout_failed` happens when the first payout attempt gets a definite refusal from PayPal.
 - `paid_out → payout_failed` is driven by a verified webhook: a payout item that is `RETURNED`, `FAILED`, `BLOCKED`, `CANCELED` or `REFUNDED`. `UNCLAIMED` and `SUCCEEDED` only add an audit row.
-- The sweep (`expireStale`, run every 5 minutes) refunds `payout_failed` rows, voids blocked and expired holds, and resumes rows left in `approved`, `authorised`, `released` or `captured` for more than 5 minutes.
+- The sweep (`expireStale`, run every 15 minutes) refunds `payout_failed` rows, voids blocked and expired holds, and resumes rows left in `approved`, `authorised`, `released` or `captured` for more than 5 minutes.
 
 ## Webhooks
 
@@ -173,7 +173,8 @@ If PayPal's history isn't available (Transaction Search is off for the app, or t
 |---|---|
 | Web service | Render free web service, from `render.yaml`. The start command (`npm run start:prod`) runs migrations with `scripts/migrate.mjs`, then `next start`. |
 | Database | Neon free Postgres with the pgvector extension. |
-| Hold expiry and keep-warm | `.github/workflows/expire.yml`, every 5 minutes, POSTs `/api/cron/expire` with `CRON_SECRET`. |
+| Hold expiry | `.github/workflows/expire.yml`, every 15 minutes, POSTs `/api/cron/expire` with `CRON_SECRET`. |
+| Keep-warm | `.github/workflows/keep-warm.yml`, every 5 minutes, GETs `/api/ping`, which never touches the database, so the free Neon database can sleep between sweeps. |
 | Demo reset | `.github/workflows/demo-reset.yml`, daily at 09:00 UTC, POSTs `/api/cron/demo-reset`. The route answers 404 unless `DEMO_DAILY_RESET=1`. |
 | Health | `GET /api/health` always answers 200 and reports whether the database answered. |
 

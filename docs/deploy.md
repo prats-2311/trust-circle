@@ -6,7 +6,7 @@ You need a Render account, a Neon account and a GitHub account. Work through the
 
 ## 1. GitHub repo
 
-1. Create an empty **public** repository on GitHub (no README or licence; the repo already has an MIT licence). It must be public: the 5-minute `expire holds` workflow is about 8,640 runs a month, and public repos get unlimited Actions minutes. A private free repo would run out in about a week and silently stop hold expiry.
+1. Create an empty **public** repository on GitHub (no README or licence; the repo already has an MIT licence). It must be public: the `keep warm` (every 5 minutes) and `expire holds` (every 15 minutes) workflows are about 11,500 runs a month, and public repos get unlimited Actions minutes. A private free repo would run out in about a week and silently stop hold expiry.
 2. Push this project to it. Render and the workflows both read from this repo.
 
 ## 2. Neon project
@@ -75,7 +75,7 @@ In the GitHub repo, **Settings > Secrets and variables > Actions**:
 
 ## 8. Run both workflows once by hand
 
-In the repo's **Actions** tab, run `expire holds` and `demo reset` with **Run workflow**. Both must finish green. A red run with 401 means `CRON_SECRET` differs between GitHub and Render; 404 on `demo reset` means `DEMO_DAILY_RESET` is not `1` in Render. The `expire holds` schedule (every 5 minutes) also keeps the service awake.
+In the repo's **Actions** tab, run `keep warm`, `expire holds` and `demo reset` with **Run workflow**. All three must finish green. A red run with 401 means `CRON_SECRET` differs between GitHub and Render; 404 on `demo reset` means `DEMO_DAILY_RESET` is not `1` in Render. The `keep warm` schedule (every 5 minutes) keeps the web service awake without touching the database. The sweep runs every 15 minutes, so Neon's free compute sleeps between sweeps instead of running all month.
 
 ## 9. Smoke test
 

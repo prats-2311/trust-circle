@@ -1,0 +1,12 @@
+name: keep warm
+on:
+  schedule: [{ cron: "*/5 * * * *" }]
+  workflow_dispatch: {}
+permissions: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # /api/ping never touches the database, so the free Neon database can still sleep between sweeps.
+      - run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${{ vars.APP_URL }}/api/ping" > /dev/null
