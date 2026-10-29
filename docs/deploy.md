@@ -12,7 +12,7 @@ You need a Render account, a Neon account and a GitHub account. Work through the
 ## 2. Neon project
 
 1. In Neon, create a project. Pick region **AWS US West 2 (Oregon)**, `aws-us-west-2`, which is close to Render Oregon.
-2. Open **Connect** and turn **Connection pooling off**. Copy the **direct** (non-pooled) connection string. It looks like `postgresql://USER:PASSWORD@ep-xxxx.us-west-2.aws.neon.tech/neondb?sslmode=require`. Keep `sslmode=require`.
+2. Open **Connect** and turn **Connection pooling off**. Copy the **direct** (non-pooled) connection string. It looks like `postgresql://USER:PASSWORD@ep-xxxx.us-west-2.aws.neon.tech/neondb?sslmode=require`. Keep `sslmode=require` (and `channel_binding=require` if Neon adds it). Click **Show password** before copying: Neon masks the password otherwise, and a string without it fails on the first migration query.
 3. Keep this string for steps 3 and 4. It goes in your terminal and in Render only.
 
 ## 3. Migrate and seed the database (`deploy:seed`)

@@ -15,7 +15,9 @@ try {
   await migrate(drizzle(sql), { migrationsFolder: "./drizzle" });
   console.log("migrate: up to date");
 } catch (e) {
-  console.error("migrate failed:", e instanceof Error ? e.message : "unknown");
+  // Drizzle wraps the database error; the cause is Postgres's own message, which never contains the URL or password.
+  const cause = e instanceof Error && e.cause instanceof Error ? ` (cause: ${e.cause.message})` : "";
+  console.error("migrate failed:", (e instanceof Error ? e.message : "unknown") + cause);
   process.exitCode = 1;
 } finally {
   await sql.end();
