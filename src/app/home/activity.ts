@@ -41,7 +41,7 @@ export function recentActivity(payments: PaymentLike[], checks: CheckLike[], lim
     ...checks.map((c) => ({
       key: `c-${c.id}`,
       href: `/check?id=${c.id}`,
-      title: c.source === "image" ? "Screenshot checked" : "Message checked",
+      title: c.source === "image" ? "Screenshot checked" : c.source === "voice" ? "Voice note checked" : "Message checked",
       when: c.createdAt,
       chip: checkChip(c),
     })),

@@ -26,6 +26,16 @@ describe("chips", () => {
 });
 
 describe("recentActivity", () => {
+  it("labels each kind of check", () => {
+    const at = "2026-10-16T10:00:00Z";
+    const items = recentActivity([], [
+      { id: "a", source: "voice", checked: true, level: "high", createdAt: at },
+      { id: "b", source: "image", checked: true, level: "high", createdAt: at },
+      { id: "c", source: "text", checked: true, level: "high", createdAt: at },
+    ], 5);
+    expect(items.map((i) => i.title).sort()).toEqual(["Message checked", "Screenshot checked", "Voice note checked"]);
+  });
+
   it("merges payments and checks newest first, up to the limit", () => {
     const items = recentActivity(
       [{ id: "p1", payee: "vet.clinic@example.com", amountCents: 32000, state: "paid_out", createdAt: "2026-10-14T10:00:00Z" }],
