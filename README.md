@@ -61,7 +61,7 @@ Many scams work by borrowing someone's trust: a grandchild, a bank, PayPal itsel
 
 <img src="docs/images/check-scam.png" alt="A message check result: This message is very likely a scam, with two plain reasons" width="300" align="right">
 
-Paste a text, add a screenshot, or add a voice note (for example one forwarded from WhatsApp). A voice note is turned into words first, and only the words are kept; if it is silent or too short to understand, it is shown as unchecked rather than safe. Groq judges it (a vision model reads screenshots) and returns a verdict, a scam type and up to three plain reasons. Before that, Meta's Prompt Guard model screens the text for instructions aimed at the AI. Phone numbers, emails and links in the message are remembered, so a later payment to a party from a message judged a scam is held. A message the AI couldn't check is shown as unchecked, never as safe. One tap drafts a report to `phishing@paypal.com` in your own email app.
+Paste a text, add a screenshot, or add a voice note (for example one forwarded from WhatsApp). A voice note is turned into words first, and only the words are kept; if it is silent or too short to understand, it is shown as unchecked rather than safe. Groq judges it (a vision model reads screenshots) and returns a verdict, a scam type and up to three plain reasons. Before that, Meta's Prompt Guard model screens the text for instructions aimed at the AI. Phone numbers, emails and links in the message are remembered, so a later payment to a party from a message judged a scam is held. A message the AI couldn't check is shown as unchecked, never as safe. If a message claims to be someone in the circle but comes from a number that isn't theirs, it says so first: "It came from +1 (415) 555-0199, not Daniel's number." One tap drafts a report to `phishing@paypal.com` in your own email app.
 
 <br clear="right">
 
@@ -153,14 +153,14 @@ Text from messages, payments and tool results is treated as data. The prompts sa
 
 ## Accuracy
 
-From [docs/eval/results.md](docs/eval/results.md): run 2026-10-31 on 77 invented cases (42 scams, 35 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
+From [docs/eval/results.md](docs/eval/results.md): run 2026-10-31 on 79 invented cases (43 scams, 36 genuine) against Groq: text model `qwen/qwen3.8-27b`, injection screen `meta-llama/llama-prompt-guard-2-86m`. Pattern matcher on (10 known patterns, threshold 0.35).
 
 | Measure | Result |
 |---|---|
-| Scams flagged (warning or hold) | 42 of 42 (100%) |
-| Scams held | 42 of 42 (100%) |
+| Scams flagged (warning or hold) | 43 of 43 (100%) |
+| Scams held | 43 of 43 (100%) |
 | Genuine cases given a warning or hold | 11 of 35 (31%) |
-| Genuine cases held | 1 of 35 (3%): held by the pattern matcher |
+| Genuine cases held | 1 of 36 (3%): held by the pattern matcher |
 | Cases the AI could not check after one retry | 0 |
 
 Gate: at least 90% of scams flagged and at most 10% of genuine cases held. Result: pass.
@@ -177,7 +177,7 @@ The same run, scored on payments with the rules alone (first-time payee, unusual
 
 No rules-only setting matches the AI. Six of the scams are deliberately hard for rules: an everyday amount to a new payee, or a payee already paid (a friend's hacked account). The rules see nothing wrong; the AI reads the sender's own words and holds all six. Scam messages have no rules-only score at all: without AI, nothing reads the text.
 
-**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 77 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
+**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 79 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
 
 ## Architecture
 
@@ -330,6 +330,7 @@ A small-business version is next. The same engine already runs a Business preset
 - **Expiry runs on a GitHub Actions schedule**, which can run a few minutes late, so a hold can end a few minutes after 72 hours.
 - **Aftercare needs Transaction Search** switched on for the sandbox app. Sandbox data lags by about 3 hours, and older demo payments carry no `custom_id`, so the agent often falls back to Trust Circle's own records. It says so when it does.
 - **The pattern matcher costs false alarms** (see Accuracy).
+- **The new-number check needs a number to compare.** It only works when a number appears in the message or screenshot. A WhatsApp screenshot from a saved contact shows a name, not a number.
 - **Elastic and KERNEL were not used.** The original plan used Elastic for pattern search. We replaced it with pgvector and a local MiniLM model, because a trial would have expired before judging. Link inspection with KERNEL was planned as a phase 2 and was not built.
 - Some edge cases are deferred and logged as retries, for example reconciling an order PayPal reports as already authorised.
 
