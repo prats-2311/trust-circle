@@ -137,6 +137,7 @@ Every money-moving PayPal call carries a `PayPal-Request-Id` derived from the pa
 |---|---|---|
 | Groq text model (`GROQ_TEXT_MODEL`) | Judges payments and messages, names the impersonated person, describes scam patterns, and drives the aftercare tool loop. Every answer is JSON checked against a schema. | `src/ai/groqJudge.ts`, `src/ai/groqMessageJudge.ts`, `src/ai/patternDescriber.ts`, `src/aftercare/aftercareAgent.ts` |
 | Groq vision model (`GROQ_VISION_MODEL`) | Reads screenshots of messages | `src/ai/groqMessageJudge.ts` |
+| Whisper (`GROQ_AUDIO_MODEL`, default `whisper-large-v3-turbo`, on Groq) | Turns voice notes into words for the same message check. The audio is never stored. | `src/ai/groqTranscriber.ts` |
 | Prompt Guard (`meta-llama/llama-prompt-guard-2-86m` on Groq) | Flags text that tries to give instructions to the AI. A score of 0.9 or more makes the check high risk. | `src/ai/promptGuard.ts` |
 | Local MiniLM embedding (`Xenova/all-MiniLM-L6-v2`) | Turns anonymised scam scripts into vectors inside the server process, for pattern matching in pgvector (similarity threshold 0.35) | `src/patterns/embedder.ts`, `src/patterns/patternService.ts` |
 | Agent Toolkit tool loop | At most 4 model tool calls in 18 seconds, over a fixed read-only allow-list. Any other tool is refused and recorded. | `src/aftercare/aftercareAgent.ts`, `src/aftercare/tools.ts` |
