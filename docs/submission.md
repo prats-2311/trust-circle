@@ -89,7 +89,7 @@ The same engine already runs a Business preset, where a freelancer's accountant 
 | 28790 | PayPal experience rating | **USER TO FILL** |
 | 28791 | Why (rating feedback) | Draft below, for the user to edit |
 | 28792 | Contact consent | **USER TO FILL** |
-| 28793 | APIMatic experience | N/A (not used) |
+| 28793 | APIMatic experience | We used the APIMatic PayPal Context Plugin in Claude Code to review our PayPal integration against PayPal's own SDK contract. Its per-operation error map and request-id notes found three money-safety gaps, now fixed in `src/payments/paypalGateway.ts` and `src/payments/paymentService.ts` (commits eca0329, 0f8d392): a 409 on void, capture or refund (a request with the same id still in progress) is now treated as "outcome unknown, retry with the same id" instead of a failure; PayPal keeps authorize request ids for only 6 hours, so a late retry that gets ORDER_ALREADY_AUTHORIZED now reads the order back to recover the authorisation; and a void refused as PREVIOUSLY_VOIDED or AUTHORIZATION_EXPIRED now ends the payment as voided, without claiming PayPal confirmed it. Our server SDK, @paypal/paypal-server-sdk, is itself APIMatic-generated. |
 | 28799 | AG Grid experience | See below |
 | 28794 | Age | **USER TO FILL** (the user must confirm personally) |
 | 28795 | Eligible jurisdiction | **USER TO FILL** (the user must confirm personally) |
