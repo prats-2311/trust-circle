@@ -44,6 +44,7 @@ Paste the Neon direct connection string at the silent prompt and press Enter. Th
 | `GROQ_API_KEY` | Groq console |
 | `GROQ_TEXT_MODEL` | The text model name from your `.env.local` |
 | `GROQ_VISION_MODEL` | The vision model name from your `.env.local` |
+| `GROQ_AUDIO_MODEL` | Optional. The voice transcription model; defaults to `whisper-large-v3-turbo` |
 | `CRON_SECRET` | A random string of at least 24 characters (for example `openssl rand -hex 24`). Keep it: step 7 needs the same value |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Step 10. Leave them empty for now (push stays off) |
 | `APP_URL` | The service URL Render gives you, `https://<render-host>` with no trailing slash. Set it after the service is created, then redeploy |

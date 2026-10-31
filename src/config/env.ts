@@ -18,6 +18,7 @@ const EnvSchema = z.object({
   GROQ_TEXT_MODEL: z.string().min(1),
   GROQ_VISION_MODEL: z.string().min(1),
   GROQ_GUARD_MODEL: withDefault("meta-llama/llama-prompt-guard-2-86m"),
+  GROQ_AUDIO_MODEL: withDefault("whisper-large-v3-turbo"),
   SESSION_SECRET: z.string().min(32),
   CRON_SECRET: z.string().min(24),
   RESEND_API_KEY: optionalString,

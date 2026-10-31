@@ -44,6 +44,11 @@ describe("loadEnv", () => {
     expect(loadEnv({ ...valid, GROQ_VISION_MODEL: "v" }).GROQ_GUARD_MODEL).toBe("meta-llama/llama-prompt-guard-2-86m");
   });
 
+  it("defaults the audio model and treats an empty one as unset", () => {
+    expect(loadEnv(valid).GROQ_AUDIO_MODEL).toBe("whisper-large-v3-turbo");
+    expect(loadEnv({ ...valid, GROQ_AUDIO_MODEL: "" }).GROQ_AUDIO_MODEL).toBe("whisper-large-v3-turbo");
+  });
+
   it("requires a session secret of at least 32 characters", () => {
     expect(() => loadEnv({ ...valid, SESSION_SECRET: "short" })).toThrow(/SESSION_SECRET/);
   });
