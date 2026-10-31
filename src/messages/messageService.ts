@@ -13,13 +13,13 @@ const RECENT_CHECKS = 200;
 const LINKED_MESSAGE_CHARS = 1500;
 
 export class MessageInputError extends Error {
-  constructor(readonly field: "text" | "image", message: string) {
+  constructor(readonly field: "text" | "image" | "audio", message: string) {
     super(message);
     this.name = "MessageInputError";
   }
 }
 
-export type CheckRequest = { senderId: string; text: string } | { senderId: string; image: Uint8Array };
+export type CheckRequest = { senderId: string; text: string } | { senderId: string; image: Uint8Array } | { senderId: string; audio: Uint8Array };
 export type MessageCheckResult = MessageCheckRecord & { impersonatedRequester: Requester | null };
 
 /** The declared file type is not trusted; the first bytes say what the file really is. */
@@ -40,6 +40,7 @@ function toInput(a: CheckRequest): MessageInput {
     }
     return { kind: "text", text };
   }
+  if ("audio" in a) throw new MessageInputError("audio", "Voice notes are not supported yet.");
   if (a.image.byteLength === 0) throw new MessageInputError("image", "Please add a screenshot of the message.");
   if (a.image.byteLength > MAX_IMAGE_BYTES) {
     throw new MessageInputError("image", "That screenshot is too large. Please crop it to the message and try again.");
