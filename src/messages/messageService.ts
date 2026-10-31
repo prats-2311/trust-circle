@@ -13,6 +13,7 @@ export const MAX_MESSAGE_CHARS = 4000;
 // Groq accepts base64 images up to 4 MB; 3 MB of bytes is about 4 MB once encoded.
 export const MAX_IMAGE_BYTES = 3_000_000;
 export const MAX_AUDIO_BYTES = 10_000_000;
+const MIN_VOICE_WORDS = 3;
 const VOICE_CHECKS_PER_HOUR = 20;
 const HOUR_MS = 3_600_000;
 const RECENT_CHECKS = 200;
@@ -101,7 +102,9 @@ export function createMessageService(deps: {
     const format = audioFormat(a.audio);
     countVoiceCheck(a.senderId);
     const heard = deps.transcribe ? await deps.transcribe({ bytes: a.audio, format }) : null;
-    const text = heard?.ok ? normaliseSpokenEmails(heard.text.trim()).slice(0, MAX_MESSAGE_CHARS) : "";
+    // Silence and noise often come back as a stray "Thank you.", which must never read as a safe result.
+    const heardWords = heard?.ok && !heard.noSpeech && heard.text.trim().split(/\s+/).filter(Boolean).length >= MIN_VOICE_WORDS;
+    const text = heard?.ok && heardWords ? normaliseSpokenEmails(heard.text.trim()).slice(0, MAX_MESSAGE_CHARS) : "";
     if (!text) throw new MessageInputError("audio", COULD_NOT_LISTEN);
     return { kind: "text", text };
   }

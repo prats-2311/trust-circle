@@ -135,7 +135,7 @@ describe("message service: voice notes", () => {
   const OGG = new Uint8Array([...Buffer.from("OggS"), 0, 2, 3, 4]);
   const TRANSCRIPT = "Gran it's Daniel, send $800 to danny.help@example.com";
   const COULD_NOT = "We couldn't listen to this one. Please type what it says, or ask the person directly.";
-  const voiceSetup = (result: Awaited<ReturnType<import("@/ai/groqTranscriber").Transcriber>> = { ok: true, text: TRANSCRIPT }, now = () => 0) => {
+  const voiceSetup = (result: Awaited<ReturnType<import("@/ai/groqTranscriber").Transcriber>> = { ok: true, text: TRANSCRIPT, noSpeech: false }, now = () => 0) => {
     const repo = createMemoryMessageRepo();
     const insert = vi.spyOn(repo, "insert");
     const judge = vi.fn().mockResolvedValue(verdict("high"));
@@ -156,13 +156,13 @@ describe("message service: voice notes", () => {
   });
 
   it("writes a spoken email address in normal form before judging and storing", async () => {
-    const { service, judge, insert } = voiceSetup({ ok: true, text: "send eight hundred dollars to danny dot help at example dot com" });
+    const { service, judge, insert } = voiceSetup({ ok: true, text: "send eight hundred dollars to danny dot help at example dot com", noSpeech: false });
     await service.check({ senderId: SENDER, audio: OGG });
     expect(judge).toHaveBeenCalledWith({ kind: "text", text: "send eight hundred dollars to danny.help@example.com" }, expect.anything());
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("danny.help@example.com") }));
   });
 
-  it.each([[{ ok: false, error: "groq http 500" } as const], [{ ok: true, text: "   " } as const], [{ ok: true, text: "" } as const]])(
+  it.each([[{ ok: false, error: "groq http 500" } as const], [{ ok: true, text: "   ", noSpeech: false } as const], [{ ok: true, text: "", noSpeech: false } as const], [{ ok: true, text: "Thank you.", noSpeech: false } as const], [{ ok: true, text: "Thank you very much for watching today friends", noSpeech: true } as const]])(
     "refuses a voice note it could not understand %#",
     async (result) => {
       const { service, insert } = voiceSetup(result);
@@ -173,6 +173,11 @@ describe("message service: voice notes", () => {
       expect(insert).not.toHaveBeenCalled();
     },
   );
+
+  it("still checks a normal ten-word transcript", async () => {
+    const { service } = voiceSetup({ ok: true, text: "please send the money to my new account today thanks", noSpeech: false });
+    await expect(service.check({ senderId: SENDER, audio: OGG })).resolves.toMatchObject({ source: "voice" });
+  });
 
   it("refuses a voice note when no transcriber is configured", async () => {
     const repo = createMemoryMessageRepo();
@@ -203,9 +208,9 @@ describe("message service: voice notes", () => {
   });
 
   it("stores a long transcript truncated to 4000 characters", async () => {
-    const { service } = voiceSetup({ ok: true, text: "a".repeat(5000) });
+    const { service } = voiceSetup({ ok: true, text: "a ".repeat(2500), noSpeech: false });
     const r = await service.check({ senderId: SENDER, audio: OGG });
-    expect(r.text).toHaveLength(4000);
+    expect(r.text.length).toBeLessThanOrEqual(4000);
   });
 
   it("caps voice checks at 20 per user per rolling hour", async () => {

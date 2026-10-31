@@ -18,7 +18,25 @@ describe("createGroqTranscriber", () => {
 
   it("trims the transcript", async () => {
     const t = createGroqTranscriber({ apiKey: "k", model: "m", fetchImpl: (async () => json({ text: " hi " })) as typeof fetch });
-    expect(await t(audio)).toEqual({ ok: true, text: "hi" });
+    expect(await t(audio)).toEqual({ ok: true, text: "hi", noSpeech: false });
+  });
+
+  it("asks for verbose_json", async () => {
+    const fetchImpl = vi.fn(async () => json({ text: "hello" }));
+    await createGroqTranscriber({ apiKey: "k", model: "m", fetchImpl: fetchImpl as unknown as typeof fetch })(audio);
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.body as FormData).get("response_format")).toBe("verbose_json");
+  });
+
+  it.each([
+    [[{ no_speech_prob: 0.9 }, { no_speech_prob: 0.6 }], true],
+    [[{ no_speech_prob: 0.9 }, { no_speech_prob: 0.1 }], false],
+    [[{ no_speech_prob: 0.59 }], false],
+    [[], false],
+    [undefined, false],
+  ])("flags noSpeech from segments %#", async (segments, expected) => {
+    const t = createGroqTranscriber({ apiKey: "k", model: "m", fetchImpl: (async () => json({ text: "Thank you.", segments })) as typeof fetch });
+    expect(await t(audio)).toEqual({ ok: true, text: "Thank you.", noSpeech: expected });
   });
 
   it("returns an HTTP failure as an error", async () => {

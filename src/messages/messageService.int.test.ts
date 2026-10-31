@@ -28,7 +28,7 @@ describe("voice checks with the real repo", () => {
     const service = createMessageService({
       repo: createDrizzleMessageRepo(handle.db),
       judge: vi.fn().mockResolvedValue(high),
-      transcribe: vi.fn().mockResolvedValue({ ok: true, text: TRANSCRIPT }),
+      transcribe: vi.fn().mockResolvedValue({ ok: true, text: TRANSCRIPT, noSpeech: false }),
     });
     const saved = await service.check({ senderId, audio: OGG });
     expect(saved.source).toBe("voice");
