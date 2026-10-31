@@ -22,7 +22,7 @@
 - Numbers are compared only through `matchKeys` (`src/messages/identifiers.ts`).
 - Stored number: trimmed, as written, at most 32 characters; valid with 7 to 15 digits; `""` or `null` clears it.
 - Validation copy, exact: `Please enter a phone number with 7 to 15 digits, or leave it empty.`
-- Signal code `NEW_NUMBER_CLAIMS_CIRCLE`. Detail copy, exact: `` `It came from ${number}, not ${member.displayName}'s number.` ``. `number` is the first non-matching phone *as written in the message* (the `Identifier.value`).
+- Signal code `NEW_NUMBER_CLAIMS_CIRCLE`. Detail copy, exact: `` `It came from ${number}, not ${member.displayName}'s number.` ``. `number` is the first non-matching phone *as written in the message* (recovered from the text with `phoneAsWritten`; `Identifier.value` is normalised).
 - Settings copy, exact: heading `Your phone number`; helper `If someone messages your circle claiming to be you from a different number, they'll be warned. Your number is never shown to anyone else.`
 - Demo numbers, exact: Daniel `+1 (415) 555-0131`, Sarah `+1 (415) 555-0135`, Tom `+1 (415) 555-0147`. Don't use any other `555-01xx` number already in the repo (0199, 0123, 0178, 0177, 0164, 0142, 0109, 0102).
 - A message from the member's known number is never lowered or reassured; the signal simply doesn't fire.
