@@ -137,8 +137,7 @@ describe("assessMessage: new number", () => {
   const sarah: KnownContact = { contactId: "s", displayName: "Sarah", relationship: "daughter", phone: "+1 (415) 555-0135" };
   const circle = [daniel, sarah];
   const text = "Hi Gran it's Daniel, lost my phone, new number +1 (415) 555-0199, need $600 today";
-  // extractIdentifiers normalises the number it hands to the rule.
-  const detail = "It came from +14155550199, not Daniel's number.";
+  const detail = "It came from +1 (415) 555-0199, not Daniel's number.";
   const daniels = (level: "medium" | "high", reasons: string[]) =>
     ok({ level, reasons, impersonatedRequester: { kind: "person", name: "Daniel" } });
 

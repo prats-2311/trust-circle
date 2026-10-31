@@ -11,6 +11,15 @@ const PHONE_RE = /\+?\d[\d\s().-]{6,18}\d/g;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_IDENTIFIERS = 20;
 
+/** The phone number as it was typed in the text. Falls back to the normalised value when no match is found. */
+export function phoneAsWritten(text: string, value: string): string {
+  for (const m of text.matchAll(PHONE_RE)) {
+    const raw = m[0].trim().replace(/[\s.,;:!?-]+$/, "");
+    if (normalisePayee(raw) === value || normalisePayee(m[0]) === value) return raw;
+  }
+  return value;
+}
+
 export function extractIdentifiers(text: string): Identifier[] {
   const out: Identifier[] = [];
   const seen = new Set<string>();

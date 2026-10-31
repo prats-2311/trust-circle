@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractIdentifiers, matchKeys, phoneVariants } from "./identifiers";
+import { extractIdentifiers, matchKeys, phoneAsWritten, phoneVariants } from "./identifiers";
 
 describe("extractIdentifiers", () => {
   it("finds phones and emails in a scam text", () => {
@@ -52,5 +52,16 @@ describe("phoneVariants and matchKeys", () => {
     expect(matchKeys("http://x.example/login/")).toEqual(["x.example/login"]);
     expect(matchKeys("https://WWW.Evil.example/login?x=1#top")).toEqual(["evil.example/login"]);
     expect(matchKeys("(415) 555-0199")).toEqual(["4155550199"]);
+  });
+});
+
+describe("phoneAsWritten", () => {
+  it("returns the number with the formatting it had in the text", () => {
+    expect(phoneAsWritten("my new number is +1 (415) 555-0199.", "+14155550199")).toBe("+1 (415) 555-0199");
+    expect(phoneAsWritten("call 415 555 0186 or +44 7700 900123", "+447700900123")).toBe("+44 7700 900123");
+  });
+  it("falls back to the given value when the text has no such number", () => {
+    expect(phoneAsWritten("no numbers here", "+14155550199")).toBe("+14155550199");
+    expect(phoneAsWritten("", "+14155550199")).toBe("+14155550199");
   });
 });

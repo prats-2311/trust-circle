@@ -51,4 +51,10 @@ describe("newNumberSignal", () => {
       "It came from (415) 555 0186, not Daniel's number.",
     );
   });
+  it("shows the number as written in the message text", () => {
+    const text = "Gran it's Daniel, text me on +1 (415) 555-0199 now";
+    expect(newNumberSignal(person("Daniel"), phones("+14155550199"), circle, text)?.detail).toBe(
+      "It came from +1 (415) 555-0199, not Daniel's number.",
+    );
+  });
 });

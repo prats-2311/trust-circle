@@ -76,7 +76,7 @@ export async function assessMessage(
   const text = input.kind === "image" ? (ai.ok ? ai.judgement.transcript.trim() : "") : pasted;
   const identifiers = extractIdentifiers(text);
   const [injection, pattern] = await Promise.all([injectionSignals(deps.guard, text), patternMatch(deps.patterns, text)]);
-  const newNumber = ai.ok && ctx.circle ? newNumberSignal(ai.judgement.impersonatedRequester, identifiers, ctx.circle) : null;
+  const newNumber = ai.ok && ctx.circle ? newNumberSignal(ai.judgement.impersonatedRequester, identifiers, ctx.circle, text) : null;
   const signals = [...(newNumber ? [newNumber] : []), ...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
   const d = decide(signals, ai, pattern?.scamType);
   const reasons = newNumber ? [newNumber.detail, ...d.reasons.filter((r) => r !== newNumber.detail)].slice(0, 3) : d.reasons;
