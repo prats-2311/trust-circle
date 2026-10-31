@@ -10,12 +10,20 @@ import {
 } from "@paypal/paypal-server-sdk";
 import { centsToPayPalValue, requestId } from "./money";
 
+export type VoidResult = { status: string | null; alreadyReleased?: AlreadyReleased };
+export type AlreadyReleased = "PREVIOUSLY_VOIDED" | "AUTHORIZATION_EXPIRED";
+const ALREADY_RELEASED: readonly string[] = ["PREVIOUSLY_VOIDED", "AUTHORIZATION_EXPIRED"] satisfies AlreadyReleased[];
+
 export interface PayPalGateway {
   createAuthorizeOrder(a: { paymentId: string; amountCents: number }): Promise<{ orderId: string }>;
   authorizeOrder(a: { paymentId: string; orderId: string }): Promise<{ authorizationId: string }>;
   captureAuthorization(a: { paymentId: string; authorizationId: string }): Promise<{ captureId: string }>;
-  /** status is PayPal's own word for the authorisation afterwards ("VOIDED"), or null when it sent no body. */
-  voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<{ status: string | null }>;
+  /**
+   * status is PayPal's own word for the authorisation afterwards ("VOIDED"), or null when it sent no body.
+   * alreadyReleased is set when PayPal refused the void because the hold was already voided or had expired:
+   * no money can be taken either way, but PayPal did not confirm a void just now.
+   */
+  voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<VoidResult>;
   sendPayout(a: { paymentId: string; receiver: string; amountCents: number }): Promise<{ payoutBatchId: string }>;
   refundCapture(a: { paymentId: string; captureId: string }): Promise<{ refundId: string }>;
   /** True only when PayPal itself says the signature is valid. Any other answer or failure is false. */
@@ -188,7 +196,12 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
         });
         return { status: result?.status ?? null };
       } catch (e) {
-        throw toPayPalError(e, "voidAuthorization");
+        const err = toPayPalError(e, "voidAuthorization");
+        // Only these two 422s mean the money is safe; any other refusal stays a failure.
+        if (err.status === 422 && err.issue && ALREADY_RELEASED.includes(err.issue)) {
+          return { status: null, alreadyReleased: err.issue as AlreadyReleased };
+        }
+        throw err;
       }
     },
 

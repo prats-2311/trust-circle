@@ -214,6 +214,38 @@ describe("contactDecision", () => {
     expect((await repo.auditFor(id)).find((a) => a.action === "VOID")?.detail).toEqual({ paypalStatus: null });
   });
 
+  it.each(["PREVIOUSLY_VOIDED", "AUTHORIZATION_EXPIRED"] as const)(
+    "ends voided and records the issue when PayPal says %s",
+    async (issue) => {
+      const { service, gateway, repo, id } = await held();
+      (gateway.voidAuthorization as ReturnType<typeof vi.fn>).mockResolvedValue({ status: null, alreadyReleased: issue });
+      expect((await service.contactDecision({ paymentId: id, contactId: CONTACT, decision: "block" })).state).toBe("voided");
+      expect((await repo.auditFor(id)).find((a) => a.action === "VOID")?.detail).toEqual({ paypalStatus: null, paypalIssue: issue });
+    },
+  );
+
+  it("the demo reset and the blocked-void retry also finish an already-released hold", async () => {
+    const voidAuthorization = vi.fn()
+      .mockResolvedValueOnce({ status: null, alreadyReleased: "PREVIOUSLY_VOIDED" })
+      .mockRejectedValueOnce(new PayPalError("void", 500, undefined, "d", true))
+      .mockResolvedValueOnce({ status: null, alreadyReleased: "AUTHORIZATION_EXPIRED" });
+    const ctx = setup({ level: "high", gateway: { voidAuthorization } });
+    const ids: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const { payment } = await ctx.service.start(send);
+      await ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER });
+      ids.push(payment.id);
+    }
+    expect((await ctx.service.systemVoidHeld(ids[0]!)).state).toBe("voided");
+    await expect(ctx.service.contactDecision({ paymentId: ids[1]!, contactId: CONTACT, decision: "block" })).rejects.toBeInstanceOf(PaymentPendingError);
+    ctx.advance(STALE_MS + 1);
+    expect((await ctx.service.expireStale()).voidRetried).toEqual([ids[1]]);
+    const detail = async (id: string) => (await ctx.repo.auditFor(id)).find((a) => a.action === "VOID")?.detail;
+    expect(await detail(ids[0]!)).toEqual({ paypalStatus: null, paypalIssue: "PREVIOUSLY_VOIDED" });
+    expect(await detail(ids[1]!)).toEqual({ paypalStatus: null, paypalIssue: "AUTHORIZATION_EXPIRED" });
+    expect((await ctx.repo.get(ids[1]!))?.state).toBe("voided");
+  });
+
   it("refuses someone outside the circle", async () => {
     const { service, gateway, id } = await held();
     await expect(service.contactDecision({ paymentId: id, contactId: STRANGER, decision: "approve" })).rejects.toBeInstanceOf(NotAllowedError);

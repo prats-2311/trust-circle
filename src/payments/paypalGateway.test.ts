@@ -98,6 +98,28 @@ describe("paypal gateway", () => {
     expect(await gw.voidAuthorization({ paymentId: "p4", authorizationId: "AUTH4" })).toEqual({ status: null });
   });
 
+  it.each(["PREVIOUSLY_VOIDED", "AUTHORIZATION_EXPIRED"])("reports a void answered 422 %s as already released", async (issue) => {
+    server.use(
+      token(),
+      http.post(`${BASE}/v2/payments/authorizations/AUTH5/void`, () =>
+        HttpResponse.json({ name: "UNPROCESSABLE_ENTITY", details: [{ issue }], debug_id: "dbg5" }, { status: 422 }),
+      ),
+    );
+    expect(await gw.voidAuthorization({ paymentId: "p5", authorizationId: "AUTH5" })).toEqual({ status: null, alreadyReleased: issue });
+  });
+
+  it("still fails a void answered with any other 422", async () => {
+    server.use(
+      token(),
+      http.post(`${BASE}/v2/payments/authorizations/AUTH6/void`, () =>
+        HttpResponse.json({ details: [{ issue: "AUTHORIZATION_ALREADY_CAPTURED" }], debug_id: "dbg6" }, { status: 422 }),
+      ),
+    );
+    const e = (await gw.voidAuthorization({ paymentId: "p6", authorizationId: "AUTH6" }).catch((x: unknown) => x)) as PayPalError;
+    expect(e).toBeInstanceOf(PayPalError);
+    expect([e.status, e.issue, e.uncertain]).toEqual([422, "AUTHORIZATION_ALREADY_CAPTURED", false]);
+  });
+
   it("sends a payout to an email with the request id as batch id", async () => {
     seen.length = 0;
     server.use(token(), record("/v1/payments/payouts", () => HttpResponse.json({ batch_header: { payout_batch_id: "BATCH1" } }, { status: 201 })));

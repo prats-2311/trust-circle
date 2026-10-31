@@ -8,7 +8,7 @@ import { assessPayment } from "@/risk/assess";
 import type { RiskDecision } from "@/risk/decide";
 import { normalisePayee, type SenderContext } from "@/risk/signals";
 import { ConcurrentUpdateError, type PaymentRecord, type PaymentRepo, type TransitionPatch } from "./paymentRepo";
-import { PayPalError, type PayPalGateway } from "./paypalGateway";
+import { PayPalError, type AlreadyReleased, type PayPalGateway } from "./paypalGateway";
 
 export const COOLING_OFF_MS = 24 * 3_600_000;
 export const AUTO_VOID_MS = 72 * 3_600_000;
@@ -182,10 +182,13 @@ export function createPaymentService(deps: {
     }
   }
 
-  /** Voids at PayPal; the audit detail keeps PayPal's own word for it, which the stopped screen shows. */
-  async function voidAt(p: PaymentRecord): Promise<{ paypalStatus: string | null }> {
-    const { status } = await gateway.voidAuthorization({ paymentId: p.id, authorizationId: p.authorizationId! });
-    return { paypalStatus: status };
+  /**
+   * Voids at PayPal; the audit detail keeps PayPal's own word for it, which the stopped screen shows.
+   * A hold PayPal had already voided or expired ends voided too, with the issue recorded instead of a status.
+   */
+  async function voidAt(p: PaymentRecord): Promise<{ paypalStatus: string | null; paypalIssue?: AlreadyReleased }> {
+    const { status, alreadyReleased } = await gateway.voidAuthorization({ paymentId: p.id, authorizationId: p.authorizationId! });
+    return { paypalStatus: status, ...(alreadyReleased ? { paypalIssue: alreadyReleased } : {}) };
   }
 
   async function voidHeld(p: PaymentRecord, event: "BLOCK" | "EXPIRE", actorId: string | null): Promise<PaymentRecord> {

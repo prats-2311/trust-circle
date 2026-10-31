@@ -24,4 +24,9 @@ describe("paypalVoided", () => {
     expect(paypalVoided([{ action: "BLOCK", detail: { paypalStatus: "VOIDED" } }])).toBe(false);
     expect(paypalVoided([])).toBe(false);
   });
+
+  it("is false when PayPal had already voided or expired the hold rather than voiding it now", () => {
+    expect(paypalVoided([{ action: "VOID", detail: { paypalStatus: null, paypalIssue: "PREVIOUSLY_VOIDED" } }])).toBe(false);
+    expect(paypalVoided([{ action: "VOID", detail: { paypalStatus: null, paypalIssue: "AUTHORIZATION_EXPIRED" } }])).toBe(false);
+  });
 });
