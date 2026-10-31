@@ -4,7 +4,7 @@ Target length: 2:50, under Devpost's 3-minute limit. One narrator. Every on-scre
 
 ## Recording notes
 
-- Record on the production URL ({{DEMO_URL}}), not a dev server, so no dev badge appears. Warm the service first by loading `/api/health` a minute before you start: a sleeping free Render service takes about a minute on its first request.
+- Record on the production URL (https://trust-circle.onrender.com), not a dev server, so no dev badge appears. Warm the service first by loading `/api/health` a minute before you start: a sleeping free Render service takes about a minute on its first request.
 - Run the `demo reset` workflow from the repo's Actions tab (or record soon after 09:00 UTC) so the demo starts clean.
 - Browser zoom 100%. Use a phone, or the iPhone simulator, at about 390 px wide for Margaret's and Daniel's screens, and a laptop window at about 1280 px for Sarah's dashboard and trends.
 - For the push shot (1:30), Daniel's device needs push turned on: on an iPhone, add the app to the Home Screen first and turn on alerts in the app. If push isn't set up, show the alert on his circle screen instead and change the narration from "his phone buzzes" to "Daniel sees the request".

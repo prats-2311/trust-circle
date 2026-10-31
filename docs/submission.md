@@ -1,6 +1,6 @@
 # Devpost submission drafts
 
-Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. `{{DEMO_URL}}` and `{{VIDEO_URL}}` are replaced in Plan 5 Tasks 8 and 9.
+Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. `{{VIDEO_URL}}` is replaced once the video is recorded.
 
 ## Project name and tagline
 
@@ -63,7 +63,7 @@ Trust Circle is meant to become a setting, not another app. A scammer can always
 
 The idea has precedent. In US brokerage, firms must make reasonable efforts to collect a trusted contact for each customer ([FINRA Rule 4512](https://www.finra.org/rules-guidance/rulebooks/finra-rules/4512)), and may place a temporary hold on a disbursement when they reasonably believe an adult 65 or older is being financially exploited, telling that trusted contact within two business days ([FINRA Rule 2165](https://www.finra.org/rules-guidance/rulebooks/finra-rules/2165)). Trust Circle brings the same protection to everyday payments, with AI deciding which payments need a second look.
 
-The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Tailoring it for businesses, such as checking new bank details with a supplier on a known number, is next.
+A small-business version is next. The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Building it out means AI prompts written for a business rather than for an older person, a step that checks new bank details with the supplier on a number already on file, and a demo story of its own.
 
 - A real sign-up flow with an emailed one-time code, in place of demo mode.
 - Reconciling more "already done" PayPal answers, and a clear path for payments that need a person's attention.
@@ -84,7 +84,7 @@ The same engine already runs a Business preset, where a freelancer's accountant 
 | 28784 | Main technology requirement | See below |
 | 28786 | Sponsor tools | AG Grid, Render |
 | 28788 | Repo URL | https://github.com/prats-2311/trust-circle |
-| 28787 | Demo URL | `{{DEMO_URL}}` |
+| 28787 | Demo URL | `https://trust-circle.onrender.com` |
 | 28798 | Testing instructions | See below |
 | 28790 | PayPal experience rating | **USER TO FILL** |
 | 28791 | Why (rating feedback) | Draft below, for the user to edit |
@@ -121,7 +121,7 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 
 ### 28798: Testing instructions
 
-> Live demo: {{DEMO_URL}}. It runs on a free Render service, so the first load after a quiet spell can take about a minute.
+> Live demo: https://trust-circle.onrender.com. It runs on a free Render service, so the first load after a quiet spell can take about a minute.
 >
 > No sign-up: the landing page signs you in as a demo person with one tap.
 >

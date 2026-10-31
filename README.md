@@ -13,7 +13,7 @@ Trust Circle holds a risky PayPal payment and checks with the person the scammer
 
 **Built with:** PayPal Orders v2 (authorize, capture, void), Payouts, verified Webhooks, Agent Toolkit · Groq · AG Grid / AG Charts · Render
 
-- Live demo: {{DEMO_URL}}
+- Live demo: https://trust-circle.onrender.com
 - Video (under 3 minutes): {{VIDEO_URL}}
 - Devpost: [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/)
 
@@ -316,7 +316,7 @@ Trust Circle is meant to become a setting, not another app. A scammer can always
 
 US brokerage already works this way: firms must make reasonable efforts to collect a trusted contact ([FINRA Rule 4512](https://www.finra.org/rules-guidance/rulebooks/finra-rules/4512)) and may temporarily hold a disbursement when they reasonably believe an adult 65 or older is being financially exploited ([FINRA Rule 2165](https://www.finra.org/rules-guidance/rulebooks/finra-rules/2165)). Trust Circle brings that protection to everyday payments, with AI deciding which payments need a second look.
 
-The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Tailoring it for businesses, such as checking new bank details with a supplier on a known number, is next.
+A small-business version is next. The same engine already runs a Business preset, where a freelancer's accountant reviews risky payments, and it catches the invoice and CEO-fraud cases in our tests. Building it out means AI prompts written for a business rather than for an older person, a step that checks new bank details with the supplier on a number already on file, and a demo story of its own.
 
 ## Limits and honest notes
 
