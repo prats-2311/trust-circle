@@ -27,7 +27,9 @@
     "seed:history": "tsx --env-file=.env.local scripts/seed-demo-history.ts",
     "seed:patterns": "tsx --env-file=.env.local scripts/seed-patterns.ts",
     "deploy:seed": "tsx scripts/deploy-seed.ts",
-    "eval:live": "tsx --env-file=.env.local scripts/eval-live.ts"
+    "eval:live": "tsx --env-file=.env.local scripts/eval-live.ts",
+    "fixture:audio": "tsx scripts/make-fixture-audio.ts",
+    "smoke:message": "tsx --env-file=.env.local scripts/smoke-message-check.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",

@@ -113,6 +113,7 @@ export const EVAL_CASES: EvalCase[] = [
   msg("n11", "solo", "genuine", "Your rent of $1,300 is due on the 1st. You can pay through the tenant portal as usual."),
   msg("n12", "solo", "genuine", "Your verification code is 482913. Don't share this code with anyone."),
   msg("n13", "family", "genuine", "Hi Dad, the plumber is coming Wednesday morning. I'll be there to let him in."),
+  msg("m-voice-01", "family", "scam", "Hi Gran, it's Daniel. I've lost my phone and I'm in real trouble. Please send eight hundred dollars to my PayPal, danny.help@example.com, today. Don't tell Mum."),
   msg("n15", "family", "genuine", "Hi Dad, I'll connect with the remote app tonight to fix your printer like last time. Call me when you're at the computer. Sarah"),
   msg("n14", "business", "genuine", "Thanks for your payment of $450. Your receipt number is 88213. Main St Print Shop"),
 ];
