@@ -13,7 +13,7 @@ import { PUT } from "./route";
 
 beforeEach(() => {
   const settings = createSettingsService({
-    repo: createMemorySettingsRepo({ [U]: { preset: "family", coolingOffHours: 24, onboardedAt: null } }),
+    repo: createMemorySettingsRepo({ [U]: { preset: "family", coolingOffHours: 24, onboardedAt: null, phone: null } }),
     now: () => new Date("2026-10-16T10:00:00Z"),
   });
   const real = settings.finishOnboarding;
@@ -62,6 +62,16 @@ describe("PUT /api/me/settings", () => {
     const res = await call({ onboarded: true }, U);
     expect(finish).toHaveBeenCalledWith(U);
     expect(await res.json()).toMatchObject({ onboarded: true });
+  });
+  it("PUT phone stores it and returns it", async () => {
+    const res = await call({ phone: "+1 (415) 555-0131" }, U);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ phone: "+1 (415) 555-0131" });
+  });
+  it("answers 400 for a bad phone", async () => {
+    const res = await call({ phone: "nope" }, U);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Please enter a phone number with 7 to 15 digits, or leave it empty." });
   });
   it("answers 400 for a malformed body", async () => {
     expect((await call([1], U)).status).toBe(400);

@@ -9,7 +9,10 @@ export class SettingsInputError extends Error {
   }
 }
 
-const DEFAULTS: UserSettings = { preset: "family", coolingOffHours: PRESETS.family.defaultCoolingOffHours, onboardedAt: null };
+const DEFAULTS: UserSettings = { preset: "family", coolingOffHours: PRESETS.family.defaultCoolingOffHours, onboardedAt: null, phone: null };
+
+const PHONE_COPY = "Please enter a phone number with 7 to 15 digits, or leave it empty.";
+const MAX_PHONE_LENGTH = 32;
 
 export function createSettingsService(deps: { repo: SettingsRepo; now?: () => Date }) {
   const { repo } = deps;
@@ -39,6 +42,15 @@ export function createSettingsService(deps: { repo: SettingsRepo; now?: () => Da
       const current = await read(userId);
       if (current.onboardedAt) return current;
       return write(userId, { onboardedAt: now() });
+    },
+    async setPhone(userId: string, phone: string | null) {
+      if (phone === null) return write(userId, { phone: null });
+      if (typeof phone !== "string") throw new SettingsInputError(PHONE_COPY);
+      const trimmed = phone.trim();
+      if (trimmed === "") return write(userId, { phone: null });
+      const digits = trimmed.replace(/\D/g, "").length;
+      if (trimmed.length > MAX_PHONE_LENGTH || digits < 7 || digits > 15) throw new SettingsInputError(PHONE_COPY);
+      return write(userId, { phone: trimmed });
     },
     async coolingOffMs(userId: string) {
       return (await read(userId)).coolingOffHours * 3_600_000;

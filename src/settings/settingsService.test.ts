@@ -3,7 +3,7 @@ import { createMemorySettingsRepo, type UserSettings } from "./settingsRepo";
 import { SettingsInputError, createSettingsService } from "./settingsService";
 
 const make = (s: Partial<UserSettings> = {}) => {
-  const repo = createMemorySettingsRepo({ u1: { preset: "family", coolingOffHours: 24, onboardedAt: null, ...s } });
+  const repo = createMemorySettingsRepo({ u1: { preset: "family", coolingOffHours: 24, onboardedAt: null, phone: null, ...s } });
   return createSettingsService({ repo, now: () => new Date("2026-10-16T10:00:00Z") });
 };
 
@@ -44,6 +44,25 @@ describe("settingsService", () => {
   });
   it("get includes the circle limit", async () => {
     expect(await make({ preset: "solo" }).get("u1")).toMatchObject({ preset: "solo", circleLimitCents: null });
+  });
+  it("setPhone stores a trimmed number", async () => {
+    expect((await make().setPhone("u1", "  +1 (415) 555-0131 ")).phone).toBe("+1 (415) 555-0131");
+  });
+  it("setPhone clears on empty or null", async () => {
+    const svc = make({ phone: "+1 (415) 555-0131" });
+    expect((await svc.setPhone("u1", "")).phone).toBeNull();
+    expect((await svc.setPhone("u1", "+1 (415) 555-0131")).phone).not.toBeNull();
+    expect((await svc.setPhone("u1", null)).phone).toBeNull();
+  });
+  it("setPhone rejects bad numbers", async () => {
+    const copy = "Please enter a phone number with 7 to 15 digits, or leave it empty.";
+    for (const bad of ["call me", "123456", "1234567890123456", "+1 (415) 555-0131" + "-".repeat(16), 42 as never]) {
+      await expect(make().setPhone("u1", bad)).rejects.toThrow(SettingsInputError);
+      await expect(make().setPhone("u1", bad)).rejects.toThrow(copy);
+    }
+  });
+  it("defaults include a null phone", async () => {
+    expect((await make().get("nobody")).phone).toBeNull();
   });
   it("an unknown user falls back to the defaults", async () => {
     const svc = make();

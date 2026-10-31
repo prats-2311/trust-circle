@@ -64,6 +64,13 @@
       "when": 1792162739572,
       "tag": "0008_glossy_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793468755655,
+      "tag": "0009_green_warpath",
+      "breakpoints": true
     }
   ]
 }

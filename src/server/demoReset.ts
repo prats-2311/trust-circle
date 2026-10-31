@@ -2,7 +2,7 @@ import { inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { pushSubscriptions, users } from "../db/schema";
 import { isAllowedPushEndpoint } from "../push/subscription";
-import { DEMO_PERSONAS, type Persona } from "./demo";
+import { DEMO_PERSONAS, DEMO_PHONES, type Persona } from "./demo";
 import { seedDemoHistory } from "./demoSeed";
 
 /** Puts the demo back to a clean story: users, circles and known scam patterns stay; everything that happened goes. */
@@ -24,6 +24,9 @@ export async function resetDemo(db: Db, opts: { log?: (s: string) => void } = {}
     await tx.update(users).set({ preset: "family" }).where(inArray(users.email, presetFor(["margaret", "sarah", "daniel"])));
     await tx.update(users).set({ preset: "business" }).where(inArray(users.email, presetFor(["priya", "tom"])));
     await tx.update(users).set({ preset: "solo" }).where(inArray(users.email, presetFor(["robert"])));
+    for (const persona of Object.keys(DEMO_PERSONAS) as Persona[]) {
+      await tx.update(users).set({ phone: DEMO_PHONES[persona] ?? null }).where(inArray(users.email, [DEMO_PERSONAS[persona]]));
+    }
     log("People reset");
     const seeded = await seedDemoHistory(tx);
     log(`History seeded: ${seeded.payments} payments, ${seeded.registryReports} registry reports`);

@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       preset: prefs.preset,
       coolingOffHours: prefs.coolingOffHours,
       circleLimitCents: prefs.circleLimitCents,
+      phone: prefs.phone,
       onboarded: prefs.onboardedAt !== null,
     });
   } catch (e) {

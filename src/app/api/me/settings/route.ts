@@ -11,6 +11,7 @@ export async function PUT(req: Request) {
     const { settings } = getContainer();
     if (body.preset !== undefined) await settings.choosePreset(userId, body.preset as Preset);
     if (body.coolingOffHours !== undefined) await settings.setCoolingOff(userId, body.coolingOffHours as number);
+    if (body.phone !== undefined) await settings.setPhone(userId, body.phone as string | null);
     if (body.onboarded === true) await settings.finishOnboarding(userId);
     const s = await settings.get(userId);
     return Response.json({ ...s, onboarded: s.onboardedAt !== null });

@@ -17,6 +17,7 @@ export const users = pgTable(
     displayName: text("display_name").notNull(),
     preset: presetEnum("preset").notNull().default("family"),
     safeWordHash: text("safe_word_hash"),
+    phone: text("phone"),
     coolingOffHours: integer("cooling_off_hours").notNull().default(24),
     onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -16,14 +16,21 @@ afterAll(async () => handle?.close());
 
 describe("drizzle settings repo", () => {
   it("returns the defaults for a seeded user", async () => {
-    expect(await createDrizzleSettingsRepo(handle.db).get(userId)).toEqual({ preset: "family", coolingOffHours: 24, onboardedAt: null });
+    expect(await createDrizzleSettingsRepo(handle.db).get(userId)).toEqual({ preset: "family", coolingOffHours: 24, onboardedAt: null, phone: null });
   });
   it("updates preset, cooling-off and onboardedAt", async () => {
     const repo = createDrizzleSettingsRepo(handle.db);
     const at = new Date("2026-10-16T10:00:00Z");
     const updated = await repo.update(userId, { preset: "business", coolingOffHours: 12, onboardedAt: at });
-    expect(updated).toEqual({ preset: "business", coolingOffHours: 12, onboardedAt: at });
+    expect(updated).toEqual({ preset: "business", coolingOffHours: 12, onboardedAt: at, phone: null });
     expect(await repo.get(userId)).toEqual(updated);
+  });
+  it("round-trips a phone number", async () => {
+    const repo = createDrizzleSettingsRepo(handle.db);
+    const updated = await repo.update(userId, { phone: "+1 (415) 555-0131" });
+    expect(updated?.phone).toBe("+1 (415) 555-0131");
+    expect((await repo.get(userId))?.phone).toBe("+1 (415) 555-0131");
+    expect((await repo.update(userId, { phone: null }))?.phone).toBeNull();
   });
   it("returns null for a non-UUID without querying", async () => {
     const repo = createDrizzleSettingsRepo(handle.db);

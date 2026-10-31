@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { count, eq } from "drizzle-orm";
 import { freshTestDb } from "@/test/db";
 import { payments, pushSubscriptions, scamPatterns, trustLinks, users } from "@/db/schema";
+import { DEMO_PHONES } from "./demo";
 import { seedBaseDemo } from "./demoSeed";
 import { resetDemo } from "./demoReset";
 
@@ -65,6 +66,21 @@ describe("resetDemo", () => {
     expect(rows.map((p) => p.payee)).toEqual(["stranger@example.com"]);
     const [after] = await db.select().from(users).where(eq(users.id, margaret!.id));
     expect(after!.onboardedAt).not.toBeNull();
+  });
+
+  it("restores the demo phone numbers and clears the others", async () => {
+    const { db } = handle;
+    await seedBaseDemo(db);
+    await db.update(users).set({ phone: null }).where(eq(users.email, "daniel.demo@trustcircle.example"));
+    await db.update(users).set({ phone: "+1 (415) 555-0100" }).where(eq(users.email, "margaret.demo@trustcircle.example"));
+
+    await resetDemo(db);
+
+    const phone = async (email: string) => (await db.select().from(users).where(eq(users.email, email)))[0]!.phone;
+    expect(await phone("daniel.demo@trustcircle.example")).toBe(DEMO_PHONES.daniel);
+    expect(await phone("sarah.demo@trustcircle.example")).toBe(DEMO_PHONES.sarah);
+    expect(await phone("tom.demo@trustcircle.example")).toBe(DEMO_PHONES.tom);
+    expect(await phone("margaret.demo@trustcircle.example")).toBeNull();
   });
 
   it("logs each step through opts.log", async () => {

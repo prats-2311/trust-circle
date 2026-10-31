@@ -5,13 +5,14 @@ import { isUuid } from "@/domain/ids";
 import type { CoolingOffHours } from "./presets";
 import type { SettingsRepo, UserSettings } from "./settingsRepo";
 
-const columns = { preset: users.preset, coolingOffHours: users.coolingOffHours, onboardedAt: users.onboardedAt };
+const columns = { preset: users.preset, coolingOffHours: users.coolingOffHours, onboardedAt: users.onboardedAt, phone: users.phone };
 
 export function createDrizzleSettingsRepo(db: Db): SettingsRepo {
-  const view = (r: { preset: UserSettings["preset"]; coolingOffHours: number; onboardedAt: Date | null }): UserSettings => ({
+  const view = (r: { preset: UserSettings["preset"]; coolingOffHours: number; onboardedAt: Date | null; phone: string | null }): UserSettings => ({
     preset: r.preset,
     coolingOffHours: r.coolingOffHours as CoolingOffHours,
     onboardedAt: r.onboardedAt,
+    phone: r.phone,
   });
   return {
     async get(userId) {

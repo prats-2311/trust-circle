@@ -5,26 +5,28 @@ import type { ScamType } from "../domain/types";
 import type { Embedder } from "../patterns/embedder";
 import { createDrizzlePatternRepo } from "../patterns/drizzlePatternRepo";
 import { createPatternService } from "../patterns/patternService";
+import { DEMO_PHONES, type Persona } from "./demo";
 
 type Preset = "family" | "business" | "solo";
 
-async function upsertUser(db: Db, email: string, displayName: string, preset: Preset) {
+async function upsertUser(db: Db, persona: Persona, email: string, displayName: string, preset: Preset) {
+  const phone = DEMO_PHONES[persona] ?? null;
   await db
     .insert(users)
-    .values({ email, displayName, preset })
-    .onConflictDoUpdate({ target: users.email, set: { preset } });
+    .values({ email, displayName, preset, phone })
+    .onConflictDoUpdate({ target: users.email, set: { preset, phone } });
   const [u] = await db.select().from(users).where(eq(users.email, email));
   return u!;
 }
 
 /** The six demo people and their circles. Safe to run again. */
 export async function seedBaseDemo(db: Db) {
-  const margaret = await upsertUser(db, "margaret.demo@trustcircle.example", "Margaret", "family");
-  const sarah = await upsertUser(db, "sarah.demo@trustcircle.example", "Sarah", "family");
-  const daniel = await upsertUser(db, "daniel.demo@trustcircle.example", "Daniel", "family");
-  const robert = await upsertUser(db, "robert.demo@trustcircle.example", "Robert", "solo");
-  const priya = await upsertUser(db, "priya.demo@trustcircle.example", "Priya", "business");
-  const tom = await upsertUser(db, "tom.demo@trustcircle.example", "Tom", "business");
+  const margaret = await upsertUser(db, "margaret", "margaret.demo@trustcircle.example", "Margaret", "family");
+  const sarah = await upsertUser(db, "sarah", "sarah.demo@trustcircle.example", "Sarah", "family");
+  const daniel = await upsertUser(db, "daniel", "daniel.demo@trustcircle.example", "Daniel", "family");
+  const robert = await upsertUser(db, "robert", "robert.demo@trustcircle.example", "Robert", "solo");
+  const priya = await upsertUser(db, "priya", "priya.demo@trustcircle.example", "Priya", "business");
+  const tom = await upsertUser(db, "tom", "tom.demo@trustcircle.example", "Tom", "business");
   await db
     .insert(trustLinks)
     .values([

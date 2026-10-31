@@ -5,6 +5,7 @@ export interface UserSettings {
   preset: Preset;
   coolingOffHours: CoolingOffHours;
   onboardedAt: Date | null;
+  phone: string | null;
 }
 
 export interface SettingsRepo {
