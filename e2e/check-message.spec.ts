@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAs } from "./helpers";
+import { stubNewNumberCheck } from "./stubs";
 
 test("a grandson text is flagged, explained and can be reported", async ({ page }) => {
   await signInAs(page, "margaret");
@@ -49,4 +50,15 @@ test("a voice note shows its transcript and the voice line", async ({ page }) =>
   await expect(page.getByText("I lost my phone, please buy gift cards.", { exact: false })).toBeVisible();
   await expect(page.getByText("A voice that sounds like Daniel isn't proof.", { exact: false })).toBeVisible();
   expect(body).toContain('name="audio"');
+});
+
+test("a check result leads with the new-number line", async ({ page }) => {
+  await signInAs(page, "margaret");
+  await stubNewNumberCheck(page);
+  await page.goto("/check");
+  await page.getByLabel("The message").fill("Hi Grandma it's Daniel, new phone. Text me at +1 (415) 555-0199");
+  await page.getByTestId("check-submit").click();
+  await expect(page.getByRole("heading", { name: "What gave it away" })).toBeVisible();
+  await expect(page.getByText("It came from +1 (415) 555-0199, not Daniel's number.")).toBeVisible();
+  await expect(page.locator("h2:has-text('What gave it away') + ul > li").first()).toHaveText("It came from +1 (415) 555-0199, not Daniel's number.");
 });

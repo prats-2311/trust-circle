@@ -134,3 +134,15 @@ export async function stubAftercare(page: Page) {
     }),
   );
 }
+
+/** A scam verdict whose first reason is the new-number line (a message claiming to be Daniel from a number that isn't his). */
+export async function stubNewNumberCheck(page: Page) {
+  await page.route("**/api/messages/check", (r) =>
+    r.fulfill({
+      json: {
+        id: "x", source: "text", text: "Hi Grandma it's Daniel, new phone. Text me at +1 (415) 555-0199", checked: true, level: "high", scamType: "impersonation_family",
+        reasons: ["It came from +1 (415) 555-0199, not Daniel's number.", "It claims to be a family member on a new number."], identifiers: [], impersonatedRequester: { kind: "person", name: "Daniel" }, createdAt: new Date().toISOString(),
+      },
+    }),
+  );
+}

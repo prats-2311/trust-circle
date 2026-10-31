@@ -5,7 +5,9 @@ import { formatUsd } from "@/alerts/alertCopy";
 import type { Preset } from "@/domain/types";
 import { homeFor, type Persona } from "@/server/demo";
 import { COOLING_OFF_CHOICES, PRESETS } from "@/settings/presets";
+import { Button } from "@/ui/Button";
 import { EnableNotifications } from "@/ui/EnableNotifications";
+import { Field, INPUT } from "@/ui/Field";
 import { fetchJson } from "@/ui/fetchJson";
 import { LockSimpleIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
@@ -39,14 +41,16 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState<string | null>(null);
   const { busy, run } = useOnce();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const r = await fetchJson<Prefs & { safeWordSet: boolean; persona: Persona | null }>("/api/me");
+      const r = await fetchJson<Prefs & { safeWordSet: boolean; persona: Persona | null; phone: string | null }>("/api/me");
       if (cancelled) return;
       if (!r.ok) return setLoad(r.signedOut ? { kind: "signedOut" } : { kind: "error" });
-      const { preset, coolingOffHours, circleLimitCents, safeWordSet, persona } = r.data;
+      const { preset, coolingOffHours, circleLimitCents, safeWordSet, persona, phone } = r.data;
+      setPhone(phone ?? "");
       setLoad({ kind: "ready", prefs: { preset, coolingOffHours, circleLimitCents }, safeWordSet, persona });
     })();
     return () => {
@@ -75,6 +79,22 @@ export default function SettingsPage() {
       if (before) setLoad((l) => (l.kind === "ready" ? { ...l, prefs: before } : l));
       setSaveError(r.status === 400 ? r.error : SAVE_FAILED);
     }
+  };
+
+  const savePhone = () => run(savePhoneNow);
+  const savePhoneNow = async () => {
+    setSaved(null);
+    setSaveError(null);
+    const r = await fetchJson<{ phone: string | null }>("/api/me/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phone: phone.trim() === "" ? null : phone }),
+    });
+    if (r.ok) {
+      setPhone(r.data.phone ?? "");
+      setSaved("Saved.");
+    } else if (r.signedOut) setLoad({ kind: "signedOut" });
+    else setSaveError(r.status === 400 ? r.error : SAVE_FAILED);
   };
 
   return (
@@ -130,6 +150,26 @@ export default function SettingsPage() {
 
           <Section title="Amount that always gets a second look">
             <p className="text-[18px]" data-testid="circle-limit">{limitLine(load.prefs)}</p>
+          </Section>
+
+          <Section title="Your phone number">
+            <Field
+              id="phone"
+              label="Your phone number"
+              hint="If someone messages your circle claiming to be you from a different number, they'll be warned. Your number is never shown to anyone else."
+            >
+              <input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={INPUT}
+              />
+            </Field>
+            <Button variant="secondary" disabled={busy} onClick={() => void savePhone()}>
+              Save number
+            </Button>
           </Section>
 
           <Section title="Safe word">
