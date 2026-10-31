@@ -17,8 +17,15 @@ describe("normaliseSpokenEmails", () => {
     "meet me at the station",
     "look at this dot",
     "it's at 5 p.m.",
+    "call me at nine dot thirty",
+    "email me at gmail dot com",
+    "my name at example dot com",
     "write to danny.help@example.com today",
   ])("leaves %j unchanged", (input) => {
     expect(normaliseSpokenEmails(input)).toBe(input);
+  });
+
+  it("still rewrites a plain first name as the local part", () => {
+    expect(normaliseSpokenEmails("tell Bob at work dot com")).toBe("tell bob@work.com");
   });
 });

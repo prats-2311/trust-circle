@@ -4,16 +4,20 @@
 const WORD = "[a-z0-9]+";
 const JOIN = "(?:\\s+(?:dot|underscore|dash)\\s+|[._-])";
 const DOT = "(?:\\s+dot\\s+|\\.)";
+// Only these endings count, and a pronoun or filler word alone is never a local part
+// ("call me at nine dot thirty", "email me at gmail dot com").
+const TLD = "(?:com|net|org|edu|gov|io|co|uk|us|ca|au|in|de|fr|info|biz|me|app|dev)";
+const FILLER = new Set(["me", "us", "him", "her", "them", "you", "it", "i", "we", "name", "home", "work", "here", "there"]);
 const SPOKEN_EMAIL = new RegExp(
-  `(?<![a-z0-9._-])(${WORD}(?:${JOIN}${WORD})*)\\s+at\\s+((?:${WORD}${DOT})+[a-z]{2,24})(?![a-z0-9])`,
+  `(?<![a-z0-9._-])(${WORD}(?:${JOIN}${WORD})*)\\s+at\\s+((?:${WORD}${DOT})+${TLD})(?![a-z0-9])`,
   "gi",
 );
 
 const SYMBOL: Record<string, string> = { dot: ".", underscore: "_", dash: "-" };
 
 export function normaliseSpokenEmails(text: string): string {
-  return text.replace(SPOKEN_EMAIL, (_all, local: string, domain: string) =>
-    `${spell(local)}@${spell(domain)}`.toLowerCase(),
+  return text.replace(SPOKEN_EMAIL, (all: string, local: string, domain: string) =>
+    FILLER.has(local.toLowerCase()) ? all : `${spell(local)}@${spell(domain)}`.toLowerCase(),
   );
 }
 
