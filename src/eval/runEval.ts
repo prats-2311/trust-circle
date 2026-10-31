@@ -108,7 +108,7 @@ async function attempt(c: EvalCase, deps: Deps): Promise<{ result: Omit<EvalResu
     );
     return { result: { ...base, level: d.level, scamType: d.scamType, checked: d.aiUsed, signals: d.signals.map((s) => s.code) }, cause };
   }
-  const m = await assessMessage({ kind: "text", text: c.text }, { registry: NO_REGISTRY }, { judge: messageJudge, guard: deps.guard, patterns: deps.patterns });
+  const m = await assessMessage({ kind: "text", text: c.text }, { registry: NO_REGISTRY, circle: c.circle }, { judge: messageJudge, guard: deps.guard, patterns: deps.patterns });
   return { result: { ...base, level: m.level, scamType: m.scamType, checked: m.checked, signals: m.signals.map((s) => s.code) }, cause };
 }
 

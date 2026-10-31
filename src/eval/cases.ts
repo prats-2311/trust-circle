@@ -1,3 +1,4 @@
+import type { KnownContact } from "@/circle/circleRepo";
 import type { Preset } from "@/domain/types";
 import type { PaymentRiskInput, SenderContext } from "@/risk/signals";
 
@@ -13,12 +14,15 @@ interface CaseBase {
 }
 export type EvalCase =
   | (CaseBase & { kind: "payment"; payment: PaymentRiskInput; history?: Partial<HistoryFacts> })
-  | (CaseBase & { kind: "message"; text: string });
+  | (CaseBase & { kind: "message"; text: string; circle?: KnownContact[] });
 
 const pay = (
   id: string, preset: Preset, label: CaseBase["label"], payment: PaymentRiskInput, history?: Partial<HistoryFacts>,
 ): EvalCase => ({ id, preset, label, kind: "payment", payment, ...(history ? { history } : {}) });
-const msg = (id: string, preset: Preset, label: CaseBase["label"], text: string): EvalCase => ({ id, preset, label, kind: "message", text });
+const msg = (id: string, preset: Preset, label: CaseBase["label"], text: string, circle?: KnownContact[]): EvalCase => ({
+  id, preset, label, kind: "message", text, ...(circle ? { circle } : {}),
+});
+const EVAL_DANIEL: KnownContact[] = [{ contactId: "eval-daniel", displayName: "Daniel", relationship: "grandson", phone: "+1 (415) 555-0131" }];
 const known = (payee: string, recentAmountsCents?: number[]): Partial<HistoryFacts> => ({
   previousPayees: [payee],
   ...(recentAmountsCents ? { recentAmountsCents } : {}),
@@ -114,6 +118,8 @@ export const EVAL_CASES: EvalCase[] = [
   msg("n12", "solo", "genuine", "Your verification code is 482913. Don't share this code with anyone."),
   msg("n13", "family", "genuine", "Hi Dad, the plumber is coming Wednesday morning. I'll be there to let him in."),
   msg("m-voice-01", "family", "scam", "Hi Gran, it's Daniel. I've lost my phone and I'm in real trouble. Please send eight hundred dollars to my PayPal, danny.help@example.com, today. Don't tell Mum."),
+  msg("m-nn-01", "family", "scam", "Hi Gran it's Daniel, I lost my phone so this is my new number +1 (415) 555-0186. I need $600 for rent today, please don't tell mum.", EVAL_DANIEL),
+  msg("m-nn-02", "family", "genuine", "Hi Gran, it's Daniel. Running late for Sunday lunch, call me on +1 (415) 555-0131 if you need anything.", EVAL_DANIEL),
   msg("n15", "family", "genuine", "Hi Dad, I'll connect with the remote app tonight to fix your printer like last time. Call me when you're at the computer. Sarah"),
   msg("n14", "business", "genuine", "Thanks for your payment of $450. Your receipt number is 88213. Main St Print Shop"),
 ];

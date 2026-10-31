@@ -25,6 +25,34 @@ const oracleMessage: MessageJudge = async (input) => ({
 const downPayment: PaymentJudge = async () => ({ ok: false, error: "groq http 503" });
 const downMessage: MessageJudge = async () => ({ ok: false, error: "groq http 503" });
 
+const daniel = { contactId: "eval-daniel", displayName: "Daniel", relationship: "grandson", phone: "+1 (415) 555-0131" };
+
+describe("new-number cases", () => {
+  it("passes a case's circle to the assessment", async () => {
+    const text = "Hi Gran it's Daniel, new number +1 (415) 555-0186.";
+    const judge: MessageJudge = async () => ({
+      ok: true,
+      judgement: { ...verdict(true), impersonatedRequester: { kind: "person", name: "Daniel" }, transcript: "" },
+    });
+    const c: EvalCase = { id: "t", kind: "message", preset: "family", label: "scam", text, circle: [daniel] };
+    const { results } = await runEval([c], { paymentJudge: oraclePayment, messageJudge: judge });
+    expect(results[0]!.signals).toContain("NEW_NUMBER_CLAIMS_CIRCLE");
+  });
+
+  it("has the scam and the genuine case, each with Daniel in the circle", () => {
+    const scam = messages.find((c) => c.id === "m-nn-01")!;
+    const ok = messages.find((c) => c.id === "m-nn-02")!;
+    expect(scam.label).toBe("scam");
+    expect(scam.preset).toBe("family");
+    expect(scam.text).toBe("Hi Gran it's Daniel, I lost my phone so this is my new number +1 (415) 555-0186. I need $600 for rent today, please don't tell mum.");
+    expect(scam.circle).toEqual([daniel]);
+    expect(ok.label).toBe("genuine");
+    expect(ok.preset).toBe("family");
+    expect(ok.text).toBe("Hi Gran, it's Daniel. Running late for Sunday lunch, call me on +1 (415) 555-0131 if you need anything.");
+    expect(ok.circle).toEqual([daniel]);
+  });
+});
+
 describe("evaluation set", () => {
   it("has at least 60 well-formed, balanced cases", () => {
     expect(EVAL_CASES.length).toBeGreaterThanOrEqual(60);
