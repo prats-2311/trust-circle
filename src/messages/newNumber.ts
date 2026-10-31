@@ -8,7 +8,7 @@ import type { Signal } from "@/risk/signals";
  * The message claims to be someone in the circle but comes from a number that is not theirs.
  * Fires only when none of the message's numbers is the member's known number.
  */
-export function newNumberSignal(requester: Requester | null, identifiers: Identifier[], circle: KnownContact[], text = ""): Signal | null {
+export function newNumberSignal(requester: Requester | null, identifiers: Identifier[], circle: KnownContact[], text: string): Signal | null {
   if (!requester || requester.kind !== "person") return null;
   const member = matchRequester(requester.name, circle);
   if (!member) return null;

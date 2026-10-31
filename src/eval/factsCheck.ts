@@ -51,6 +51,12 @@ export function checkFacts(results: string, docs: Record<string, string>): strin
     for (const m of text.matchAll(/(\d+) of (\d+) genuine(?! payments| ones| cases got a warning)/g)) {
       if (Number(m[1]) !== f.genuineHeld || Number(m[2]) !== f.genuine) problems.push(`${file}: says "${m[0]}" but the results have ${f.genuineHeld} of ${f.genuine} genuine held`);
     }
+    for (const m of text.matchAll(/(\d+) of (\d+) genuine cases got a warning/g)) {
+      if (Number(m[1]) !== f.genuineFlagged || Number(m[2]) !== f.genuine) problems.push(`${file}: says "${m[0]}" but the results have ${f.genuineFlagged} of ${f.genuine} genuine flagged`);
+    }
+    for (const m of text.matchAll(/\ball (\d+) scams/g)) {
+      if (Number(m[1]) !== f.scams) problems.push(`${file}: says "${m[0]}" but the results have ${f.scams} scams`);
+    }
   }
   return problems;
 }

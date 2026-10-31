@@ -107,5 +107,6 @@ BASE_URL=http://localhost:3999 npx playwright test --project smoke
 
 ## Notes
 
+- After a deploy that includes the new-number check, sign in as Margaret, paste the demo message, and confirm the first reason is "It came from +1 (415) 555-0199, not Daniel's number." (migration `0010_demo_phones` fills the demo numbers on an existing database).
 - Schedules from GitHub can run several minutes late, so a hold can expire a few minutes past 72 hours.
 - The daily demo reset runs at 09:00 UTC and returns the shared demo to its clean story. Anyone mid-flow at that moment loses their state.

@@ -15,7 +15,11 @@ const MAX_IDENTIFIERS = 20;
 export function phoneAsWritten(text: string, value: string): string {
   for (const m of text.matchAll(PHONE_RE)) {
     const raw = m[0].trim().replace(/[\s.,;:!?-]+$/, "");
-    if (normalisePayee(raw) === value || normalisePayee(m[0]) === value) return raw;
+    if (normalisePayee(raw) === value || normalisePayee(m[0]) === value) {
+      // PHONE_RE starts at a digit or +, so an opening bracket before the area code is left behind.
+      const open = m.index > 0 && text[m.index - 1] === "(" && raw.indexOf(")") !== -1 && (raw.indexOf("(") === -1 || raw.indexOf(")") < raw.indexOf("("));
+      return open ? `(${raw}` : raw;
+    }
   }
   return value;
 }

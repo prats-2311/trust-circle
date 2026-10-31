@@ -60,6 +60,11 @@ describe("phoneAsWritten", () => {
     expect(phoneAsWritten("my new number is +1 (415) 555-0199.", "+14155550199")).toBe("+1 (415) 555-0199");
     expect(phoneAsWritten("call 415 555 0186 or +44 7700 900123", "+447700900123")).toBe("+44 7700 900123");
   });
+  it("keeps the opening bracket of a bracketed area code", () => {
+    const text = "Text me at (415) 555-0199";
+    const value = extractIdentifiers(text).find((i) => i.type === "phone")!.value;
+    expect(phoneAsWritten(text, value)).toBe("(415) 555-0199");
+  });
   it("falls back to the given value when the text has no such number", () => {
     expect(phoneAsWritten("no numbers here", "+14155550199")).toBe("+14155550199");
     expect(phoneAsWritten("", "+14155550199")).toBe("+14155550199");

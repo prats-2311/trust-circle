@@ -321,6 +321,7 @@ A small-business version is next. The same engine already runs a Business preset
 
 ## Limits and honest notes
 
+- **The new-number check reveals a match.** The result shows whether a pasted number matches a circle member's saved number, so someone with access to Margaret's account could confirm a guessed full number. Numbers are only stored when the person adds their own.
 - **Sandbox only.** No real money moves, and the code refuses a live PayPal URL.
 - **Holding funds for real needs a licence.** Trust Circle is a working reference for a protected mode PayPal could offer itself. It is a hackathon project, not a PayPal product.
 - **Demo mode has no sign-up.** The demo people are seeded, and one tap signs you in as any of them.

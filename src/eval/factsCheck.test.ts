@@ -51,4 +51,13 @@ describe("checkFacts", () => {
     expect(g[0]).toContain("README.md");
     expect(checkFacts(results, { "README.md": readme.replace("| Scams flagged (warning or hold) | 42", "| Scams flagged (warning or hold) | 41"), "docs/submission.md": submission })[0]).toContain("README.md");
   });
+  it("reports stale prose about warnings and about all scams", () => {
+    const warn = checkFacts(results, { "README.md": readme, "docs/submission.md": submission.replace("11 of 35 genuine cases got a warning", "12 of 35 genuine cases got a warning") });
+    expect(warn).toHaveLength(1);
+    expect(warn[0]).toContain("docs/submission.md");
+    const all = checkFacts(results, { "README.md": readme, "docs/submission.md": submission + " all 41 scams were flagged." });
+    expect(all).toHaveLength(1);
+    expect(all[0]).toContain("all 41 scams");
+    expect(checkFacts(results, { "README.md": readme, "docs/submission.md": submission + " all 42 scams were flagged." })).toEqual([]);
+  });
 });

@@ -146,7 +146,14 @@ describe("assessMessage: new number", () => {
     const r = await assessMessage({ kind: "text", text }, { ...empty, circle }, { judge });
     expect(r.level).toBe("high");
     expect(r.reasons[0]).toBe(detail);
+    expect(r.reasons[1]).toBe("Asks for money.");
+    expect(r.scamType).toBe("impersonation_family");
     expect(r.signals[0]!.code).toBe("NEW_NUMBER_CLAIMS_CIRCLE");
+  });
+  it("keeps the AI's specific scam type when the new number fires", async () => {
+    const judge = vi.fn().mockResolvedValue(ok({ level: "medium", scamType: "romance", reasons: ["x"], impersonatedRequester: { kind: "person", name: "Daniel" } }));
+    const r = await assessMessage({ kind: "text", text }, { ...empty, circle }, { judge });
+    expect(r.scamType).toBe("romance");
   });
   it("new-number line leads even when the AI already said high", async () => {
     const judge = vi.fn().mockResolvedValue(daniels("high", ["a", "b", "c"]));

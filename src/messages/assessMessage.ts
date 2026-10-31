@@ -79,11 +79,18 @@ export async function assessMessage(
   const newNumber = ai.ok && ctx.circle ? newNumberSignal(ai.judgement.impersonatedRequester, identifiers, ctx.circle, text) : null;
   const signals = [...(newNumber ? [newNumber] : []), ...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
   const d = decide(signals, ai, pattern?.scamType);
-  const reasons = newNumber ? [newNumber.detail, ...d.reasons.filter((r) => r !== newNumber.detail)].slice(0, 3) : d.reasons;
+  let { scamType, reasons } = d;
+  if (newNumber && ai.ok) {
+    // The signal may be what raised the level, so decide() would drop the AI's type and reasons. Keep them.
+    const aiType = ai.judgement.scamType;
+    scamType = aiType === "none" || aiType === "unknown" ? "impersonation_family" : aiType;
+    const aiReasons = ai.judgement.reasons.map((r) => r.trim()).filter((r) => r.length > 0 && r !== newNumber.detail);
+    reasons = [...new Set([newNumber.detail, ...aiReasons])].slice(0, 3);
+  }
   return {
     checked: ai.ok,
     level: d.level,
-    scamType: d.scamType,
+    scamType,
     reasons,
     identifiers,
     impersonatedRequester: d.impersonatedRequester,
