@@ -66,12 +66,15 @@ function safeJson(text: string): unknown {
   }
 }
 
+/** 409 = a request with the same PayPal-Request-Id is still in progress (PREVIOUS_REQUEST_IN_PROGRESS): outcome unknown. */
+const isUncertainStatus = (status: number) => status === 409 || status >= 500;
+
 function toPayPalError(e: unknown, op: string): PayPalError {
   if (e instanceof PayPalError) return e;
   if (e instanceof ApiError) {
     const raw: unknown = typeof e.body === "string" ? safeJson(e.body) : e.body;
     const body = (raw && typeof raw === "object" ? raw : undefined) as ErrorBody | undefined;
-    return new PayPalError(`${op} failed`, e.statusCode, body?.details?.[0]?.issue, body?.debug_id, e.statusCode >= 500);
+    return new PayPalError(`${op} failed`, e.statusCode, body?.details?.[0]?.issue, body?.debug_id, isUncertainStatus(e.statusCode));
   }
   return new PayPalError(`${op} failed`, 0, undefined, undefined, true);
 }
@@ -139,14 +142,27 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
     },
 
     async authorizeOrder({ paymentId, orderId }) {
+      let err: PayPalError;
       try {
         const { result } = await orders.authorizeOrder({ id: orderId, paypalRequestId: requestId(paymentId, "authorize") });
         const id = result.purchaseUnits?.[0]?.payments?.authorizations?.[0]?.id;
         if (!id) throw new PayPalError("authorize returned no authorization id", 0, undefined, undefined, true);
         return { authorizationId: id };
       } catch (e) {
-        throw toPayPalError(e, "authorizeOrder");
+        err = toPayPalError(e, "authorizeOrder");
       }
+      if (err.status !== 422 || err.issue !== "ORDER_ALREADY_AUTHORIZED") throw err;
+      // PayPal keeps authorize request ids for only 6 hours, so a late retry is told the order is already
+      // authorised instead of getting the original answer. Read the order back for its authorisation;
+      // if that fails the authorisation exists but is unknown to us, so the outcome stays uncertain.
+      try {
+        const { result } = await orders.getOrder({ id: orderId });
+        const id = result.purchaseUnits?.[0]?.payments?.authorizations?.[0]?.id;
+        if (id) return { authorizationId: id };
+      } catch {
+        // Falls through to the uncertain error below.
+      }
+      throw new PayPalError("authorizeOrder read-back failed", err.status, err.issue, err.debugId, true);
     },
 
     async captureAuthorization({ paymentId, authorizationId }) {
@@ -210,7 +226,7 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
       const json = (await res.json().catch(() => ({}))) as ErrorBody & { batch_header?: { payout_batch_id?: string } };
       const batchId = json.batch_header?.payout_batch_id;
       if (res.ok && batchId) return { payoutBatchId: batchId };
-      throw new PayPalError("sendPayout failed", res.status, json.details?.[0]?.issue, json.debug_id, res.ok || res.status >= 500);
+      throw new PayPalError("sendPayout failed", res.status, json.details?.[0]?.issue, json.debug_id, res.ok || isUncertainStatus(res.status));
     },
 
     async verifyWebhookSignature({ headers, rawBody, webhookId }) {

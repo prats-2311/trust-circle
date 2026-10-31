@@ -207,6 +207,73 @@ describe("paypal gateway", () => {
       const e4 = (await gw.captureAuthorization({ paymentId: "p4", authorizationId: "A4" }).catch((e: unknown) => e)) as PayPalError;
       expect(e4.uncertain).toBe(false);
     });
+    it("a 409 (same request id still in progress) is uncertain for capture, void, refund and payout", async () => {
+      const busy = () => HttpResponse.json({ name: "CONFLICT", details: [{ issue: "PREVIOUS_REQUEST_IN_PROGRESS" }] }, { status: 409 });
+      server.use(
+        token(),
+        record("/v2/payments/authorizations/A7/capture", busy),
+        record("/v2/payments/authorizations/A7/void", busy),
+        record("/v2/payments/captures/C7/refund", busy),
+        record("/v1/payments/payouts", busy),
+      );
+      const errs = (await Promise.all([
+        gw.captureAuthorization({ paymentId: "p7", authorizationId: "A7" }).catch((e: unknown) => e),
+        gw.voidAuthorization({ paymentId: "p7", authorizationId: "A7" }).catch((e: unknown) => e),
+        gw.refundCapture({ paymentId: "p7", captureId: "C7" }).catch((e: unknown) => e),
+        pay(),
+      ])) as PayPalError[];
+      for (const e of errs) {
+        expect(e).toBeInstanceOf(PayPalError);
+        expect([e.status, e.uncertain]).toEqual([409, true]);
+      }
+    });
+  });
+
+  describe("authorize after PayPal forgot the request id", () => {
+    const alreadyAuthorized = () =>
+      HttpResponse.json({ name: "UNPROCESSABLE_ENTITY", details: [{ issue: "ORDER_ALREADY_AUTHORIZED" }], debug_id: "dbgA" }, { status: 422 });
+    const order = (body: Record<string, unknown>, status = 200) => http.get(`${BASE}/v2/checkout/orders/OA`, () => HttpResponse.json(body, { status }));
+    const authorize = async () => gw.authorizeOrder({ paymentId: "pa", orderId: "OA" }).catch((e: unknown) => e);
+
+    it("reads the order back and returns its authorization id", async () => {
+      server.use(
+        token(),
+        record("/v2/checkout/orders/OA/authorize", alreadyAuthorized),
+        order({ id: "OA", status: "COMPLETED", purchase_units: [{ payments: { authorizations: [{ id: "AUTHA", status: "CREATED" }] } }] }),
+      );
+      expect(await authorize()).toEqual({ authorizationId: "AUTHA" });
+    });
+
+    it("is uncertain when the read-back has no authorization id", async () => {
+      server.use(token(), record("/v2/checkout/orders/OA/authorize", alreadyAuthorized), order({ id: "OA", status: "COMPLETED" }));
+      const e = (await authorize()) as PayPalError;
+      expect(e).toBeInstanceOf(PayPalError);
+      expect(e.uncertain).toBe(true);
+    });
+
+    it("is uncertain when the read-back fails", async () => {
+      server.use(token(), record("/v2/checkout/orders/OA/authorize", alreadyAuthorized), order({ name: "RESOURCE_NOT_FOUND" }, 404));
+      const e = (await authorize()) as PayPalError;
+      expect(e).toBeInstanceOf(PayPalError);
+      expect(e.uncertain).toBe(true);
+    });
+
+    it("leaves any other 422 a definite failure without reading the order", async () => {
+      let read = false;
+      server.use(
+        token(),
+        record("/v2/checkout/orders/OA/authorize", () =>
+          HttpResponse.json({ details: [{ issue: "INSTRUMENT_DECLINED" }], debug_id: "dbgB" }, { status: 422 }),
+        ),
+        http.get(`${BASE}/v2/checkout/orders/OA`, () => {
+          read = true;
+          return HttpResponse.json({});
+        }),
+      );
+      const e = (await authorize()) as PayPalError;
+      expect([e.status, e.issue, e.uncertain]).toEqual([422, "INSTRUMENT_DECLINED", false]);
+      expect(read).toBe(false);
+    });
   });
 
   describe("payout token handling", () => {
