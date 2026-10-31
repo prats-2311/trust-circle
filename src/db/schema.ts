@@ -82,7 +82,7 @@ export const alertStatusEnum = pgEnum("alert_status", ["sent", "skipped", "faile
 export const messageChecks = pgTable("message_checks", {
   id: uuid("id").primaryKey().defaultRandom(),
   senderId: uuid("sender_id").notNull().references(() => users.id),
-  source: text("source").$type<"text" | "image">().notNull(),
+  source: text("source").$type<"text" | "image" | "voice">().notNull(),
   text: text("text").notNull(),
   checked: boolean("checked").notNull(),
   level: riskLevelEnum("level").notNull(),

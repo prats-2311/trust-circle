@@ -4,7 +4,7 @@ import type { Identifier, RiskLevel, ScamType } from "@/domain/types";
 export interface MessageCheckRecord {
   id: string;
   senderId: string;
-  source: "text" | "image";
+  source: "text" | "image" | "voice";
   text: string;
   checked: boolean;
   level: RiskLevel;

@@ -1,7 +1,9 @@
 import type { ImageMime, MessageInput, MessageJudge } from "@/ai/groqMessageJudge";
+import type { Transcriber } from "@/ai/groqTranscriber";
 import type { PromptGuard } from "@/ai/promptGuard";
 import type { PatternMatcher } from "@/patterns/patternService";
 import type { Requester } from "@/domain/types";
+import { sniffAudio, type AudioFormat } from "./audio";
 import { assessMessage, type RegistryLists } from "./assessMessage";
 import { matchKeys } from "./identifiers";
 import type { MessageCheckRecord, MessageRepo } from "./messageRepo";
@@ -9,6 +11,9 @@ import type { MessageCheckRecord, MessageRepo } from "./messageRepo";
 export const MAX_MESSAGE_CHARS = 4000;
 // Groq accepts base64 images up to 4 MB; 3 MB of bytes is about 4 MB once encoded.
 export const MAX_IMAGE_BYTES = 3_000_000;
+export const MAX_AUDIO_BYTES = 10_000_000;
+const VOICE_CHECKS_PER_HOUR = 20;
+const HOUR_MS = 3_600_000;
 const RECENT_CHECKS = 200;
 const LINKED_MESSAGE_CHARS = 1500;
 
@@ -18,6 +23,15 @@ export class MessageInputError extends Error {
     this.name = "MessageInputError";
   }
 }
+
+export class VoiceLimitError extends Error {
+  constructor() {
+    super("You've checked a lot of voice notes in the last hour. Please try again later.");
+    this.name = "VoiceLimitError";
+  }
+}
+
+const COULD_NOT_LISTEN = "We couldn't listen to this one. Please type what it says, or ask the person directly.";
 
 export type CheckRequest = { senderId: string; text: string } | { senderId: string; image: Uint8Array } | { senderId: string; audio: Uint8Array };
 export type MessageCheckResult = MessageCheckRecord & { impersonatedRequester: Requester | null };
@@ -31,7 +45,15 @@ function sniffImage(b: Uint8Array): ImageMime | null {
   return null;
 }
 
-function toInput(a: CheckRequest): MessageInput {
+function audioFormat(audio: Uint8Array): AudioFormat {
+  if (audio.byteLength === 0) throw new MessageInputError("audio", "Please add a voice note.");
+  if (audio.byteLength > MAX_AUDIO_BYTES) throw new MessageInputError("audio", "That voice note is too large. Please check one under 10 MB.");
+  const format = sniffAudio(audio);
+  if (!format) throw new MessageInputError("audio", "Please add a voice note saved as OGG, OPUS, M4A, MP3, WAV or WEBM.");
+  return format;
+}
+
+function toInput(a: Exclude<CheckRequest, { audio: Uint8Array }>): MessageInput {
   if ("text" in a) {
     const text = a.text.trim();
     if (!text) throw new MessageInputError("text", "Please paste the message you want to check.");
@@ -40,7 +62,6 @@ function toInput(a: CheckRequest): MessageInput {
     }
     return { kind: "text", text };
   }
-  if ("audio" in a) throw new MessageInputError("audio", "Voice notes are not supported yet.");
   if (a.image.byteLength === 0) throw new MessageInputError("image", "Please add a screenshot of the message.");
   if (a.image.byteLength > MAX_IMAGE_BYTES) {
     throw new MessageInputError("image", "That screenshot is too large. Please crop it to the message and try again.");
@@ -58,18 +79,43 @@ export function createMessageService(deps: {
   guard?: PromptGuard;
   patterns?: PatternMatcher;
   registry?: (senderId: string) => Promise<RegistryLists>;
+  transcribe?: Transcriber;
+  now?: () => number;
 }) {
+  const now = deps.now ?? Date.now;
+  const voiceChecks = new Map<string, number[]>();
+
+  /** Rolling hour per user, kept in this process only. */
+  function countVoiceCheck(senderId: string) {
+    const since = now() - HOUR_MS;
+    const recentChecks = (voiceChecks.get(senderId) ?? []).filter((t) => t > since);
+    if (recentChecks.length >= VOICE_CHECKS_PER_HOUR) {
+      voiceChecks.set(senderId, recentChecks);
+      throw new VoiceLimitError();
+    }
+    voiceChecks.set(senderId, [...recentChecks, now()]);
+  }
+
+  async function voiceInput(a: { senderId: string; audio: Uint8Array }): Promise<MessageInput> {
+    const format = audioFormat(a.audio);
+    countVoiceCheck(a.senderId);
+    const heard = deps.transcribe ? await deps.transcribe({ bytes: a.audio, format }) : null;
+    const text = heard?.ok ? heard.text.trim().slice(0, MAX_MESSAGE_CHARS) : "";
+    if (!text) throw new MessageInputError("audio", COULD_NOT_LISTEN);
+    return { kind: "text", text };
+  }
+
   const registry = deps.registry ?? (async () => ({ confirmed: [], unconfirmed: [] }));
   const recent = (senderId: string) => deps.repo.listBySender(senderId, RECENT_CHECKS);
 
   return {
     async check(a: CheckRequest): Promise<MessageCheckResult> {
-      const input = toInput(a);
+      const input = "audio" in a ? await voiceInput(a) : toInput(a);
       const r = await assessMessage(input, { registry: await registry(a.senderId) }, { judge: deps.judge, guard: deps.guard, patterns: deps.patterns });
-      // The screenshot itself is never stored, only the words read from it.
+      // Neither the screenshot nor the recording is stored, only the words read from it.
       const record = await deps.repo.insert({
         senderId: a.senderId,
-        source: input.kind,
+        source: "audio" in a ? "voice" : input.kind,
         text: r.text.slice(0, MAX_MESSAGE_CHARS),
         checked: r.checked,
         level: r.level,

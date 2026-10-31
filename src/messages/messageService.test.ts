@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { MessageAiOutcome } from "@/ai/groqMessageJudge";
 import { createMemoryMessageRepo } from "./messageRepo";
-import { createMessageService, MAX_IMAGE_BYTES, MessageInputError } from "./messageService";
+import { createMessageService, MAX_IMAGE_BYTES, MessageInputError, VoiceLimitError } from "./messageService";
 
 const SENDER = "00000000-0000-4000-8000-000000000001";
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
@@ -120,5 +120,93 @@ describe("message service: patterns", () => {
     const service = createMessageService({ repo, judge: vi.fn().mockResolvedValue(verdict("low")), patterns });
     await service.check({ senderId: SENDER, text: "Lunch on Friday?" });
     expect(patterns).toHaveBeenCalledWith("Lunch on Friday?");
+  });
+});
+
+describe("message service: voice notes", () => {
+  const OGG = new Uint8Array([...Buffer.from("OggS"), 0, 2, 3, 4]);
+  const TRANSCRIPT = "Gran it's Daniel, send $800 to danny.help@example.com";
+  const COULD_NOT = "We couldn't listen to this one. Please type what it says, or ask the person directly.";
+  const voiceSetup = (result: Awaited<ReturnType<import("@/ai/groqTranscriber").Transcriber>> = { ok: true, text: TRANSCRIPT }, now = () => 0) => {
+    const repo = createMemoryMessageRepo();
+    const insert = vi.spyOn(repo, "insert");
+    const judge = vi.fn().mockResolvedValue(verdict("high"));
+    const guard = vi.fn().mockResolvedValue(0.01);
+    const transcribe = vi.fn().mockResolvedValue(result);
+    const service = createMessageService({ repo, judge, guard, transcribe, now });
+    return { repo, insert, judge, guard, transcribe, service };
+  };
+
+  it("transcribes, then judges the transcript as text and stores it as voice", async () => {
+    const { service, judge, insert, guard, transcribe } = voiceSetup();
+    const r = await service.check({ senderId: SENDER, audio: OGG });
+    expect(transcribe).toHaveBeenCalledWith({ bytes: OGG, format: "ogg" });
+    expect(judge).toHaveBeenCalledWith({ kind: "text", text: TRANSCRIPT }, expect.anything());
+    expect(guard).toHaveBeenCalledWith(TRANSCRIPT);
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ source: "voice", text: TRANSCRIPT }));
+    expect(r.source).toBe("voice");
+  });
+
+  it.each([[{ ok: false, error: "groq http 500" } as const], [{ ok: true, text: "   " } as const], [{ ok: true, text: "" } as const]])(
+    "refuses a voice note it could not understand %#",
+    async (result) => {
+      const { service, insert } = voiceSetup(result);
+      const err = await service.check({ senderId: SENDER, audio: OGG }).catch((e) => e);
+      expect(err).toBeInstanceOf(MessageInputError);
+      expect(err.field).toBe("audio");
+      expect(err.message).toBe(COULD_NOT);
+      expect(insert).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses a voice note when no transcriber is configured", async () => {
+    const repo = createMemoryMessageRepo();
+    const service = createMessageService({ repo, judge: vi.fn() });
+    const err = await service.check({ senderId: SENDER, audio: OGG }).catch((e) => e);
+    expect(err).toBeInstanceOf(MessageInputError);
+    expect(err.message).toBe(COULD_NOT);
+  });
+
+  it.each([
+    [new Uint8Array(), "Please add a voice note."],
+    [new Uint8Array(Buffer.from("%PDF-1.7 nope")), "Please add a voice note saved as OGG, OPUS, M4A, MP3, WAV or WEBM."],
+    [Object.assign(new Uint8Array(10_000_001), { 0: 0x4f, 1: 0x67, 2: 0x67, 3: 0x53 }), "That voice note is too large. Please check one under 10 MB."],
+  ])("rejects bad audio %# before transcribing", async (audio, message) => {
+    const { service, transcribe } = voiceSetup();
+    const err = await service.check({ senderId: SENDER, audio }).catch((e) => e);
+    expect(err).toBeInstanceOf(MessageInputError);
+    expect(err.field).toBe("audio");
+    if (message !== "Please add a voice note.") expect(err.message).toBe(message);
+    expect(transcribe).not.toHaveBeenCalled();
+  });
+
+  it("accepts a 5 MB voice note", async () => {
+    const { service } = voiceSetup();
+    const big = new Uint8Array(5_000_000);
+    big.set(OGG);
+    await expect(service.check({ senderId: SENDER, audio: big })).resolves.toMatchObject({ source: "voice" });
+  });
+
+  it("stores a long transcript truncated to 4000 characters", async () => {
+    const { service } = voiceSetup({ ok: true, text: "a".repeat(5000) });
+    const r = await service.check({ senderId: SENDER, audio: OGG });
+    expect(r.text).toHaveLength(4000);
+  });
+
+  it("caps voice checks at 20 per user per rolling hour", async () => {
+    let t = 0;
+    const { service } = voiceSetup(undefined, () => t);
+    for (let i = 0; i < 20; i++) await service.check({ senderId: "u1", audio: OGG });
+    await expect(service.check({ senderId: "u1", audio: OGG })).rejects.toBeInstanceOf(VoiceLimitError);
+    await expect(service.check({ senderId: "u2", audio: OGG })).resolves.toBeDefined();
+    await expect(service.check({ senderId: "u1", text: "hello" })).resolves.toBeDefined();
+    t = 3_600_001;
+    await expect(service.check({ senderId: "u1", audio: OGG })).resolves.toBeDefined();
+  });
+
+  it("does not count refused requests toward the cap", async () => {
+    const { service } = voiceSetup();
+    for (let i = 0; i < 25; i++) await service.check({ senderId: "u1", audio: new Uint8Array([1]) }).catch(() => undefined);
+    await expect(service.check({ senderId: "u1", audio: OGG })).resolves.toBeDefined();
   });
 });

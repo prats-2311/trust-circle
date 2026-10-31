@@ -8,6 +8,7 @@ import { createDrizzleAlertRepo } from "@/alerts/drizzleAlertRepo";
 import { createResendEmailSender } from "@/alerts/emailSender";
 import { createGroqJudge } from "@/ai/groqJudge";
 import { createGroqMessageJudge } from "@/ai/groqMessageJudge";
+import { createGroqTranscriber } from "@/ai/groqTranscriber";
 import { createGroqPatternDescriber } from "@/ai/patternDescriber";
 import { createPromptGuard } from "@/ai/promptGuard";
 import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
@@ -88,6 +89,7 @@ export function getContainer(): Container {
     patterns: patterns.match,
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
+    transcribe: createGroqTranscriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_AUDIO_MODEL }),
   });
   const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });
   const verificationRepo = createDrizzleVerificationRepo(db);
