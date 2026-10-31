@@ -2,6 +2,7 @@ import type { ImageMime, MessageInput, MessageJudge } from "@/ai/groqMessageJudg
 import type { Transcriber } from "@/ai/groqTranscriber";
 import type { PromptGuard } from "@/ai/promptGuard";
 import type { PatternMatcher } from "@/patterns/patternService";
+import type { KnownContact } from "@/circle/circleRepo";
 import type { Requester } from "@/domain/types";
 import { sniffAudio, type AudioFormat } from "./audio";
 import { normaliseSpokenEmails } from "./spokenEmails";
@@ -81,6 +82,7 @@ export function createMessageService(deps: {
   guard?: PromptGuard;
   patterns?: PatternMatcher;
   registry?: (senderId: string) => Promise<RegistryLists>;
+  circle?: (senderId: string) => Promise<KnownContact[]>;
   transcribe?: Transcriber;
   now?: () => number;
 }) {
@@ -110,12 +112,22 @@ export function createMessageService(deps: {
   }
 
   const registry = deps.registry ?? (async () => ({ confirmed: [], unconfirmed: [] }));
+  /** The circle only adds a warning; if it cannot be read the check still runs without it. */
+  async function circleOf(senderId: string): Promise<KnownContact[] | undefined> {
+    if (!deps.circle) return undefined;
+    try {
+      return await deps.circle(senderId);
+    } catch (e) {
+      console.warn("circle unavailable", { where: "message", error: e instanceof Error ? e.name : "unknown" });
+      return undefined;
+    }
+  }
   const recent = (senderId: string) => deps.repo.listBySender(senderId, RECENT_CHECKS);
 
   return {
     async check(a: CheckRequest): Promise<MessageCheckResult> {
       const input = "audio" in a ? await voiceInput(a) : toInput(a);
-      const r = await assessMessage(input, { registry: await registry(a.senderId) }, { judge: deps.judge, guard: deps.guard, patterns: deps.patterns });
+      const r = await assessMessage(input, { registry: await registry(a.senderId), circle: await circleOf(a.senderId) }, { judge: deps.judge, guard: deps.guard, patterns: deps.patterns });
       // Neither the screenshot nor the recording is stored, only the words read from it.
       const record = await deps.repo.insert({
         senderId: a.senderId,

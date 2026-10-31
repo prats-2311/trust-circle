@@ -230,3 +230,18 @@ describe("message service: voice notes", () => {
     await expect(service.check({ senderId: "u1", audio: OGG })).resolves.toBeDefined();
   });
 });
+
+describe("message service: new number", () => {
+  it("passes the sender's circle into the assessment", async () => {
+    const repo = createMemoryMessageRepo();
+    const judge = vi.fn().mockResolvedValue({
+      ok: true,
+      judgement: { level: "medium", scamType: "impersonation_family", reasons: ["Asks for money."], impersonatedRequester: { kind: "person", name: "Daniel" }, transcript: "" },
+    } satisfies MessageAiOutcome);
+    const circle = vi.fn().mockResolvedValue([{ contactId: "d", displayName: "Daniel", relationship: "grandson", phone: "+1 (415) 555-0131" }]);
+    const service = createMessageService({ repo, judge, circle });
+    const saved = await service.check({ senderId: SENDER, text: "Gran it's Daniel, new number +1 (415) 555-0186, need $600" });
+    expect(circle).toHaveBeenCalledWith(SENDER);
+    expect(saved.level).toBe("high");
+  });
+});

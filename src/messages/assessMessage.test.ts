@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { MessageAiOutcome } from "@/ai/groqMessageJudge";
+import type { KnownContact } from "@/circle/circleRepo";
 import { assessMessage, messageSignals } from "./assessMessage";
 
 const empty = { registry: { confirmed: [], unconfirmed: [] } };
@@ -128,5 +129,47 @@ describe("assessMessage", () => {
     );
     expect(patterns).toHaveBeenLastCalledWith("Grandpa it's Josh, in jail");
     expect(image.signals.map((s) => s.code)).toEqual(["KNOWN_SCAM_PATTERN"]);
+  });
+});
+
+describe("assessMessage: new number", () => {
+  const daniel: KnownContact = { contactId: "d", displayName: "Daniel", relationship: "grandson", phone: "+1 (415) 555-0131" };
+  const sarah: KnownContact = { contactId: "s", displayName: "Sarah", relationship: "daughter", phone: "+1 (415) 555-0135" };
+  const circle = [daniel, sarah];
+  const text = "Hi Gran it's Daniel, lost my phone, new number +1 (415) 555-0199, need $600 today";
+  // extractIdentifiers normalises the number it hands to the rule.
+  const detail = "It came from +14155550199, not Daniel's number.";
+  const daniels = (level: "medium" | "high", reasons: string[]) =>
+    ok({ level, reasons, impersonatedRequester: { kind: "person", name: "Daniel" } });
+
+  it("new-number raises medium to high and leads the reasons", async () => {
+    const judge = vi.fn().mockResolvedValue(daniels("medium", ["Asks for money."]));
+    const r = await assessMessage({ kind: "text", text }, { ...empty, circle }, { judge });
+    expect(r.level).toBe("high");
+    expect(r.reasons[0]).toBe(detail);
+    expect(r.signals[0]!.code).toBe("NEW_NUMBER_CLAIMS_CIRCLE");
+  });
+  it("new-number line leads even when the AI already said high", async () => {
+    const judge = vi.fn().mockResolvedValue(daniels("high", ["a", "b", "c"]));
+    const r = await assessMessage({ kind: "text", text }, { ...empty, circle }, { judge });
+    expect(r.reasons[0]).toBe(detail);
+    expect(r.reasons.length).toBeLessThanOrEqual(3);
+    expect(new Set(r.reasons).size).toBe(r.reasons.length);
+  });
+  it("times and amounts are not phones", async () => {
+    const judge = vi.fn().mockResolvedValue(daniels("medium", ["x"]));
+    const t = "Gran it's Daniel, meet at 9:30, need $800 by 2026-10-31";
+    const r = await assessMessage({ kind: "text", text: t }, { ...empty, circle }, { judge });
+    expect(r.signals.map((s) => s.code)).not.toContain("NEW_NUMBER_CLAIMS_CIRCLE");
+  });
+  it("no circle given means no signal", async () => {
+    const judge = vi.fn().mockResolvedValue(daniels("medium", ["x"]));
+    const r = await assessMessage({ kind: "text", text }, empty, { judge });
+    expect(r.signals.map((s) => s.code)).not.toContain("NEW_NUMBER_CLAIMS_CIRCLE");
+  });
+  it("unchecked judge means no signal", async () => {
+    const judge = vi.fn().mockResolvedValue({ ok: false, error: "down" });
+    const r = await assessMessage({ kind: "text", text }, { ...empty, circle }, { judge });
+    expect(r.signals.map((s) => s.code)).not.toContain("NEW_NUMBER_CLAIMS_CIRCLE");
   });
 });

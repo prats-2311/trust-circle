@@ -89,6 +89,7 @@ export function getContainer(): Container {
     patterns: patterns.match,
     judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
     guard,
+    circle: (id) => circle.contactsWithPhones(id),
     transcribe: createGroqTranscriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_AUDIO_MODEL }),
   });
   const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });

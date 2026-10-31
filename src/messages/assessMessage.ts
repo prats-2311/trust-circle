@@ -1,10 +1,12 @@
 import type { MessageAiOutcome, MessageInput, MessageJudge } from "@/ai/groqMessageJudge";
 import { INJECTION_THRESHOLD, type PromptGuard } from "@/ai/promptGuard";
+import type { KnownContact } from "@/circle/circleRepo";
 import type { Identifier, Requester, RiskLevel, ScamType } from "@/domain/types";
 import { decide } from "@/risk/decide";
 import type { PatternMatch, PatternMatcher } from "@/patterns/patternService";
 import { HIDDEN_INSTRUCTIONS_SIGNAL, KNOWN_PATTERN_SIGNAL, type Signal } from "@/risk/signals";
 import { extractIdentifiers, matchKeys } from "./identifiers";
+import { newNumberSignal } from "./newNumber";
 
 export interface RegistryLists {
   confirmed: string[];
@@ -59,7 +61,7 @@ async function patternMatch(patterns: PatternMatcher | undefined, text: string):
 
 export async function assessMessage(
   input: MessageInput,
-  ctx: { registry: RegistryLists },
+  ctx: { registry: RegistryLists; circle?: KnownContact[] },
   deps: { judge: MessageJudge; guard?: PromptGuard; patterns?: PatternMatcher },
 ): Promise<MessageAssessment> {
   const pasted = input.kind === "text" ? input.text.trim() : "";
@@ -74,13 +76,15 @@ export async function assessMessage(
   const text = input.kind === "image" ? (ai.ok ? ai.judgement.transcript.trim() : "") : pasted;
   const identifiers = extractIdentifiers(text);
   const [injection, pattern] = await Promise.all([injectionSignals(deps.guard, text), patternMatch(deps.patterns, text)]);
-  const signals = [...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
+  const newNumber = ai.ok && ctx.circle ? newNumberSignal(ai.judgement.impersonatedRequester, identifiers, ctx.circle) : null;
+  const signals = [...(newNumber ? [newNumber] : []), ...messageSignals(identifiers, ctx.registry), ...injection, ...(pattern ? [KNOWN_PATTERN_SIGNAL] : [])];
   const d = decide(signals, ai, pattern?.scamType);
+  const reasons = newNumber ? [newNumber.detail, ...d.reasons.filter((r) => r !== newNumber.detail)].slice(0, 3) : d.reasons;
   return {
     checked: ai.ok,
     level: d.level,
     scamType: d.scamType,
-    reasons: d.reasons,
+    reasons,
     identifiers,
     impersonatedRequester: d.impersonatedRequester,
     text,

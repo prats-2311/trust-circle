@@ -15,6 +15,15 @@ export function createDrizzleCircleRepo(db: Db): CircleRepo {
         .where(eq(trustLinks.senderId, senderId))
         .orderBy(trustLinks.createdAt);
     },
+    async contactsWithPhones(senderId) {
+      if (!isUuid(senderId)) return [];
+      return db
+        .select({ contactId: trustLinks.contactId, displayName: users.displayName, relationship: trustLinks.relationship, phone: users.phone })
+        .from(trustLinks)
+        .innerJoin(users, eq(users.id, trustLinks.contactId))
+        .where(eq(trustLinks.senderId, senderId))
+        .orderBy(trustLinks.createdAt);
+    },
     async getUser(id) {
       if (!isUuid(id)) return null;
       const [row] = await db

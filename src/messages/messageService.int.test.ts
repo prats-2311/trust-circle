@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MessageAiOutcome } from "@/ai/groqMessageJudge";
-import { users } from "@/db/schema";
+import { trustLinks, users } from "@/db/schema";
+import { createDrizzleCircleRepo } from "@/circle/drizzleCircleRepo";
 import { freshTestDb } from "@/test/db";
 import { createDrizzleMessageRepo } from "./drizzleMessageRepo";
 import { matchKeys } from "./identifiers";
@@ -35,5 +36,26 @@ describe("voice checks with the real repo", () => {
     expect(await service.flaggedPayees(senderId)).toEqual(expect.arrayContaining(matchKeys("danny.help@example.com")));
     expect(await service.linkedMessage(senderId, "danny.help@example.com")).toBe(TRANSCRIPT);
     expect((await service.history(senderId))[0]!.source).toBe("voice");
+  });
+});
+
+describe("new-number check with the real repos", () => {
+  it("raises a Daniel message from a new number to high and links the number", async () => {
+    const [d] = await handle.db.insert(users).values({ email: "d@example.com", displayName: "Daniel", phone: "+1 (415) 555-0131" }).returning();
+    await handle.db.insert(trustLinks).values({ senderId, contactId: d!.id, relationship: "grandson" });
+    const circle = createDrizzleCircleRepo(handle.db);
+    const medium: MessageAiOutcome = {
+      ok: true,
+      judgement: { level: "medium", scamType: "impersonation_family", reasons: ["Asks for money."], impersonatedRequester: { kind: "person", name: "Daniel" }, transcript: "" },
+    };
+    const service = createMessageService({
+      repo: createDrizzleMessageRepo(handle.db),
+      judge: vi.fn().mockResolvedValue(medium),
+      circle: (id) => circle.contactsWithPhones(id),
+    });
+    const text = "Hi Gran it's Daniel, lost my phone, new number +1 (415) 555-0186, need $600 today";
+    const saved = await service.check({ senderId, text });
+    expect(saved.level).toBe("high");
+    expect(await service.linkedMessage(senderId, "+1 (415) 555-0186")).toBe(text);
   });
 });

@@ -4,6 +4,9 @@ export interface CircleMember {
   relationship: string;
 }
 
+/** A circle member plus their own phone number. Only the message check reads this; never send it to a client. */
+export type KnownContact = CircleMember & { phone: string | null };
+
 export interface UserRecord {
   id: string;
   email: string;
@@ -19,6 +22,7 @@ export interface CircleSender {
 
 export interface CircleRepo {
   contactsOf(senderId: string): Promise<CircleMember[]>;
+  contactsWithPhones(senderId: string): Promise<KnownContact[]>;
   getUser(id: string): Promise<UserRecord | null>;
   getUserByEmail(email: string): Promise<UserRecord | null>;
   sendersOf(contactId: string): Promise<CircleSender[]>;
@@ -26,7 +30,7 @@ export interface CircleRepo {
 }
 
 export function createMemoryCircleRepo(
-  seed: { users?: UserRecord[]; links?: { senderId: string; contactId: string; relationship: string }[] } = {},
+  seed: { users?: UserRecord[]; phones?: Record<string, string>; links?: { senderId: string; contactId: string; relationship: string }[] } = {},
 ): CircleRepo {
   const users = new Map((seed.users ?? []).map((u) => [u.id, { ...u }]));
   const links = seed.links ?? [];
@@ -35,6 +39,16 @@ export function createMemoryCircleRepo(
       return links
         .filter((l) => l.senderId === senderId)
         .map((l) => ({ contactId: l.contactId, displayName: users.get(l.contactId)?.displayName ?? "", relationship: l.relationship }));
+    },
+    async contactsWithPhones(senderId) {
+      return links
+        .filter((l) => l.senderId === senderId)
+        .map((l) => ({
+          contactId: l.contactId,
+          displayName: users.get(l.contactId)?.displayName ?? "",
+          relationship: l.relationship,
+          phone: seed.phones?.[l.contactId] ?? null,
+        }));
     },
     async getUser(id) {
       const u = users.get(id);

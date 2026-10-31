@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { trustLinks, users } from "@/db/schema";
 import { freshTestDb } from "@/test/db";
@@ -45,5 +46,14 @@ describe("drizzle circle repo", () => {
     expect(await repo.sendersOf(danielId)).toEqual([{ senderId: margaretId, displayName: "Margaret", relationship: "grandson" }]);
     expect(await repo.sendersOf(margaretId)).toEqual([]);
     expect(await repo.sendersOf("not-a-uuid")).toEqual([]);
+  });
+  it("returns contacts' phones only from contactsWithPhones", async () => {
+    await handle.db.update(users).set({ phone: "+1 (415) 555-0131" }).where(eq(users.id, danielId));
+    const repo = createDrizzleCircleRepo(handle.db);
+    expect(await repo.contactsWithPhones(margaretId)).toEqual([
+      { contactId: danielId, displayName: "Daniel", relationship: "grandson", phone: "+1 (415) 555-0131" },
+    ]);
+    for (const c of await repo.contactsOf(margaretId)) expect(c).not.toHaveProperty("phone");
+    expect(await repo.contactsWithPhones("not-a-uuid")).toEqual([]);
   });
 });

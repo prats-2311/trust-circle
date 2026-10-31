@@ -21,6 +21,7 @@ export interface SenderContext {
 export type SignalCode =
   | "REGISTRY_CONFIRMED"
   | "LINKED_SCAM_MESSAGE"
+  | "NEW_NUMBER_CLAIMS_CIRCLE"
   | "REGISTRY_UNCONFIRMED"
   | "FIRST_TIME_PAYEE"
   | "UNUSUAL_AMOUNT"
@@ -96,7 +97,7 @@ export const KNOWN_PATTERN_SIGNAL: Signal = Object.freeze({
 
 export function ruleLevel(signals: Signal[]): RiskLevel {
   const has = (c: SignalCode) => signals.some((s) => s.code === c);
-  if (has("REGISTRY_CONFIRMED") || has("LINKED_SCAM_MESSAGE") || has("HIDDEN_INSTRUCTIONS")) return "high";
+  if (has("REGISTRY_CONFIRMED") || has("LINKED_SCAM_MESSAGE") || has("NEW_NUMBER_CLAIMS_CIRCLE") || has("HIDDEN_INSTRUCTIONS")) return "high";
   const contributing = signals.filter((s) => CONTRIBUTING.includes(s.code)).length;
   let level: RiskLevel = contributing >= 3 ? "high" : contributing === 2 ? "medium" : "low";
   if (has("REGISTRY_UNCONFIRMED") || has("OVER_CIRCLE_LIMIT") || has("KNOWN_SCAM_PATTERN")) level = maxLevel(level, "medium");
