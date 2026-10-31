@@ -9,6 +9,7 @@ export {
   GearIcon,
   InfoIcon,
   LockSimpleIcon,
+  MicrophoneIcon,
   PauseIcon,
   ShieldCheckIcon,
   UserIcon,

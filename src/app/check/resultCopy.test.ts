@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { resultCopy, resultKind } from "./resultCopy";
+import { resultCopy, resultKind, voiceLine } from "./resultCopy";
 
-const base = { checked: true, level: "high" as const, scamType: "impersonation_family" as const, reasons: ["Asks for gift cards."], impersonatedRequester: { kind: "person" as const, name: "grandson Daniel" } };
+const base = { source: "text" as const, checked: true, level: "high" as const, scamType: "impersonation_family" as const, reasons: ["Asks for gift cards."], impersonatedRequester: { kind: "person" as const, name: "grandson Daniel" } };
 
 describe("resultKind", () => {
   it("never treats an unchecked result as clear", () => {
@@ -30,5 +30,16 @@ describe("resultCopy", () => {
   it("warns without claiming a scam, and keeps a clear result calm", () => {
     expect(resultCopy({ ...base, level: "medium" })).toMatchObject({ kind: "warning", chipTone: "caution", canReport: true });
     expect(resultCopy({ ...base, level: "low" })).toMatchObject({ kind: "clear", chipTone: "safe", canReport: false });
+  });
+});
+
+describe("voiceLine", () => {
+  it("names the person the voice may be copying", () => {
+    expect(voiceLine({ kind: "person", name: "Daniel" })).toBe("A voice that sounds like Daniel isn't proof. Voices can be copied. Call Daniel on the number you already have.");
+  });
+  it("is generic for an organisation or nobody", () => {
+    const generic = "A voice that sounds like someone you know isn't proof. Voices can be copied. Call them on the number you already have.";
+    expect(voiceLine({ kind: "organisation", name: "PayPal" })).toBe(generic);
+    expect(voiceLine(null)).toBe(generic);
   });
 });

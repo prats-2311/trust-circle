@@ -6,12 +6,13 @@ import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { useOnce } from "@/ui/useOnce";
 import { CheckForm } from "./CheckForm";
+import { fileKind } from "./fileKind";
 import { CheckResult, PreviewTile, type CheckResponse } from "./CheckResult";
 
 type Phase =
   | { kind: "loadingOne" }
   | { kind: "input"; error?: string }
-  | { kind: "checking"; preview: string | null }
+  | { kind: "checking"; preview: string | null; audio: boolean }
   | { kind: "result"; check: CheckResponse; preview: string | null; justNow: boolean; retry: Input | null }
   | { kind: "signedOut" };
 type Input = { text: string } | { file: File };
@@ -63,13 +64,17 @@ export default function CheckPage() {
   const submit = (input: Input) =>
     run(async () => {
       revoke(resultUrl);
-      const pv = "file" in input ? URL.createObjectURL(input.file) : null;
+      const kind = "file" in input ? fileKind(input.file) : null;
+      if ("file" in input && !kind) {
+        return setPhase({ kind: "input", error: "Please add a screenshot saved as PNG, JPG or WEBP, or a voice note saved as OGG, OPUS, M4A, MP3, WAV or WEBM." });
+      }
+      const pv = kind === "image" && "file" in input ? URL.createObjectURL(input.file) : null;
       resultUrl.current = pv;
-      setPhase({ kind: "checking", preview: pv });
+      setPhase({ kind: "checking", preview: pv, audio: kind === "audio" });
       let init: RequestInit;
       if ("file" in input) {
         const form = new FormData();
-        form.append("image", input.file);
+        form.append(kind === "audio" ? "audio" : "image", input.file);
         init = { method: "POST", body: form };
       } else {
         init = jsonBody({ text: input.text });
@@ -78,7 +83,7 @@ export default function CheckPage() {
       if (r.ok) return setPhase({ kind: "result", check: r.data, preview: pv, justNow: true, retry: input });
       revoke(resultUrl);
       if (r.signedOut) return setPhase({ kind: "signedOut" });
-      setPhase({ kind: "input", error: r.status === 400 || r.status === 413 || r.status === 0 ? r.error : "We couldn't check that message. Please try again." });
+      setPhase({ kind: "input", error: r.status === 400 || r.status === 413 || r.status === 429 || r.status === 0 ? r.error : "We couldn't check that message. Please try again." });
     });
 
   const send = () => submit(picked ? { file: picked.file } : { text: text.trim() });
@@ -104,9 +109,9 @@ export default function CheckPage() {
     return (
       <Screen title="Check a message" backHref="/home">
         <div className="mt-[22px] flex items-center gap-4">
-          <PreviewTile preview={phase.preview} />
+          <PreviewTile preview={phase.preview} audio={phase.audio} />
           <p role="status" className="text-[20px] font-bold leading-snug">
-            Reading your message…
+            {phase.audio ? "Listening to your voice note…" : "Reading your message…"}
           </p>
         </div>
         <Lead>This takes a few seconds. We look for the tricks scammers use and check the contact details against reports from other families.</Lead>

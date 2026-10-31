@@ -5,12 +5,20 @@ import type { ChipTone } from "@/ui/Chip";
 
 export type ResultKind = "scam" | "warning" | "clear" | "not_checked";
 export type CheckView = {
+  source: "text" | "image" | "voice";
   checked: boolean;
   level: "low" | "medium" | "high" | null;
   scamType: ScamType;
   reasons: string[];
   impersonatedRequester: Requester | null;
 };
+
+export function voiceLine(r: Requester | null): string {
+  const name = r?.kind === "person" ? cleanRequesterName(r.name) : null;
+  return name
+    ? `A voice that sounds like ${name} isn't proof. Voices can be copied. Call ${name} on the number you already have.`
+    : "A voice that sounds like someone you know isn't proof. Voices can be copied. Call them on the number you already have.";
+}
 
 export function resultKind(v: { checked: boolean; level: "low" | "medium" | "high" | null }): ResultKind {
   if (!v.checked || v.level === null) return "not_checked";

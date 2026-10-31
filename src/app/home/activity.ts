@@ -3,7 +3,7 @@ import type { ChipTone } from "@/ui/Chip";
 
 export type ChipView = { tone: ChipTone; label: string };
 export type PaymentLike = { id: string; payee: string; amountCents: number; state: string; createdAt: string };
-export type CheckLike = { id: string; source: "text" | "image"; checked: boolean; level: "low" | "medium" | "high" | null; createdAt: string };
+export type CheckLike = { id: string; source: "text" | "image" | "voice"; checked: boolean; level: "low" | "medium" | "high" | null; createdAt: string };
 export interface ActivityItem {
   key: string;
   href: string;

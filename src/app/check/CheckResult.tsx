@@ -7,7 +7,8 @@ import { fetchJson } from "@/ui/fetchJson";
 import { Notice } from "@/ui/Notice";
 import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { useOnce } from "@/ui/useOnce";
-import { resultCopy, type CheckView } from "./resultCopy";
+import { MicrophoneIcon } from "@/ui/icons";
+import { resultCopy, voiceLine, type CheckView } from "./resultCopy";
 
 export type CheckResponse = CheckView & {
   id: string;
@@ -19,7 +20,16 @@ type ReportResult = { mailtoUrl: string; alreadyReported: boolean };
 
 const IDENTIFIER_LABEL = { phone: "Phone number", email: "Email address", url: "Link" } as const;
 
-export function PreviewTile({ preview }: { preview: string | null }) {
+export function AudioTile() {
+  return (
+    <div aria-hidden="true" className="flex h-[92px] w-[92px] flex-none items-center justify-center rounded-[14px] border border-line bg-surface">
+      <MicrophoneIcon size={40} weight="bold" />
+    </div>
+  );
+}
+
+export function PreviewTile({ preview, audio = false }: { preview: string | null; audio?: boolean }) {
+  if (audio) return <AudioTile />;
   return preview ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={preview} alt="Your screenshot" className="h-[92px] w-[92px] flex-none rounded-[14px] border border-line bg-surface object-cover" />
@@ -103,7 +113,7 @@ export function CheckResult({
           </div>
         ) : (
           <div className="mt-3.5 flex items-center gap-4">
-            {(preview || check.text) && <PreviewTile preview={preview} />}
+            {(preview || check.text) && <PreviewTile preview={preview} audio={check.source === "voice"} />}
             <div className="flex flex-col gap-2">
               <Chip tone={copy.chipTone}>{copy.chip}</Chip>
               <span className="text-[16px] text-ink-3">{when}</span>
@@ -113,7 +123,17 @@ export function CheckResult({
         <Title>{copy.title}</Title>
         <Lead>{copy.lead}</Lead>
 
-        {copy.kind === "not_checked" && check.text && (
+        {check.source === "voice" && (
+          <>
+            <div className="mt-6 flex flex-col gap-1.5 rounded-panel bg-surface px-5 py-4">
+              <span className="text-[16px] text-ink-3">What the voice note says</span>
+              <span className="whitespace-pre-wrap text-[17px] leading-snug">&ldquo;{check.text}&rdquo;</span>
+            </div>
+            <p className="mt-4 text-[17px] leading-snug">{voiceLine(check.impersonatedRequester)}</p>
+          </>
+        )}
+
+        {copy.kind === "not_checked" && check.source !== "voice" && check.text && (
           <div className="mt-6 flex flex-col gap-1.5 rounded-panel bg-surface px-5 py-4">
             <span className="text-[16px] text-ink-3">The message you pasted</span>
             <span className="text-[17px] leading-snug">&ldquo;{excerpt(check.text)}&rdquo;</span>
