@@ -3,6 +3,7 @@ import { createGroqMessageJudge } from "../src/ai/groqMessageJudge";
 import { createPromptGuard } from "../src/ai/promptGuard";
 import { createGroqTranscriber } from "../src/ai/groqTranscriber";
 import { assessMessage } from "../src/messages/assessMessage";
+import { normaliseSpokenEmails } from "../src/messages/spokenEmails";
 import { sniffAudio } from "../src/messages/audio";
 
 async function main() {
@@ -27,7 +28,7 @@ async function main() {
   const transcript = await transcribe({ bytes: audio, format });
   if (!transcript.ok) throw new Error("voice transcription failed");
   console.log("transcribed ok", transcript.text.length, "chars");
-  const voice = await assessMessage({ kind: "text", text: transcript.text }, ctx, { judge, guard });
+  const voice = await assessMessage({ kind: "text", text: normaliseSpokenEmails(transcript.text) }, ctx, { judge, guard });
   show("voice", voice);
   if (voice.level !== "high" || !voice.identifiers.some((i) => i.type === "email")) {
     console.error("voice smoke failed: expected level high and an email identifier");

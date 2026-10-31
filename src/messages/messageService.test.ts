@@ -123,6 +123,14 @@ describe("message service: patterns", () => {
   });
 });
 
+describe("message service: typed text", () => {
+  it("does not rewrite spoken-style emails in a pasted message", async () => {
+    const { service, judge } = setup();
+    await service.check({ senderId: SENDER, text: "pay danny dot help at example dot com" });
+    expect(judge).toHaveBeenCalledWith({ kind: "text", text: "pay danny dot help at example dot com" }, expect.anything());
+  });
+});
+
 describe("message service: voice notes", () => {
   const OGG = new Uint8Array([...Buffer.from("OggS"), 0, 2, 3, 4]);
   const TRANSCRIPT = "Gran it's Daniel, send $800 to danny.help@example.com";
@@ -145,6 +153,13 @@ describe("message service: voice notes", () => {
     expect(guard).toHaveBeenCalledWith(TRANSCRIPT);
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ source: "voice", text: TRANSCRIPT }));
     expect(r.source).toBe("voice");
+  });
+
+  it("writes a spoken email address in normal form before judging and storing", async () => {
+    const { service, judge, insert } = voiceSetup({ ok: true, text: "send eight hundred dollars to danny dot help at example dot com" });
+    await service.check({ senderId: SENDER, audio: OGG });
+    expect(judge).toHaveBeenCalledWith({ kind: "text", text: "send eight hundred dollars to danny.help@example.com" }, expect.anything());
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ text: expect.stringContaining("danny.help@example.com") }));
   });
 
   it.each([[{ ok: false, error: "groq http 500" } as const], [{ ok: true, text: "   " } as const], [{ ok: true, text: "" } as const]])(

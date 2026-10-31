@@ -4,6 +4,7 @@ import type { PromptGuard } from "@/ai/promptGuard";
 import type { PatternMatcher } from "@/patterns/patternService";
 import type { Requester } from "@/domain/types";
 import { sniffAudio, type AudioFormat } from "./audio";
+import { normaliseSpokenEmails } from "./spokenEmails";
 import { assessMessage, type RegistryLists } from "./assessMessage";
 import { matchKeys } from "./identifiers";
 import type { MessageCheckRecord, MessageRepo } from "./messageRepo";
@@ -100,7 +101,7 @@ export function createMessageService(deps: {
     const format = audioFormat(a.audio);
     countVoiceCheck(a.senderId);
     const heard = deps.transcribe ? await deps.transcribe({ bytes: a.audio, format }) : null;
-    const text = heard?.ok ? heard.text.trim().slice(0, MAX_MESSAGE_CHARS) : "";
+    const text = heard?.ok ? normaliseSpokenEmails(heard.text.trim()).slice(0, MAX_MESSAGE_CHARS) : "";
     if (!text) throw new MessageInputError("audio", COULD_NOT_LISTEN);
     return { kind: "text", text };
   }
