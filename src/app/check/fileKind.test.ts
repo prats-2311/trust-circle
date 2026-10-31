@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fileKind } from "./fileKind";
+import { fileKind, fileTooLarge } from "./fileKind";
 
 describe("fileKind", () => {
   it("treats a WhatsApp .opus with an empty type as audio", () => {
@@ -18,5 +18,17 @@ describe("fileKind", () => {
   });
   it("rejects anything else", () => {
     expect(fileKind({ name: "doc.pdf", type: "application/pdf" })).toBeNull();
+  });
+});
+
+describe("fileTooLarge", () => {
+  it("allows files at the limit and refuses above it", () => {
+    expect(fileTooLarge("audio", 10_000_000)).toBeNull();
+    expect(fileTooLarge("audio", 10_000_001)).toBe("That voice note is too large. Please check one under 10 MB.");
+    expect(fileTooLarge("image", 3_000_000)).toBeNull();
+    expect(fileTooLarge("image", 3_000_001)).toBe("That screenshot is too large. Please crop it to the message and try again.");
+  });
+  it("has no opinion about an unknown kind", () => {
+    expect(fileTooLarge(null, 99_999_999)).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 import { fileKind } from "./fileKind";
 import { Button } from "@/ui/Button";
 import { Field, INPUT } from "@/ui/Field";
-import { MicrophoneIcon } from "@/ui/icons";
+import { AudioTile } from "./CheckResult";
 import { FinePrint, Screen, Title } from "@/ui/Screen";
 
 export function CheckForm({
@@ -28,7 +28,7 @@ export function CheckForm({
           <Button data-testid="check-submit" disabled={busy || (!text.trim() && !file)} onClick={onSubmit}>
             Check this message
           </Button>
-          <FinePrint>Screenshots are read and then deleted. We keep only the words.</FinePrint>
+          <FinePrint>Screenshots and voice notes are read and then deleted. We keep only the words.</FinePrint>
         </>
       }
     >
@@ -47,9 +47,7 @@ export function CheckForm({
         {file && (audio || preview) ? (
           <div className="flex items-center gap-4">
             {audio ? (
-              <div aria-hidden="true" className="flex h-[92px] w-[92px] flex-none items-center justify-center rounded-[14px] border border-line bg-surface">
-                <MicrophoneIcon size={40} weight="bold" />
-              </div>
+              <AudioTile />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={preview ?? undefined} alt="Your screenshot" className="h-[92px] w-[92px] flex-none rounded-[14px] border border-line object-cover" />

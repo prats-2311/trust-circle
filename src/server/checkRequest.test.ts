@@ -37,8 +37,8 @@ describe("parseCheckRequest", () => {
     form.set("image", new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "s.png"));
     expect(await parseCheckRequest(post(form))).toEqual({ image: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) });
   });
-  it("reports content-length refusals against the image field", async () => {
-    expect(await parseCheckRequest(post("x", { "content-length": "11000001" }))).toEqual({ error: "too_large", field: "image" });
+  it("reports content-length refusals against no particular file type", async () => {
+    expect(await parseCheckRequest(post("x", { "content-length": "11000001" }))).toEqual({ error: "too_large", field: "file" });
   });
   it("refuses malformed or empty bodies", async () => {
     expect(await parseCheckRequest(post("{oops", { "content-type": "application/json" }))).toEqual({ error: "bad_body" });
@@ -51,5 +51,6 @@ describe("tooLargeMessage", () => {
   it("has screenshot and voice note copy", () => {
     expect(tooLargeMessage("image")).toBe("That screenshot is too large. Please crop it to the message and try again.");
     expect(tooLargeMessage("audio")).toBe("That voice note is too large. Please check one under 10 MB.");
+    expect(tooLargeMessage("file")).toBe("That file is too large. Please add a screenshot under 3 MB or a voice note under 10 MB.");
   });
 });

@@ -6,7 +6,7 @@ import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { useOnce } from "@/ui/useOnce";
 import { CheckForm } from "./CheckForm";
-import { fileKind } from "./fileKind";
+import { fileKind, fileTooLarge } from "./fileKind";
 import { CheckResult, PreviewTile, type CheckResponse } from "./CheckResult";
 
 type Phase =
@@ -68,6 +68,8 @@ export default function CheckPage() {
       if ("file" in input && !kind) {
         return setPhase({ kind: "input", error: "Please add a screenshot saved as PNG, JPG or WEBP, or a voice note saved as OGG, OPUS, M4A, MP3, WAV or WEBM." });
       }
+      const tooLarge = "file" in input ? fileTooLarge(kind, input.file.size) : null;
+      if (tooLarge) return setPhase({ kind: "input", error: tooLarge });
       const pv = kind === "image" && "file" in input ? URL.createObjectURL(input.file) : null;
       resultUrl.current = pv;
       setPhase({ kind: "checking", preview: pv, audio: kind === "audio" });

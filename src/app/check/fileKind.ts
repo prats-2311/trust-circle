@@ -7,3 +7,13 @@ export function fileKind(f: { name: string; type: string }): "image" | "audio" |
   if (f.type.startsWith("audio/") || f.type === "video/webm" || AUDIO_EXT.test(f.name)) return "audio";
   return null;
 }
+
+const MAX_IMAGE_BYTES = 3_000_000;
+const MAX_AUDIO_BYTES = 10_000_000;
+
+/** Checked before uploading, so a big file never travels only to be refused. */
+export function fileTooLarge(kind: "image" | "audio" | null, size: number): string | null {
+  if (kind === "audio" && size > MAX_AUDIO_BYTES) return "That voice note is too large. Please check one under 10 MB.";
+  if (kind === "image" && size > MAX_IMAGE_BYTES) return "That screenshot is too large. Please crop it to the message and try again.";
+  return null;
+}

@@ -8,16 +8,16 @@ export type ParsedCheck =
   | { image: Uint8Array }
   | { audio: Uint8Array }
   | { error: "bad_body" }
-  | { error: "too_large"; field: "image" | "audio" };
+  | { error: "too_large"; field: "image" | "audio" | "file" };
 
-export function tooLargeMessage(field: "image" | "audio"): string {
-  return field === "audio"
-    ? "That voice note is too large. Please check one under 10 MB."
-    : "That screenshot is too large. Please crop it to the message and try again.";
+export function tooLargeMessage(field: "image" | "audio" | "file"): string {
+  if (field === "audio") return "That voice note is too large. Please check one under 10 MB.";
+  if (field === "image") return "That screenshot is too large. Please crop it to the message and try again.";
+  return "That file is too large. Please add a screenshot under 3 MB or a voice note under 10 MB.";
 }
 
 export async function parseCheckRequest(req: Request): Promise<ParsedCheck> {
-  if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES) return { error: "too_large", field: "image" };
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_UPLOAD_BYTES) return { error: "too_large", field: "file" };
   if ((req.headers.get("content-type") ?? "").startsWith("multipart/form-data")) {
     let form: FormData;
     try {

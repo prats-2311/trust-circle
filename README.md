@@ -61,7 +61,7 @@ Many scams work by borrowing someone's trust: a grandchild, a bank, PayPal itsel
 
 <img src="docs/images/check-scam.png" alt="A message check result: This message is very likely a scam, with two plain reasons" width="300" align="right">
 
-Paste a text or add a screenshot. Groq judges it (a vision model reads screenshots) and returns a verdict, a scam type and up to three plain reasons. Before that, Meta's Prompt Guard model screens the text for instructions aimed at the AI. Phone numbers, emails and links in the message are remembered, so a later payment to a party from a message judged a scam is held. A message the AI couldn't check is shown as unchecked, never as safe. One tap drafts a report to `phishing@paypal.com` in your own email app.
+Paste a text, add a screenshot, or add a voice note (for example one forwarded from WhatsApp). A voice note is turned into words first, and only the words are kept; if it is silent or too short to understand, it is shown as unchecked rather than safe. Groq judges it (a vision model reads screenshots) and returns a verdict, a scam type and up to three plain reasons. Before that, Meta's Prompt Guard model screens the text for instructions aimed at the AI. Phone numbers, emails and links in the message are remembered, so a later payment to a party from a message judged a scam is held. A message the AI couldn't check is shown as unchecked, never as safe. One tap drafts a report to `phishing@paypal.com` in your own email app.
 
 <br clear="right">
 
