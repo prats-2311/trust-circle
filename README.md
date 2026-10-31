@@ -159,7 +159,7 @@ From [docs/eval/results.md](docs/eval/results.md): run 2026-10-31 on 79 invented
 |---|---|
 | Scams flagged (warning or hold) | 43 of 43 (100%) |
 | Scams held | 43 of 43 (100%) |
-| Genuine cases given a warning or hold | 11 of 35 (31%) |
+| Genuine cases given a warning or hold | 11 of 36 (31%) |
 | Genuine cases held | 1 of 36 (3%): held by the pattern matcher |
 | Cases the AI could not check after one retry | 0 |
 

@@ -13,14 +13,16 @@ Run 2026-10-31 on 77 invented cases (42 scams, 35 genuine) against Groq: text mo
 | Genuine cases held | 1 of 35 (3%) |
 `;
 const readme = `On 77 invented cases (42 scams, 35 genuine).
+| Scams flagged (warning or hold) | 42 of 42 (100%) |
 | Scams held | 42 of 42 (100%) |
+| Genuine cases given a warning or hold | 11 of 35 (31%) |
 | Genuine cases held | 1 of 35 (3%) |
 The set is 77 hand-written cases, with rules alone holding 17 of 23 scams.`;
 const submission = `a live evaluation on 77 labelled cases. On 77 hand-written cases, 1 of 35 genuine cases was held. 11 of 35 genuine cases got a warning.`;
 
 describe("parseResults", () => {
   it("reads the totals and held counts", () => {
-    expect(parseResults(results)).toEqual({ total: 77, scams: 42, genuine: 35, scamsHeld: 42, genuineHeld: 1 });
+    expect(parseResults(results)).toEqual({ total: 77, scams: 42, genuine: 35, scamsHeld: 42, genuineHeld: 1, scamsFlagged: 42, genuineFlagged: 11 });
   });
 });
 
@@ -42,5 +44,11 @@ describe("checkFacts", () => {
     expect(checkFacts(results, { "README.md": readme.replace("| 1 of 35 (3%)", "| 2 of 35 (6%)"), "docs/submission.md": submission })[0]).toContain("README.md");
     expect(checkFacts(results, { "README.md": readme, "docs/submission.md": submission.replace("1 of 35 genuine", "2 of 35 genuine") })[0]).toContain("docs/submission.md");
     expect(checkFacts(results, { "README.md": readme.replace("| 42 of 42", "| 41 of 42"), "docs/submission.md": submission })[0]).toContain("README.md");
+  });
+  it("reports a stale flagged row", () => {
+    const g = checkFacts(results, { "README.md": readme.replace("| 11 of 35 (31%)", "| 11 of 34 (32%)"), "docs/submission.md": submission });
+    expect(g).toHaveLength(1);
+    expect(g[0]).toContain("README.md");
+    expect(checkFacts(results, { "README.md": readme.replace("| Scams flagged (warning or hold) | 42", "| Scams flagged (warning or hold) | 41"), "docs/submission.md": submission })[0]).toContain("README.md");
   });
 });
