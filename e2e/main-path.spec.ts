@@ -18,10 +18,12 @@ test("the landing shows the three main buttons in order, with the rest under Als
 test("the landing steps name who to be, and the footer links to Scam trends", async ({ page }) => {
   await page.goto("/");
   const steps = page.locator("ol > li");
-  await expect(steps.nth(0)).toContainText("(as Margaret)");
-  await expect(steps.nth(1)).toContainText("(as Margaret)");
-  await expect(steps.nth(2)).toContainText("(as Daniel)");
-  await expect(steps.nth(3)).not.toContainText("(as ");
+  await expect(steps.nth(0)).toContainText("Step 1 · as Margaret");
+  await expect(steps.nth(1)).toContainText("Step 2 · as Margaret");
+  await expect(steps.nth(2)).toContainText("Step 3 · as Daniel");
+  await expect(steps.nth(3)).toContainText("Step 4");
+  await expect(steps.nth(3)).not.toContainText("as ");
+  await expect(steps.nth(0)).not.toContainText("(as ");
   await expect(page.locator("footer").getByRole("link", { name: "Scam trends" })).toHaveAttribute("href", "/trends");
 });
 

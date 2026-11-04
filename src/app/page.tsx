@@ -3,10 +3,10 @@ import { HoldRing } from "@/ui/HoldRing";
 import { DemoButtons } from "./DemoButtons";
 
 const STEPS = [
-  { title: "Check the message", body: "Paste a text or a screenshot. The AI explains what gave the scam away, in plain words. (as Margaret)", tone: "evergreen" },
-  { title: "Pause the payment", body: "A risky payment is approved in PayPal but held, so the money doesn't leave and the pressure is off. (as Margaret)", tone: "evergreen" },
-  { title: "Ask the real person", body: "“Did you just ask Grandma for $800?” One tap from the real Daniel stops it. (as Daniel)", tone: "held" },
-  { title: "Warn other families", body: "A confirmed scam account is flagged for everyone, and reworded versions of the script are caught too.", tone: "held" },
+  { title: "Check the message", body: "Paste a text or a screenshot. The AI explains what gave the scam away, in plain words.", who: " · as Margaret", tone: "evergreen" },
+  { title: "Pause the payment", body: "A risky payment is approved in PayPal but held, so the money doesn't leave and the pressure is off.", who: " · as Margaret", tone: "evergreen" },
+  { title: "Ask the real person", body: "“Did you just ask Grandma for $800?” One tap from the real Daniel stops it.", who: " · as Daniel", tone: "held" },
+  { title: "Warn other families", body: "A confirmed scam account is flagged for everyone, and reworded versions of the script are caught too.", who: "", tone: "held" },
 ] as const;
 
 export default function LandingPage() {
@@ -47,7 +47,7 @@ export default function LandingPage() {
             <ol className="mt-8 grid list-none gap-7 p-0 sm:grid-cols-2 lg:grid-cols-4">
               {STEPS.map((s, i) => (
                 <li key={s.title} className={`flex flex-col gap-2.5 border-t-[3px] pt-[18px] ${s.tone === "held" ? "border-held" : "border-evergreen"}`}>
-                  <span className={`text-[16px] font-extrabold ${s.tone === "held" ? "text-held" : "text-evergreen"}`}>Step {i + 1}</span>
+                  <span className={`text-[16px] font-extrabold ${s.tone === "held" ? "text-held" : "text-evergreen"}`}>Step {i + 1}{s.who}</span>
                   <span className="text-[21px] font-extrabold">{s.title}</span>
                   <span className="text-[17px] leading-normal text-ink-2">{s.body}</span>
                 </li>

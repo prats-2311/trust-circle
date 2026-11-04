@@ -130,11 +130,11 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 > 2. Back home, tap **Send money**. Pay `daniel.newphone@example.com` $800. For "Who asked you to make this payment, and why?", write "My grandson Daniel called crying, he's in jail and needs bail money today." Tap **Continue, and let Sarah review it** on the pause screen and approve in the PayPal sandbox window with this sandbox buyer login:
 >    - Email: **USER TO FILL (privately, on Devpost only)**
 >    - Password: **USER TO FILL (privately, on Devpost only)**
-> 3. The payment is held. Sign out, open **Other demo accounts** and choose **Daniel, the grandson**. Open the request and tap **It wasn't me**.
+> 3. The payment is held. Tap **See what Daniel sees** (or **Switch person**, then **Try as Daniel, her grandson**). Open the request and tap **It wasn't me**.
 > 4. Sign in as Margaret again: "Payment stopped. Your money is safe."
-> 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts).
+> 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts), which is under **Also built** at the foot of the landing page (tap **Switch person** to get there).
 >
-> Other accounts: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Just me, no circle).
+> Other accounts, under **Also built: business and edge cases**: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Just me, no circle).
 >
 > The shared demo resets every day at 09:00 UTC. Everything runs in the PayPal sandbox; no real money moves. Setup to run it yourself is in the README.
 

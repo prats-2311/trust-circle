@@ -43,9 +43,9 @@ The landing page signs you in as a demo person with one tap. There is no sign-up
 
 **As Daniel, then Sarah**
 
-5. Sign out, open **Other demo accounts** on the landing page and choose **Daniel, the grandson**. Open the request and tap **It wasn't me**. The authorisation is voided and the payee goes on the shared scam list.
+5. Tap **See what Daniel sees** (or **Switch person**, then **Try as Daniel, her grandson**). Open the request and tap **It wasn't me**. The authorisation is voided and the payee goes on the shared scam list.
 6. Sign back in as Margaret: "Payment stopped. Your money is safe."
-7. Sign in as **Sarah** (**Try as Sarah, her daughter**). Her circle shows what happened. Tap **See all payments** for the dashboard (AG Grid) and **Review recent payments** for the aftercare agent, then go back and open **Scam trends** (AG Charts).
+7. Sign in as **Sarah** (**Try as Sarah, her daughter**). Her circle shows what happened. Tap **See all payments** for the dashboard (AG Grid) and **Review recent payments** for the aftercare agent, then go back. **Scam trends** (AG Charts) is under **Also built** at the foot of the landing page (tap **Switch person** to get there).
 
 The shared demo resets to its clean story every day at 09:00 UTC.
 
@@ -85,7 +85,7 @@ When the sender's answer names someone ("my grandson Daniel"), the AI identifies
 
 <img src="docs/images/challenge-safe-word.png" alt="Ask the caller for your safe word, with a field for what the caller said" width="300" align="right">
 
-If the real person doesn't answer within 10 minutes, the sender is coached through a challenge: the safe word set at onboarding (stored only as a hash), or a memory question if there isn't one. The challenge is one-way. A wrong answer or an excuse stops the payment. A right answer never releases a high-risk payment by itself; it still waits for the circle or the cooling-off period.
+If the real person doesn't answer within 10 minutes, the sender is coached through a challenge: the safe word set in Settings (stored only as a hash), or a memory question if there isn't one. The challenge is one-way. A wrong answer or an excuse stops the payment. A right answer never releases a high-risk payment by itself; it still waits for the circle or the cooling-off period.
 
 <br clear="right">
 
