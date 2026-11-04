@@ -1,5 +1,5 @@
 import { SCAM_TYPE_LABELS } from "@/domain/scamTypeLabels";
-import { cleanRequesterName } from "@/domain/requesterName";
+import { requesterOnScreen } from "@/domain/requesterName";
 import type { Requester, ScamType } from "@/domain/types";
 import type { ChipTone } from "@/ui/Chip";
 
@@ -14,7 +14,7 @@ export type CheckView = {
 };
 
 export function voiceLine(r: Requester | null): string {
-  const name = r?.kind === "person" ? cleanRequesterName(r.name) : null;
+  const name = r?.kind === "person" ? requesterOnScreen(r.name) : null;
   return name
     ? `A voice that sounds like ${name} isn't proof. Voices can be copied. Call ${name} on the number you already have.`
     : "A voice that sounds like someone you know isn't proof. Voices can be copied. Call them on the number you already have.";
@@ -25,7 +25,7 @@ export function resultKind(v: { checked: boolean; level: "low" | "medium" | "hig
   return v.level === "high" ? "scam" : v.level === "medium" ? "warning" : "clear";
 }
 
-const who = (r: Requester | null) => (r ? cleanRequesterName(r.name) : null);
+const who = (r: Requester | null) => (r ? requesterOnScreen(r.name) : null);
 
 export function resultCopy(v: CheckView): { kind: ResultKind; chipTone: ChipTone; chip: string; title: string; lead: string; canReport: boolean } {
   const kind = resultKind(v);

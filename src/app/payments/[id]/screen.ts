@@ -1,4 +1,4 @@
-import { cleanRequesterName } from "@/domain/requesterName";
+import { requesterOnScreen } from "@/domain/requesterName";
 import type { Outcome } from "@/server/paymentOutcome";
 import type { ChipTone } from "@/ui/Chip";
 
@@ -74,7 +74,7 @@ export function screenCopy(
     case "waiting":
       return held(`We've asked ${d.contactName ?? "the real person"} if it was really them`, "Someone pretending to be them can't answer from there.");
     case "challenge_memory":
-      return held(`Ask the caller something only ${d.requesterName ? cleanRequesterName(d.requesterName) : "they"} would know`, "Let's check another way while we wait.");
+      return held(`Ask the caller something only ${d.requesterName ? requesterOnScreen(d.requesterName) : "they"} would know`, "Let's check another way while we wait.");
     case "challenge_safe_word":
       return held("Ask the caller for your safe word", "Don't say it first or give any hints. Type exactly what they say.");
     case "official_routes":

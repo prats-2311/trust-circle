@@ -19,7 +19,7 @@ describe("resultCopy", () => {
       title: "Someone is pretending to be Daniel",
       lead: "Family member in trouble. Don't reply, click links or send money.", canReport: true,
     });
-    expect(resultCopy({ ...base, impersonatedRequester: { kind: "person", name: "your grandson" } }).title).toBe("Someone is pretending to be grandson");
+    expect(resultCopy({ ...base, impersonatedRequester: { kind: "person", name: "your grandson" } }).title).toBe("Someone is pretending to be your grandson");
     expect(resultCopy({ ...base, impersonatedRequester: null }).title).toBe("This message is very likely a scam");
   });
   it("tells the person an unchecked message is not safe", () => {
