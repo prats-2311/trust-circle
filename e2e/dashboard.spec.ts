@@ -30,11 +30,24 @@ test("desktop grid has a PayPal says column", async ({ page }) => {
 });
 
 test("the details panel shows what PayPal says", async ({ page }) => {
+  // Local seeded payments have no PayPal ids, so give every payment an answer.
+  const dash = (await (await page.request.get("/api/circle/dashboard")).json()) as { rows: { id: string }[] };
+  const says = Object.fromEntries(dash.rows.map((r) => [r.id, { label: "Voided", matches: true }]));
+  await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ json: { says } }));
   await page.goto("/circle/dashboard");
   await page.getByTestId("status-stopped").first().click();
   const panel = page.getByTestId("payment-details");
   await expect(panel).toBeVisible();
   await expect(panel.getByRole("heading", { name: "PayPal says" })).toBeVisible();
+});
+
+test("a failed PayPal check never leaves the panel waiting", async ({ page }) => {
+  await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ status: 500, body: "{}" }));
+  await page.goto("/circle/dashboard");
+  await page.getByTestId("status-stopped").first().click();
+  const panel = page.getByTestId("payment-details");
+  await expect(panel).toBeVisible();
+  await expect(panel).not.toContainText("Checking with PayPal");
 });
 
 test("on a phone the Amount column is visible without scrolling the grid", async ({ page }) => {

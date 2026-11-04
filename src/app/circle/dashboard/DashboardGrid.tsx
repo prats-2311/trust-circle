@@ -40,14 +40,14 @@ const CAUTION = { background: "var(--color-caution-tint)", color: "var(--color-c
 function SaysCell({ says }: { says: PayPalSays | undefined }) {
   if (!says) return null;
   return (
-    <>
+    <span title={says.matches === false ? `${says.label}. Doesn't match` : says.label}>
       <span>{says.label}</span>
       {says.matches === false && (
         <span style={{ ...CAUTION, borderRadius: 999, padding: "4px 12px", marginLeft: 8, fontWeight: 700, fontSize: 16 }} data-testid="paypal-says-mismatch">
           Doesn&apos;t match
         </span>
       )}
-    </>
+    </span>
   );
 }
 
@@ -155,8 +155,12 @@ export function DashboardGrid({ rows, says }: { rows: DashboardRow[]; says?: Rec
             <dt style={{ fontWeight: 700 }}>Type</dt>
             <dd style={{ margin: 0 }}>{selected.scamTypeLabel}</dd>
           </dl>
-          <h3 style={{ fontSize: 16, fontWeight: 700, margin: "16px 0 6px" }}>PayPal says</h3>
-          <p style={{ margin: 0 }}>{says ? <SaysCell says={says[selected.id]} /> : "Checking with PayPal…"}</p>
+          {(says === undefined || says[selected.id]) && (
+            <>
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: "16px 0 6px" }}>PayPal says</h3>
+              <p aria-live="polite" style={{ margin: 0 }}>{says === undefined ? "Checking with PayPal…" : <SaysCell says={says[selected.id]} />}</p>
+            </>
+          )}
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: "16px 0 6px" }}>Why</h3>
           {selected.reasons.length === 0 ? (
             <p style={{ margin: 0 }}>No warning signs were found.</p>

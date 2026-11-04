@@ -32,8 +32,8 @@ export default function CircleDashboardPage() {
         setData(d);
         fetch("/api/circle/dashboard/paypal")
           .then((r) => (r.ok ? (r.json() as Promise<{ says: Record<string, PayPalSays> }>) : null))
-          .then((b) => b && setSays(b.says))
-          .catch(() => {});
+          .then((b) => setSays(b ? b.says : {}))
+          .catch(() => setSays({}));
       })
       .catch(() => setFailed(true));
   }, []);
