@@ -41,9 +41,9 @@ function SaysCell({ says }: { says: PayPalSays | undefined }) {
   if (!says) return null;
   return (
     <span title={says.matches === false ? `${says.label}. Doesn't match` : says.label}>
-      <span>{says.label}</span>
+      <span style={{ display: "block" }}>{says.label}</span>
       {says.matches === false && (
-        <span style={{ ...CAUTION, borderRadius: 999, padding: "4px 12px", marginLeft: 8, fontWeight: 700, fontSize: 16 }} data-testid="paypal-says-mismatch">
+        <span style={{ ...CAUTION, display: "inline-block", borderRadius: 14, padding: "2px 8px", marginBottom: 4, fontWeight: 700, fontSize: 16, lineHeight: 1.3, whiteSpace: "normal" }} data-testid="paypal-says-mismatch">
           Doesn&apos;t match
         </span>
       )}
@@ -73,7 +73,7 @@ export function DashboardGrid({ rows, says }: { rows: DashboardRow[]; says?: Rec
     }
     const cols: ColDef<DashboardRow>[] = [
       { headerName: "Status", field: "statusLabel", width: 150, pinned: "left", cellRenderer: StatusChip },
-      { headerName: "PayPal says", colId: "paypalSays", width: 150, cellRenderer: (p: ICellRendererParams<DashboardRow>) => <SaysCell says={p.data ? says?.[p.data.id] : undefined} /> },
+      { headerName: "PayPal says", colId: "paypalSays", width: 150, wrapText: true, autoHeight: true, cellRenderer: (p: ICellRendererParams<DashboardRow>) => <SaysCell says={p.data ? says?.[p.data.id] : undefined} /> },
       { headerName: "When", field: "createdAt", width: 110, sort: "desc", valueFormatter: (p) => shortDate(p.value) },
     ];
     if (!oneSender) cols.push({ headerName: "From", field: "senderName", width: 130 });

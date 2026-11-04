@@ -43,11 +43,29 @@ test("the details panel shows what PayPal says", async ({ page }) => {
 
 test("a failed PayPal check never leaves the panel waiting", async ({ page }) => {
   await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ status: 500, body: "{}" }));
+  const answered = page.waitForResponse("**/api/circle/dashboard/paypal");
   await page.goto("/circle/dashboard");
+  await answered;
   await page.getByTestId("status-stopped").first().click();
   const panel = page.getByTestId("payment-details");
   await expect(panel).toBeVisible();
+  await expect(panel.getByText("PayPal says")).toHaveCount(0);
   await expect(panel).not.toContainText("Checking with PayPal");
+});
+
+test("a mismatch is shown in full", async ({ page }) => {
+  const dash = (await (await page.request.get("/api/circle/dashboard")).json()) as { rows: { id: string }[] };
+  const says = Object.fromEntries(dash.rows.map((r) => [r.id, { label: "Voided", matches: false }]));
+  await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ json: { says } }));
+  await page.goto("/circle/dashboard");
+  const chip = page.getByTestId("paypal-says-mismatch").first();
+  await expect(chip).toBeVisible();
+  const c = (await chip.boundingBox())!;
+  const cell = (await chip.locator("xpath=ancestor::div[@role='gridcell']").boundingBox())!;
+  expect(c.x).toBeGreaterThanOrEqual(cell.x);
+  expect(c.x + c.width).toBeLessThanOrEqual(cell.x + cell.width);
+  expect(c.y).toBeGreaterThanOrEqual(cell.y);
+  expect(c.y + c.height).toBeLessThanOrEqual(cell.y + cell.height);
 });
 
 test("on a phone the Amount column is visible without scrolling the grid", async ({ page }) => {
