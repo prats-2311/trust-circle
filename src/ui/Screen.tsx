@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowLeftIcon } from "./icons";
 import { SwitchPerson } from "./SwitchPerson";
 
-/** One decision per screen: a narrow column on every device, with actions pinned to the bottom. */
+/** One decision per screen: a narrow column on every device, with actions pinned to the bottom on phones and following the content from 768 px up. */
 export function Screen({ title, backHref, chip, children, footer }: { title?: string; backHref?: string; chip?: ReactNode; children: ReactNode; footer?: ReactNode }) {
   return (
     <main id="main" tabIndex={-1} className="focus:outline-none mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-6 pb-7 pt-4">
@@ -21,7 +21,7 @@ export function Screen({ title, backHref, chip, children, footer }: { title?: st
           <SwitchPerson className="-mr-2" />
         </div>
       </div>
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex flex-1 flex-col md:flex-none">{children}</div>
       {footer && <div className="mt-8 flex flex-col gap-2.5">{footer}</div>}
     </main>
   );

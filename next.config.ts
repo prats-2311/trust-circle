@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      // An API answer is about one person at one moment: no browser or proxy keeps it.
+      {
+        source: "/api/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
       {
         source: "/sw.js",
         headers: [

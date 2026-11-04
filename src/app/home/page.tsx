@@ -106,7 +106,7 @@ export default function HomePage() {
               <ChatCircleTextIcon aria-hidden="true" size={28} className="mt-0.5 flex-none" />
               <span className="flex flex-col gap-1">
                 <span className="text-[22px] font-extrabold">Check a message</span>
-                <span className="text-[17px] leading-snug opacity-95">Paste a text or add a screenshot. We&apos;ll tell you if it looks like a scam.</span>
+                <span className="text-[17px] leading-snug opacity-95">Paste a text, or add a screenshot or a voice note. We&apos;ll tell you if it looks like a scam.</span>
               </span>
             </Link>
             <Link href="/send" className="flex items-start gap-4 rounded-panel border-2 border-ink bg-surface p-5 text-ink no-underline" data-testid="home-send">
