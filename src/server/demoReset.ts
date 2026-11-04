@@ -19,7 +19,7 @@ export async function resetDemo(db: Db, opts: { log?: (s: string) => void } = {}
     const stored = await tx.select({ endpoint: pushSubscriptions.endpoint }).from(pushSubscriptions);
     const bad = stored.map((r) => r.endpoint).filter((e) => !isAllowedPushEndpoint(e));
     if (bad.length > 0) await tx.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, bad));
-    await tx.update(users).set({ safeWordHash: null, onboardedAt: null, coolingOffHours: 24 }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
+    await tx.update(users).set({ safeWordHash: null, onboardedAt: new Date(), coolingOffHours: 24 }).where(inArray(users.email, Object.values(DEMO_PERSONAS)));
     const presetFor = (names: Persona[]) => names.map((n) => DEMO_PERSONAS[n]);
     await tx.update(users).set({ preset: "family" }).where(inArray(users.email, presetFor(["margaret", "sarah", "daniel"])));
     await tx.update(users).set({ preset: "business" }).where(inArray(users.email, presetFor(["priya", "tom"])));

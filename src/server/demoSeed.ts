@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { auditLog, payments, registryEntries, registryReports, trustLinks, users } from "../db/schema";
 import type { ScamType } from "../domain/types";
@@ -13,8 +13,8 @@ async function upsertUser(db: Db, persona: Persona, email: string, displayName: 
   const phone = DEMO_PHONES[persona] ?? null;
   await db
     .insert(users)
-    .values({ email, displayName, preset, phone })
-    .onConflictDoUpdate({ target: users.email, set: { preset, phone } });
+    .values({ email, displayName, preset, phone, onboardedAt: new Date() })
+    .onConflictDoUpdate({ target: users.email, set: { preset, phone, onboardedAt: sql`coalesce(${users.onboardedAt}, now())` } });
   const [u] = await db.select().from(users).where(eq(users.email, email));
   return u!;
 }

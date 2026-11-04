@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { signInAs } from "./helpers";
+import { markNotOnboarded, signInAs } from "./helpers";
 
 test("Margaret finishes setup from home and her safe word is saved", async ({ page }) => {
+  await markNotOnboarded("margaret");
   await signInAs(page, "margaret");
   await page.goto("/home");
   await expect(page.getByTestId("setup-card")).toBeVisible();

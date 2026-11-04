@@ -26,6 +26,13 @@ test("Margaret signs in and lands on her home", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Hello, Margaret" })).toBeVisible({ timeout: 30_000 });
 });
 
+test("Margaret's home has no setup card", async ({ page }) => {
+  await signInAs(page, "margaret");
+  await page.goto("/home");
+  await expect(page.getByRole("heading", { name: "Hello, Margaret" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("setup-card")).toHaveCount(0);
+});
+
 test("/check shows the input form", async ({ page }) => {
   await signInAs(page, "margaret");
   await page.goto("/check");

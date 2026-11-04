@@ -19,3 +19,18 @@ export async function approveInPayPal(page: Page) {
   await popup.getByRole("button", { name: /(complete purchase|continue)/i }).click();
   await popup.waitForEvent("close");
 }
+
+/** Makes a demo person look new again, so a story can walk the setup flow. Local runs only; the e2e config refuses a remote database. */
+export async function markNotOnboarded(as: Persona) {
+  const { createDb } = await import("../src/db/client");
+  const { sql } = await import("drizzle-orm");
+  const { DEMO_PERSONAS } = await import("../src/server/demo");
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is required");
+  const { db, close } = createDb(url);
+  try {
+    await db.execute(sql`update users set onboarded_at = null, safe_word_hash = null where email = ${DEMO_PERSONAS[as]}`);
+  } finally {
+    await close();
+  }
+}

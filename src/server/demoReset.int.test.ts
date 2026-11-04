@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { count, eq } from "drizzle-orm";
 import { freshTestDb } from "@/test/db";
 import { payments, pushSubscriptions, scamPatterns, trustLinks, users } from "@/db/schema";
-import { DEMO_PHONES } from "./demo";
+import { DEMO_PERSONAS, DEMO_PHONES } from "./demo";
 import { seedBaseDemo } from "./demoSeed";
 import { resetDemo } from "./demoReset";
 
@@ -34,6 +34,30 @@ describe("resetDemo", () => {
     expect(await total(scamPatterns)).toBe(before.patterns);
     // History seeding adds six demo reporters on top of the base users.
     expect(await total(users)).toBe(before.users + 6);
+  });
+
+  it("sends every demo person back set up, with no safe word and the default cooling-off", async () => {
+    const { db } = handle;
+    await seedBaseDemo(db);
+    await db.update(users).set({ onboardedAt: null, safeWordHash: "x", coolingOffHours: 48 });
+
+    await resetDemo(db);
+
+    for (const email of Object.values(DEMO_PERSONAS)) {
+      const [u] = await db.select().from(users).where(eq(users.email, email));
+      expect(u!.onboardedAt, email).not.toBeNull();
+      expect(u!.safeWordHash, email).toBeNull();
+      expect(u!.coolingOffHours, email).toBe(24);
+    }
+  });
+
+  it("seeds every demo person already set up", async () => {
+    const { db } = handle;
+    await seedBaseDemo(db);
+    for (const email of Object.values(DEMO_PERSONAS)) {
+      const [u] = await db.select().from(users).where(eq(users.email, email));
+      expect(u!.onboardedAt, email).not.toBeNull();
+    }
   });
 
   it("keeps an allowed push endpoint and drops a disallowed one", async () => {
