@@ -1,10 +1,11 @@
 import { requesterOnScreen } from "@/domain/requesterName";
+import type { Persona } from "@/server/demo";
 import type { Outcome } from "@/server/paymentOutcome";
 import type { ChipTone } from "@/ui/Chip";
 
 export type Stage =
   | { stage: "none" }
-  | { stage: "waiting_for_person"; contactName: string; askedAt: string; challengeOpensAt: string }
+  | { stage: "waiting_for_person"; contactName: string; contactPersona: Persona | null; verificationId: string; askedAt: string; challengeOpensAt: string }
   | { stage: "official_routes"; organisation: string; steps: string[] }
   | { stage: "challenge"; method: "safe_word" | "memory_question"; requesterName: string; guidance: string[] }
   | { stage: "challenge_passed" }

@@ -4,6 +4,7 @@ import type { CircleRepo } from "@/circle/circleRepo";
 import type { PaymentState } from "@/domain/types";
 import type { PaymentRecord, PaymentRepo } from "@/payments/paymentRepo";
 import { NotAllowedError, PaymentPendingError, type PaymentService } from "@/payments/paymentService";
+import { personaForEmail, type Persona } from "@/server/demo";
 import { matchRequester } from "./matchRequester";
 import { officialRouteFor } from "./officialRoutes";
 import { hashSafeWord, validateSafeWord, verifySafeWord } from "./safeWord";
@@ -40,7 +41,7 @@ export const CHALLENGE_GUIDANCE: Record<ChallengeMethod, string[]> = {
 
 export type VerificationStage =
   | { stage: "none" }
-  | { stage: "waiting_for_person"; contactName: string; askedAt: Date; challengeOpensAt: Date }
+  | { stage: "waiting_for_person"; contactName: string; contactPersona: Persona | null; verificationId: string; askedAt: Date; challengeOpensAt: Date }
   | { stage: "official_routes"; organisation: string; steps: string[] }
   | { stage: "challenge"; method: ChallengeMethod; requesterName: string; guidance: string[] }
   | { stage: "challenge_passed" }
@@ -152,6 +153,9 @@ export function createVerificationService(deps: {
       return {
         stage: "waiting_for_person",
         contactName: contact?.displayName ?? asked.requesterName,
+        // Lets the demo sender open the contact's view; null when the contact is not a demo person.
+        contactPersona: contact ? personaForEmail(contact.email) : null,
+        verificationId: asked.id,
         askedAt: asked.createdAt,
         challengeOpensAt: new Date(asked.createdAt.getTime() + REAL_PERSON_WAIT_MS),
       };

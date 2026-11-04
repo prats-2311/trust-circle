@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { closedCopy, decisionResultCopy, verificationNotice } from "./reviewCopy";
 
-const WAITING = { stage: "waiting_for_person", contactName: "Daniel", askedAt: "2026-10-16T14:15:00Z", challengeOpensAt: "2026-10-16T15:15:00Z" } as const;
+const WAITING = { stage: "waiting_for_person", contactName: "Daniel", contactPersona: "daniel", verificationId: "v1", askedAt: "2026-10-16T14:15:00Z", challengeOpensAt: "2026-10-16T15:15:00Z" } as const;
 
 describe("decisionResultCopy", () => {
   it.each([
@@ -30,7 +30,7 @@ describe("decisionResultCopy", () => {
 
 describe("verificationNotice", () => {
   it("names who was asked, not the sender", () => {
-    const text = verificationNotice({ stage: "waiting_for_person", contactName: "Daniel", askedAt: "2026-10-16T14:15:00Z", challengeOpensAt: "2026-10-16T15:15:00Z" }, "Margaret", "Sarah");
+    const text = verificationNotice({ stage: "waiting_for_person", contactName: "Daniel", contactPersona: "daniel", verificationId: "v1", askedAt: "2026-10-16T14:15:00Z", challengeOpensAt: "2026-10-16T15:15:00Z" }, "Margaret", "Sarah");
     expect(text).toMatch(/^We asked Daniel at .*No reply yet\.$/);
     expect(text).not.toContain("Margaret");
   });

@@ -43,7 +43,7 @@ test.describe("keyboard", () => {
   test("the skip link is the first stop and moves focus to the main content", async ({ page }) => {
     await signInAs(page, "margaret");
     await page.goto("/home");
-    await page.getByTestId("setup-card").waitFor();
+    await page.getByTestId("home-send").waitFor();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();
     await page.keyboard.press("Enter");
@@ -90,7 +90,7 @@ test.describe("zoom", () => {
     });
     await signInAs(page, "margaret");
     await page.goto("/home");
-    await page.getByTestId("setup-card").waitFor();
+    await page.getByTestId("home-send").waitFor();
     expect(await overflow()).toBeLessThanOrEqual(1);
     await stubPayment(page, "held");
     await page.goto(`/payments/${PAYMENT_ID}`);

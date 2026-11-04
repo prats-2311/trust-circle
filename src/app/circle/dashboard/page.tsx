@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { CircleDashboard } from "@/dashboard/dashboardService";
 import type { PayPalSays } from "@/dashboard/paypalSays";
+import { SwitchPerson } from "@/ui/SwitchPerson";
 import { ArrowLeftIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
@@ -40,10 +41,13 @@ export default function CircleDashboardPage() {
 
   return (
     <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-[1200px] px-4 pb-10 pt-4 md:px-6">
-      <Link href="/circle" className="-ml-2.5 inline-flex min-h-11 items-center gap-2 rounded-xl px-2.5 text-[18px] font-bold text-ink no-underline">
-        <ArrowLeftIcon aria-hidden="true" size={24} />
-        Your circle
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/circle" className="-ml-2.5 inline-flex min-h-11 items-center gap-2 rounded-xl px-2.5 text-[18px] font-bold text-ink no-underline">
+          <ArrowLeftIcon aria-hidden="true" size={24} />
+          Your circle
+        </Link>
+        <SwitchPerson className="-mr-2" />
+      </div>
       <h1 className="mt-3 text-[32px] font-extrabold leading-[1.15] tracking-[-0.01em]">Your circle&apos;s payments</h1>
       {signedOut && <SignedOut />}
       {failed && !signedOut && <div className="mt-6"><Notice tone="error">We couldn&apos;t load the dashboard. Please refresh.</Notice></div>}

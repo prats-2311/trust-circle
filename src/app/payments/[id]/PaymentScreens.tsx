@@ -1,5 +1,6 @@
 "use client";
 import { formatDayTime, formatTime } from "@/ui/format";
+import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import { approvalErrorCopy, cancelErrorCopy } from "@/app/send/riskScreen";
@@ -14,6 +15,7 @@ import { ChatCircleTextIcon, CheckCircleIcon, CheckIcon, InfoIcon, LockSimpleIco
 import { Notice } from "@/ui/Notice";
 import { FinePrint, Lead, Screen, Title } from "@/ui/Screen";
 import { useOnce } from "@/ui/useOnce";
+import type { Persona } from "@/server/demo";
 import { circleNamesText, paypalProofLine, screenCopy, toldLine, type ScreenKind, type Stage } from "./screen";
 
 export type PaymentView = {
@@ -28,6 +30,33 @@ export type PaymentView = {
 };
 
 type NoticeState = { tone: "info" | "pending" | "error"; text: string };
+
+/** Demo only: signs in as the person we asked and opens their request, so the story can be followed from both sides. */
+function SeeTheirView({ name, persona, verificationId }: { name: string; persona: Persona; verificationId: string }) {
+  const { busy, run } = useOnce();
+  const router = useRouter();
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="mt-4 flex flex-col items-start gap-2">
+      <Button
+        variant="quiet"
+        className="w-auto!"
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            setFailed(false);
+            const r = await fetchJson<{ home: string }>("/api/demo/login", jsonBody({ as: persona }));
+            if (r.ok) router.push(`/verify/${verificationId}`);
+            else setFailed(true);
+          })
+        }
+      >
+        See what {name} sees
+      </Button>
+      {failed && <Notice tone="error">We couldn&apos;t switch just now. Please try again.</Notice>}
+    </div>
+  );
+}
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 const weekdayTime = formatDayTime;
@@ -165,6 +194,7 @@ export function PaymentScreens({ kind, p, stage, contactName, circleNames, reloa
               {stage?.stage === "waiting_for_person" && (
                 <p className="mt-2 text-[18px] leading-relaxed text-ink-2">If they don&apos;t answer by {timeOnly(stage.challengeOpensAt)}, we&apos;ll help you check another way.</p>
               )}
+              {stage?.stage === "waiting_for_person" && stage.contactPersona && <SeeTheirView name={name} persona={stage.contactPersona} verificationId={stage.verificationId} />}
               <NoticeLine notice={action.notice} />
             </>,
           )}

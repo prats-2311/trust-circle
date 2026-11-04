@@ -18,7 +18,7 @@ const NONE: Stage = { stage: "none" };
 
 const KINDS: Record<PaymentKind, { state: string; outcome: string | null; stage: Stage }> = {
   held: { state: "held", outcome: null, stage: NONE },
-  waiting: { state: "held", outcome: null, stage: { stage: "waiting_for_person", contactName: "Daniel", askedAt: iso(-0.1), challengeOpensAt: iso(0.1) } },
+  waiting: { state: "held", outcome: null, stage: { stage: "waiting_for_person", contactName: "Daniel", contactPersona: "daniel", verificationId: VERIFY_ID, askedAt: iso(-0.1), challengeOpensAt: iso(0.1) } },
   challenge_memory: { state: "held", outcome: null, stage: { stage: "challenge", method: "memory_question", requesterName: "Daniel", guidance: ["Ask something only Daniel would know, like the name of his first pet.", "Don't hint at the answer."] } },
   challenge_safe_word: { state: "held", outcome: null, stage: { stage: "challenge", method: "safe_word", requesterName: "Daniel", guidance: ["Don't say the word first."] } },
   official_routes: { state: "held", outcome: null, stage: { stage: "official_routes", organisation: "your bank", steps: ["Open your bank's app yourself.", "Call the number on the back of your card."] } },

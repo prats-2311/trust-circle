@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Trends } from "@/dashboard/dashboardService";
+import { SwitchPerson } from "@/ui/SwitchPerson";
 import { ArrowLeftIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
@@ -29,10 +30,13 @@ export default function TrendsPage() {
 
   return (
     <main id="main" tabIndex={-1} className="focus:outline-none mx-auto w-full max-w-[1200px] px-4 pb-10 pt-4 md:px-6">
-      <Link href="/circle" className="-ml-2.5 inline-flex min-h-11 items-center gap-2 rounded-xl px-2.5 text-[18px] font-bold text-ink no-underline">
-        <ArrowLeftIcon aria-hidden="true" size={24} />
-        Your circle
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link href="/circle" className="-ml-2.5 inline-flex min-h-11 items-center gap-2 rounded-xl px-2.5 text-[18px] font-bold text-ink no-underline">
+          <ArrowLeftIcon aria-hidden="true" size={24} />
+          Your circle
+        </Link>
+        <SwitchPerson className="-mr-2" />
+      </div>
       <h1 className="mt-3 text-[32px] font-extrabold leading-[1.15] tracking-[-0.01em]">Scams people are reporting</h1>
       <p className="mt-2 text-[18px] text-ink-2">Reports to Trust Circle over the last 12 weeks, grouped by the kind of scam.</p>
       {signedOut && <SignedOut />}

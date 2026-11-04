@@ -4,7 +4,7 @@ import type { Outcome } from "@/server/paymentOutcome";
 import { ButtonLink } from "@/ui/Button";
 import { fetchJson } from "@/ui/fetchJson";
 import { Notice } from "@/ui/Notice";
-import { Screen, Title } from "@/ui/Screen";
+import { Lead, Screen, Title } from "@/ui/Screen";
 import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { PaymentScreens, type PaymentView } from "./PaymentScreens";
@@ -15,6 +15,7 @@ type State =
   | { kind: "loading" }
   | { kind: "signedOut" }
   | { kind: "notFound" }
+  | { kind: "switched" }
   | { kind: "error"; message: string }
   | { kind: "ready"; p: Loaded; stage: Stage | null; circleNames: string[] };
 
@@ -40,9 +41,12 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       if (!alive.current || seq !== latest.current) return;
       if (!pay.ok && pay.signedOut) return setState({ kind: "signedOut" });
       if (!pay.ok) {
-        // A failed background refresh keeps the last good screen rather than replacing it with an error.
+        const denied = pay.status === 403 || pay.status === 404;
+        // A background refresh that is refused means the viewer switched person in another tab: say so, and keep polling in case they switch back.
+        if (silent && denied) return setState({ kind: "switched" });
+        // Any other failed background refresh keeps the last good screen rather than replacing it with an error.
         if (silent) return;
-        return setState(pay.status === 403 || pay.status === 404 ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." });
+        return setState(denied ? { kind: "notFound" } : { kind: "error", message: "We couldn't load this payment. Please refresh." });
       }
       if (me?.ok) meRef.current = me.data.circle.map((c) => c.displayName);
       setState({ kind: "ready", p: pay.data, stage: ver.ok ? ver.data : null, circleNames: meRef.current ?? [] });
@@ -59,7 +63,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   }, [load]);
 
   const kind = state.kind === "ready" ? screenFor(state.p, state.stage) : null;
-  const polling = kind !== null && POLLED.includes(kind);
+  const polling = state.kind === "switched" || (kind !== null && POLLED.includes(kind));
   useEffect(() => {
     if (!polling) return;
     const tick = () => {
@@ -89,6 +93,17 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
     );
   }
   if (state.kind === "signedOut") return <Screen><SignedOut /></Screen>;
+  if (state.kind === "switched") {
+    return (
+      <Screen>
+        <div data-testid="payment-switched">
+          <Title>You&apos;ve switched to someone else</Title>
+          <Lead>This payment belongs to another person in the demo. Switch back to see it.</Lead>
+          <div className="mt-6"><ButtonLink href="/#try" variant="secondary">Switch person</ButtonLink></div>
+        </div>
+      </Screen>
+    );
+  }
   return (
     <Screen backHref="/home" footer={<ButtonLink href="/home" variant="secondary">Back to home</ButtonLink>}>
       {state.kind === "notFound" ? (

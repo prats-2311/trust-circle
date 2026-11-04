@@ -25,7 +25,7 @@ export default function LandingPage() {
             <p className="max-w-[34rem] text-[21px] leading-normal text-ink-2">
               Trust Circle holds a risky PayPal payment and checks with the real grandson, and with your family, before any money moves.
             </p>
-            <div className="mt-1.5">
+            <div id="try" className="mt-1.5 scroll-mt-6">
               <DemoButtons />
             </div>
             <p className="text-[16px] text-ink-3">No sign-up. Each demo opens with example payments already in place.</p>
