@@ -40,6 +40,7 @@ import { createWebPushSender } from "@/push/pushSender";
 import { createDrizzleWebhookRepo } from "@/webhooks/drizzleWebhookRepo";
 import type { WebhookRepo } from "@/webhooks/webhookRepo";
 import { createWebhookService, type WebhookService } from "@/webhooks/webhookService";
+import { createPayPalSaysService, type PayPalSaysService } from "@/dashboard/paypalSays";
 import { createPaymentEventHandler } from "./paymentEvents";
 
 type Container = {
@@ -58,6 +59,7 @@ type Container = {
   settings: SettingsService;
   push: PushRepo;
   gateway: PayPalGateway;
+  paypalSays: PayPalSaysService;
   webhooks: WebhookService;
   webhookRepo: WebhookRepo;
   aftercare: ReturnType<typeof createAftercareService>;
@@ -160,6 +162,7 @@ export function getContainer(): Container {
     },
   });
   const dashboard = createDashboardService({ payments: repo, circle, registry: registryRepo });
+  const paypalSays = createPayPalSaysService({ gateway, payments: repo });
   onEvent = createPaymentEventHandler({ circle, alerts, verification, registry: hooks });
   const webhookRepo = createDrizzleWebhookRepo(db);
   const webhooks = createWebhookService({
@@ -188,6 +191,6 @@ export function getContainer(): Container {
         input,
       ),
   });
-  container = { aftercare, env, db, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, webhooks, webhookRepo };
+  container = { aftercare, env, db, repo, circle, service, messages, alerts, verification, registry, patterns, reports, dashboard, settings, push: pushRepo, gateway, paypalSays, webhooks, webhookRepo };
   return container;
 }
