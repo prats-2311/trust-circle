@@ -27,6 +27,7 @@ const EnvSchema = z.object({
   VAPID_PRIVATE_KEY: optionalString,
   VAPID_SUBJECT: withDefault("mailto:alerts@trustcircle.example", z.string().regex(/^(mailto:|https:)/)),
   PAYPAL_WEBHOOK_ID: optionalString,
+  GROQ_DAILY_CAP: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().int().positive().default(3000)),
   DEMO_DAILY_RESET: oneFlag,
   APP_URL: withDefault("http://localhost:3000", z.string().url()),
 });

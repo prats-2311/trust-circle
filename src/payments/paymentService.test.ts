@@ -40,6 +40,31 @@ function setup(opts: { level?: "low" | "medium" | "high"; gateway?: Partial<PayP
 const send = { senderId: SENDER, payee: "Grandson@Example.com", amountCents: 80000, senderAnswer: "my grandson" };
 
 describe("start", () => {
+  it("holds a payment the AI could not check, whatever the rules said", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const judge = vi.fn().mockResolvedValue({ ok: false, error: "groq http 429" });
+    // A payee paid before at the usual amount: no rule signal at all.
+    await repo.insert({
+      id: "00000000-0000-4000-9000-0000000000aa", senderId: SENDER, payee: "grandson@example.com", amountCents: 1000, note: null, senderAnswer: null,
+      state: "paid_out", riskLevel: "low", scamType: "none", reasons: [], impersonatedRequester: null,
+      paypalOrderId: null, authorizationId: null, captureId: null, payoutBatchId: null, refundId: null, authorisedAt: null, coolingOffUntil: null,
+    });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge });
+    const { payment, decision } = await service.start({ senderId: SENDER, payee: "grandson@example.com", amountCents: 1000 });
+    const reasons = ["We couldn't run our scam check just now, so we're holding this payment until someone you trust confirms it."];
+    expect(payment.riskLevel).toBe("high");
+    expect(payment.reasons).toEqual(reasons);
+    expect(decision.level).toBe("high");
+  });
+
+  it("keeps the rule reasons when it holds an unchecked payment", async () => {
+    const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+    const service = createPaymentService({ repo, gateway: fakeGateway(), judge: vi.fn().mockResolvedValue({ ok: false, error: "x" }) });
+    const { payment } = await service.start(send);
+    expect(payment.riskLevel).toBe("high");
+    expect(payment.reasons).toContain("You have not paid this person before.");
+  });
+
   it("uses the prompt guard when one is configured", async () => {
     const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
     const guard = vi.fn().mockResolvedValue(0.99);

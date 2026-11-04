@@ -28,8 +28,7 @@ const ruleSignals = (r: EvalResult): Signal[] =>
 
 /**
  * What the AI adds, scored from one run with no extra AI calls. Payments are scored three ways: as the app ran
- * (rules plus AI), by the rules alone, and by the fallback the app uses when the AI is unavailable (any rule
- * signal holds the payment). Messages have no rule-only score: the rules only look at payments.
+ * (rules plus AI), by the rules alone, and by the fallback the app uses when the AI is unavailable (every payment is held). Messages have no rule-only score: the rules only look at payments.
  */
 export function rulesOnlyComparison(results: EvalResult[]) {
   const payments = results.filter((r) => r.kind === "payment");
@@ -41,7 +40,7 @@ export function rulesOnlyComparison(results: EvalResult[]) {
       genuine: payments.filter((r) => r.label === "genuine").length,
       withAi: count(payments, (r) => r.level),
       rulesAlone: count(payments, rulesLevel),
-      aiUnavailable: count(payments, (r): RiskLevel => (ruleSignals(r).length > 0 ? "high" : "low")),
+      aiUnavailable: count(payments, (): RiskLevel => "high"),
       onlyAiHeld: payments.filter((r) => r.label === "scam" && r.level === "high" && rulesLevel(r) !== "high").map((r) => r.id),
     },
     messages: {

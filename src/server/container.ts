@@ -1,6 +1,7 @@
 import { createAftercareService } from "@/aftercare/aftercareService";
 import { runAftercareAgent } from "@/aftercare/aftercareAgent";
 import { createPayPalReadOnlyToolkit, createReadOnlyToolRunner, invalidatePayPalReadOnlyToolkit } from "@/aftercare/tools";
+import { createDrizzleAiUsage, createGroqBudget } from "@/ai/groqBudget";
 import { groqToolChat } from "@/ai/groqClient";
 import { keySet } from "@/domain/matchKeys";
 import { createAlertService, type AlertService } from "@/alerts/alertService";
@@ -73,7 +74,9 @@ export function getContainer(): Container {
   const { db } = createDb(env.DATABASE_URL);
   const repo = createDrizzlePaymentRepo(db);
   const circle = createDrizzleCircleRepo(db);
-  const guard = createPromptGuard({ apiKey: env.GROQ_API_KEY, model: env.GROQ_GUARD_MODEL });
+  // One daily budget for every Groq call; when it is spent, calls fail like an outage and payments are held as unchecked.
+  const groqFetch = createGroqBudget({ cap: env.GROQ_DAILY_CAP, count: createDrizzleAiUsage(db) });
+  const guard = createPromptGuard({ apiKey: env.GROQ_API_KEY, model: env.GROQ_GUARD_MODEL, fetchImpl: groqFetch });
   const messageRepo = createDrizzleMessageRepo(db);
   const registryRepo = createDrizzleRegistryRepo(db);
   const registry = createRegistryService({ repo: registryRepo });
@@ -89,10 +92,10 @@ export function getContainer(): Container {
     repo: messageRepo,
     registry: () => registryLists(),
     patterns: patterns.match,
-    judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL }),
+    judge: createGroqMessageJudge({ apiKey: env.GROQ_API_KEY, textModel: env.GROQ_TEXT_MODEL, visionModel: env.GROQ_VISION_MODEL, fetchImpl: groqFetch }),
     guard,
     circle: (id) => circle.contactsWithPhones(id),
-    transcribe: createGroqTranscriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_AUDIO_MODEL }),
+    transcribe: createGroqTranscriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_AUDIO_MODEL, fetchImpl: groqFetch }),
   });
   const settings = createSettingsService({ repo: createDrizzleSettingsRepo(db) });
   const verificationRepo = createDrizzleVerificationRepo(db);
@@ -127,7 +130,7 @@ export function getContainer(): Container {
   const service = createPaymentService({
     repo,
     gateway,
-    judge: createGroqJudge({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
+    judge: createGroqJudge({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL, fetchImpl: groqFetch }),
     guard,
     linkedMessage: messages.linkedMessage,
     patterns: patterns.match,
@@ -150,7 +153,7 @@ export function getContainer(): Container {
     reports: createDrizzleScamReportRepo(db),
     registry,
     patterns,
-    describe: createGroqPatternDescriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL }),
+    describe: createGroqPatternDescriber({ apiKey: env.GROQ_API_KEY, model: env.GROQ_TEXT_MODEL, fetchImpl: groqFetch }),
     appUrl: env.APP_URL,
     // Contact details of the reporter and the people they know are never a scammer's.
     excludeKeys: async (reporterId) => {
@@ -180,7 +183,7 @@ export function getContainer(): Container {
     agent: async (input) =>
       runAftercareAgent(
         {
-          chat: groqToolChat,
+          chat: (o) => groqToolChat({ ...o, fetchImpl: groqFetch }),
           apiKey: env.GROQ_API_KEY,
           model: env.GROQ_TEXT_MODEL,
           tools: createReadOnlyToolRunner(await createPayPalReadOnlyToolkit({ clientId: env.PAYPAL_CLIENT_ID, clientSecret: env.PAYPAL_CLIENT_SECRET }), {

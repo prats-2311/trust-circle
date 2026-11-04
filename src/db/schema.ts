@@ -1,4 +1,4 @@
-import { boolean, check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, vector } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid, vector } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { Identifier, IdentifierType, Requester } from "@/domain/types";
 
@@ -197,3 +197,8 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   auth: text("auth").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("push_subscriptions_user").on(t.userId)]);
+
+export const aiUsage = pgTable("ai_usage", {
+  day: date("day").primaryKey(), // UTC YYYY-MM-DD
+  calls: integer("calls").notNull().default(0),
+});

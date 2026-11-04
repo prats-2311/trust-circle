@@ -33,7 +33,7 @@ describe("rulesOnlyComparison", () => {
       genuine: 3,
       withAi: { scamsHeld: 3, scamsFlagged: 3, genuineHeld: 0, genuineFlagged: 1 },
       rulesAlone: { scamsHeld: 1, scamsFlagged: 1, genuineHeld: 0, genuineFlagged: 0 },
-      aiUnavailable: { scamsHeld: 2, scamsFlagged: 2, genuineHeld: 1, genuineFlagged: 1 },
+      aiUnavailable: { scamsHeld: 3, scamsFlagged: 3, genuineHeld: 3, genuineFlagged: 3 },
       onlyAiHeld: ["s1", "s3"],
     });
     expect(c.messages).toEqual({ scams: 2, genuine: 0, aiChecked: 1, withAiFlagged: 1 });

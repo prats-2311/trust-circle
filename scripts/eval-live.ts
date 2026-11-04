@@ -88,7 +88,7 @@ async function main() {
     "",
     "## What the AI adds",
     "",
-    `Scored from the same run, with no extra AI calls. "Rules alone" uses only the rule signals (first-time payee, unusual amount, over the circle limit, rapid repeats, the scam list), without Prompt Guard or the pattern matcher. "AI unavailable" is the app's fallback: any rule signal holds the payment.`,
+    `Scored from the same run, with no extra AI calls. "Rules alone" uses only the rule signals (first-time payee, unusual amount, over the circle limit, rapid repeats, the scam list), without Prompt Guard or the pattern matcher. "AI unavailable" is the app's fallback: every payment the AI cannot check is held.`,
     "",
     `| Payments (${p.scams} scams, ${p.genuine} genuine) | Scams held | Scams flagged | Genuine held | Genuine flagged |`,
     "|---|---|---|---|---|",

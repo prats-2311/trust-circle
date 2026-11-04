@@ -14,7 +14,7 @@ a model can be wrong, can be talked round by text inside a scam message, and can
 - Code rules (`src/risk/signals.ts`) set a floor: a confirmed scam payee, a linked scam message or hidden
   instructions are high; several contributing signals are medium or high.
 - The final level is the higher of the rule level and the AI's level. The AI can only raise it.
-- When the AI fails or times out, any rule signal at all holds the payment ("fail closed"), and a message is shown
+- When the AI fails or times out, every payment is held ("fail closed"), and a message is shown
   as unchecked, never as safe.
 - A claimed company connected to the sender's device (the remote-access scam) always holds.
 

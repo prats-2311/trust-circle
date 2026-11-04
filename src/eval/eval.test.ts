@@ -75,14 +75,9 @@ describe("evaluation set", () => {
 
   it("fails closed when the AI is down", async () => {
     const { results } = await runEval(EVAL_CASES, { paymentJudge: downPayment, messageJudge: downMessage });
-    // Every scam with a rule signal is held. A scam to a payee already paid, for an everyday amount, has no rule
-    // signal, so with the AI down it goes through: only the story gives it away (h02).
-    for (const r of results.filter((x) => x.kind === "payment" && x.label === "scam")) {
-      expect(r.level).toBe(r.signals.length > 0 ? "high" : "low");
-    }
-    expect(results.find((r) => r.id === "h02")!.level).toBe("low");
+    // A payment the AI could not check is held, with or without a rule signal (h02 included).
+    for (const r of results.filter((x) => x.kind === "payment")) expect(r.level).toBe("high");
     for (const r of results.filter((x) => x.kind === "message")) expect(r.checked).toBe(false);
-    expect(results.find((r) => r.id === "g01")!.level).toBe("low");
   });
 });
 

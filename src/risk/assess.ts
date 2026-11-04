@@ -4,6 +4,8 @@ import { decide, type AiOutcome, type RiskDecision } from "./decide";
 import type { PatternMatch, PatternMatcher } from "@/patterns/patternService";
 import { computeSignals, HIDDEN_INSTRUCTIONS_SIGNAL, KNOWN_PATTERN_SIGNAL, type PaymentRiskInput, type SenderContext } from "./signals";
 
+export const UNCHECKED_REASON = "We couldn't run our scam check just now, so we're holding this payment until someone you trust confirms it.";
+
 async function isInjection(guard: PromptGuard | undefined, text: string): Promise<boolean> {
   if (!guard || !text) return false;
   try {
@@ -45,5 +47,10 @@ export async function assessPayment(
   } catch {
     ai = { ok: false, error: "judge threw" };
   }
-  return decide(signals, ai, pattern?.scamType);
+  const decision = decide(signals, ai, pattern?.scamType);
+  // A payment the AI could not check is never passed as low risk: it is held until someone the sender trusts confirms it.
+  if (!decision.aiUsed) {
+    return { ...decision, level: "high", reasons: decision.reasons.length > 0 ? decision.reasons : [UNCHECKED_REASON] };
+  }
+  return decision;
 }

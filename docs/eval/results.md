@@ -37,13 +37,13 @@ None.
 
 ## What the AI adds
 
-Scored from the same run, with no extra AI calls. "Rules alone" uses only the rule signals (first-time payee, unusual amount, over the circle limit, rapid repeats, the scam list), without Prompt Guard or the pattern matcher. "AI unavailable" is the app's fallback: any rule signal holds the payment.
+Scored from the same run, with no extra AI calls. "Rules alone" uses only the rule signals (first-time payee, unusual amount, over the circle limit, rapid repeats, the scam list), without Prompt Guard or the pattern matcher. "AI unavailable" is the app's fallback: every payment the AI cannot check is held.
 
 | Payments (23 scams, 20 genuine) | Scams held | Scams flagged | Genuine held | Genuine flagged |
 |---|---|---|---|---|
 | Rules and AI (as the app runs) | 23 of 23 | 23 of 23 | 1 of 20 | 9 of 20 |
 | Rules alone | 0 of 23 | 17 of 23 | 0 of 20 | 7 of 20 |
-| AI unavailable (fallback) | 22 of 23 | 22 of 23 | 11 of 20 | 11 of 20 |
+| AI unavailable (fallback) | 23 of 23 | 23 of 23 | 20 of 20 | 20 of 20 |
 
 No rules-only setting matches the AI. Holding only what the rules rate high holds 0 of 23 scams. Holding everything the rules warn about holds 17 of 23 scams and 7 of 20 genuine payments. The AI can only raise a rule's level, never lower it, so genuine payments the rules warn about keep their warning (they still go through).
 
