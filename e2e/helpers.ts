@@ -25,6 +25,9 @@ export async function markNotOnboarded(as: Persona) {
   const { createDb } = await import("../src/db/client");
   const { sql } = await import("drizzle-orm");
   const { DEMO_PERSONAS } = await import("../src/server/demo");
+  const { resetRefusal } = await import("../src/server/resetGuard");
+  const refusal = resetRefusal(process.env);
+  if (refusal) throw new Error(refusal);
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
   const { db, close } = createDb(url);
