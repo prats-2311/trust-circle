@@ -26,7 +26,7 @@ const judgeSaying = (level: "low" | "medium" | "high") =>
 function setup(opts: { level?: "low" | "medium" | "high"; gateway?: Partial<PayPalGateway>; start?: Date } = {}) {
   let clock = opts.start ?? new Date("2026-11-01T10:00:00Z");
   let n = 0;
-  const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }] });
+  const repo = createMemoryPaymentRepo({ trustLinks: [{ senderId: SENDER, contactId: CONTACT }], now: () => clock });
   const gateway = fakeGateway(opts.gateway);
   const service = createPaymentService({
     repo, gateway, judge: judgeSaying(opts.level ?? "low"),
@@ -271,6 +271,7 @@ describe("contactDecision", () => {
     expect(err).toBeInstanceOf(PaymentPendingError);
     expect(err.paymentId).toBe(payment.id);
     expect((await ctx.repo.get(payment.id))?.state).toBe("blocked");
+    ctx.advance(STALE_MS + 1);
     const out = await ctx.service.expireStale();
     expect(out.voidRetried).toEqual([payment.id]);
     expect((await ctx.repo.get(payment.id))?.state).toBe("voided");
@@ -389,6 +390,7 @@ describe("expireStale self-healing", () => {
     const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
     await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
     sendPayout.mockResolvedValue({ payoutBatchId: "BATCH2" });
+    ctx.advance(STALE_MS + 1);
     const out = await ctx.service.expireStale();
     expect(out.payoutRetried).toEqual([payment.id]);
     const row = await ctx.repo.get(payment.id);
@@ -405,6 +407,7 @@ describe("expireStale self-healing", () => {
     });
     const { payment } = await ctx.service.start({ ...send, amountCents: 1000 });
     await expect(ctx.service.completeApproval({ paymentId: payment.id, senderId: SENDER })).rejects.toBeInstanceOf(PaymentPendingError);
+    ctx.advance(STALE_MS + 1);
     const out = await ctx.service.expireStale();
     expect(out.refundRetried).toEqual([payment.id]);
     expect((await ctx.repo.get(payment.id))?.state).toBe("refunded");
@@ -422,8 +425,11 @@ describe("expireStale self-healing", () => {
     ctx.advance(72 * 3_600_000);
     const out = await ctx.service.expireStale();
     expect(out.expired).toHaveLength(1);
-    expect(out.voidRetried).toHaveLength(1);
-    expect(out.voidRetried[0]).not.toBe(out.expired[0]);
+    // The row whose void threw was touched in this sweep, so the next sweep retries it.
+    ctx.advance(STALE_MS + 1);
+    const next = await ctx.service.expireStale();
+    expect(next.voidRetried).toHaveLength(1);
+    expect(next.voidRetried[0]).not.toBe(out.expired[0]);
     expect(voidAuthorization).toHaveBeenCalledTimes(3);
     for (const id of ids) expect((await ctx.repo.get(id))?.state).toBe("voided");
   });
@@ -557,6 +563,7 @@ describe("when compensation is allowed", () => {
   it("the sweep never compensates a captured payment and records the failed retry", async () => {
     const sendPayout = vi.fn().mockRejectedValueOnce(uncertain()).mockRejectedValueOnce(uncertain()).mockRejectedValue(new PayPalError("p", 422, "X", "d"));
     const r = await run(sendPayout);
+    r.advance(STALE_MS + 1);
     const out = await r.service.expireStale();
     expect(out.payoutRetried).toEqual([]);
     expect((await r.repo.get(r.id))?.state).toBe("captured");

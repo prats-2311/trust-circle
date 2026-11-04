@@ -1,15 +1,17 @@
 import { ConcurrentUpdateError, type AuditEntry, type PaymentRecord, type PaymentRepo } from "./paymentRepo";
 
-export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string; contactId: string }[]; users?: string[] } = {}): PaymentRepo {
+export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string; contactId: string }[]; users?: string[]; now?: () => Date } = {}): PaymentRepo {
   const rows = new Map<string, PaymentRecord>();
   const audits: AuditEntry[] = [];
   const links = seed.trustLinks ?? [];
   if (links.some((l) => l.senderId === l.contactId)) throw new Error("A sender cannot be their own trusted contact");
   const clone = (p: PaymentRecord) => structuredClone(p);
+  // Tests with a fake clock pass it here so updatedAt agrees with the service's idea of now.
+  const clock = seed.now ?? (() => new Date());
 
   return {
     async insert(p) {
-      const now = new Date();
+      const now = clock();
       const row = { ...p, version: 0, createdAt: now, updatedAt: now };
       rows.set(p.id, row);
       return clone(row);
@@ -23,7 +25,7 @@ export function createMemoryPaymentRepo(seed: { trustLinks?: { senderId: string;
       if (!r || r.state !== expected || (expectedVersion !== undefined && r.version !== expectedVersion)) {
         throw new ConcurrentUpdateError(id, expected);
       }
-      const next = { ...r, ...patch, version: r.version + 1, updatedAt: new Date() };
+      const next = { ...r, ...patch, version: r.version + 1, updatedAt: clock() };
       rows.set(id, next);
       if (audit) {
         audits.push({ paymentId: id, actorId: audit.actorId, action: audit.action, fromState: expected, toState: next.state, detail: structuredClone(audit.detail ?? {}) });
