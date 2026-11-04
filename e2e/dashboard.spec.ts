@@ -24,6 +24,19 @@ test("a tapped row opens a details panel with every reason", async ({ page }) =>
   await expect(panel).toHaveCount(0);
 });
 
+test("desktop grid has a PayPal says column", async ({ page }) => {
+  await page.goto("/circle/dashboard");
+  await expect(page.getByRole("columnheader", { name: "PayPal says" })).toBeVisible();
+});
+
+test("the details panel shows what PayPal says", async ({ page }) => {
+  await page.goto("/circle/dashboard");
+  await page.getByTestId("status-stopped").first().click();
+  const panel = page.getByTestId("payment-details");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "PayPal says" })).toBeVisible();
+});
+
 test("on a phone the Amount column is visible without scrolling the grid", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/circle/dashboard");

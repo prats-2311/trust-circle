@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { CircleDashboard } from "@/dashboard/dashboardService";
+import type { PayPalSays } from "@/dashboard/paypalSays";
 import { ArrowLeftIcon } from "@/ui/icons";
 import { Notice } from "@/ui/Notice";
 import { SignedOut } from "@/ui/SignedOut";
@@ -12,6 +13,7 @@ import { DashboardGrid } from "./DashboardGrid";
 
 export default function CircleDashboardPage() {
   const [data, setData] = useState<CircleDashboard | null>(null);
+  const [says, setSays] = useState<Record<string, PayPalSays> | undefined>(undefined);
   const [failed, setFailed] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
 
@@ -25,7 +27,14 @@ export default function CircleDashboardPage() {
         if (!r.ok) throw new Error("load failed");
         return r.json() as Promise<CircleDashboard>;
       })
-      .then((d) => d && setData(d))
+      .then((d) => {
+        if (!d) return;
+        setData(d);
+        fetch("/api/circle/dashboard/paypal")
+          .then((r) => (r.ok ? (r.json() as Promise<{ says: Record<string, PayPalSays> }>) : null))
+          .then((b) => b && setSays(b.says))
+          .catch(() => {});
+      })
       .catch(() => setFailed(true));
   }, []);
 
@@ -63,7 +72,7 @@ export default function CircleDashboardPage() {
           {[...new Map(data.rows.map((r) => [r.senderId, r.senderName])).entries()].map(([senderId, senderName]) => (
             <AftercareCard key={senderId} senderId={senderId} senderName={senderName} rows={data.rows.filter((r) => r.senderId === senderId)} />
           ))}
-          {data.rows.length === 0 ? <p className="text-[17px] text-ink-2">No payments yet. When someone in your circle sends money, it shows here.</p> : <DashboardGrid rows={data.rows} />}
+          {data.rows.length === 0 ? <p className="text-[17px] text-ink-2">No payments yet. When someone in your circle sends money, it shows here.</p> : <DashboardGrid rows={data.rows} says={says} />}
           {data.rows.length > 0 && <p className="mt-4 text-[16px] text-ink-3">Includes example payments created for this demo.</p>}
         </>
       )}

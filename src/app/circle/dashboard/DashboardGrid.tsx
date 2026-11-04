@@ -5,6 +5,7 @@ import { AgGridReact } from "ag-grid-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatUsd } from "@/alerts/alertCopy";
 import type { DashboardRow, DashboardStatus } from "@/dashboard/dashboardService";
+import type { PayPalSays } from "@/dashboard/paypalSays";
 import { gridTheme, gridThemeNarrow } from "../../gridTheme";
 import { useElementWidth } from "../../useElementWidth";
 
@@ -34,9 +35,25 @@ function StatusChip(p: ICellRendererParams<DashboardRow>) {
   );
 }
 
+const CAUTION = { background: "var(--color-caution-tint)", color: "var(--color-caution-ink)" };
+
+function SaysCell({ says }: { says: PayPalSays | undefined }) {
+  if (!says) return null;
+  return (
+    <>
+      <span>{says.label}</span>
+      {says.matches === false && (
+        <span style={{ ...CAUTION, borderRadius: 999, padding: "4px 12px", marginLeft: 8, fontWeight: 700, fontSize: 16 }} data-testid="paypal-says-mismatch">
+          Doesn&apos;t match
+        </span>
+      )}
+    </>
+  );
+}
+
 const shortDate = (v: unknown) => formatShortDay(v as string);
 
-export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
+export function DashboardGrid({ rows, says }: { rows: DashboardRow[]; says?: Record<string, PayPalSays> }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<DashboardRow | null>(null);
   const { ref, width } = useElementWidth<HTMLDivElement>();
@@ -56,6 +73,7 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
     }
     const cols: ColDef<DashboardRow>[] = [
       { headerName: "Status", field: "statusLabel", width: 150, pinned: "left", cellRenderer: StatusChip },
+      { headerName: "PayPal says", colId: "paypalSays", width: 150, cellRenderer: (p: ICellRendererParams<DashboardRow>) => <SaysCell says={p.data ? says?.[p.data.id] : undefined} /> },
       { headerName: "When", field: "createdAt", width: 110, sort: "desc", valueFormatter: (p) => shortDate(p.value) },
     ];
     if (!oneSender) cols.push({ headerName: "From", field: "senderName", width: 130 });
@@ -72,7 +90,7 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
       },
     );
     return cols;
-  }, [narrow, oneSender]);
+  }, [narrow, oneSender, says]);
 
   useEffect(() => {
     if (!selected) return;
@@ -137,6 +155,8 @@ export function DashboardGrid({ rows }: { rows: DashboardRow[] }) {
             <dt style={{ fontWeight: 700 }}>Type</dt>
             <dd style={{ margin: 0 }}>{selected.scamTypeLabel}</dd>
           </dl>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: "16px 0 6px" }}>PayPal says</h3>
+          <p style={{ margin: 0 }}>{says ? <SaysCell says={says[selected.id]} /> : "Checking with PayPal…"}</p>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: "16px 0 6px" }}>Why</h3>
           {selected.reasons.length === 0 ? (
             <p style={{ margin: 0 }}>No warning signs were found.</p>
