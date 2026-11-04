@@ -59,17 +59,21 @@ export function createPayPalSaysService(deps: {
   ttlMs?: number;
   maxReads?: number;
   concurrency?: number;
+  deadlineMs?: number;
 }) {
   const { gateway, payments } = deps;
   const now = deps.now ?? (() => new Date());
   const ttlMs = deps.ttlMs ?? 600_000;
   const maxReads = deps.maxReads ?? 20;
   const concurrency = deps.concurrency ?? 4;
+  const deadlineMs = deps.deadlineMs ?? 8000;
+  const inFlight = new Map<string, Promise<Record<string, PayPalSays>>>();
   // PayPal's word per payment, remembered with the id it was read by (an authorisation
   // becomes a capture later, and that must be read afresh).
   const cache = new Map<string, { at: number; readKey: string; status: string | null }>();
 
-  async function forCircle(contactId: string): Promise<Record<string, PayPalSays>> {
+  async function read(contactId: string): Promise<Record<string, PayPalSays>> {
+    for (const [id, e] of cache) if (now().getTime() - e.at >= ttlMs) cache.delete(id);
     // Fetch extra rows so payments PayPal never saw don't use up the read budget.
     const rows = await payments.listForCircle(contactId, maxReads * 5);
     const eligible = rows.filter((p) => p.captureId || p.authorizationId).slice(0, maxReads);
@@ -82,7 +86,8 @@ export function createPayPalSaysService(deps: {
         const p = eligible[next++];
         if (!p) break;
         const ours = dashboardStatus(p.state, blocked.has(p.id));
-        const readKey = p.captureId ? `capture:${p.captureId}` : `authorization:${p.authorizationId}`;
+        // Our state is part of the key: a hold we have since voided must be read afresh.
+        const readKey = `${p.state}:` + (p.captureId ? `capture:${p.captureId}` : `authorization:${p.authorizationId}`);
         const hit = cache.get(p.id);
         if (hit && hit.readKey === readKey && now().getTime() - hit.at < ttlMs) {
           out[p.id] = paypalSaysFor(ours, hit.status);
@@ -105,8 +110,23 @@ export function createPayPalSaysService(deps: {
         }
       }
     }
-    await Promise.all(Array.from({ length: Math.min(concurrency, eligible.length) }, worker));
-    return out;
+    const reads = Promise.all(Array.from({ length: Math.min(concurrency, eligible.length) }, worker));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<void>((resolve) => { timer = setTimeout(resolve, deadlineMs); });
+    await Promise.race([reads, deadline]);
+    clearTimeout(timer);
+    // Reads still running may fill the cache later; this answer is what has resolved so far.
+    const answer = { ...out };
+    for (const p of eligible) answer[p.id] ??= NOT_CHECKED;
+    return answer;
+  }
+
+  function forCircle(contactId: string): Promise<Record<string, PayPalSays>> {
+    const running = inFlight.get(contactId);
+    if (running) return running;
+    const p = read(contactId).finally(() => inFlight.delete(contactId));
+    inFlight.set(contactId, p);
+    return p;
   }
 
   return { forCircle };

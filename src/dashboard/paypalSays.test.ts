@@ -20,6 +20,7 @@ describe("paypalSaysFor", () => {
     ["stopped", "DENIED", { label: "Denied", matches: null }],
     ["stopped", "PARTIALLY_CAPTURED", { label: "Partially Captured", matches: null }],
     ["stopped", null, { label: "Not checked", matches: null }],
+    ["sent", "PARTIALLY_CAPTURED", { label: "Partially Captured", matches: null }],
     ["in_progress", "CAPTURED", { label: "Captured", matches: true }],
     ["not_approved", "VOIDED", { label: "Voided", matches: true }],
   ])("%s with PayPal %s", (status, paypal, expected) => {
@@ -43,7 +44,7 @@ function setup() {
     getAuthorizationStatus: vi.fn().mockResolvedValue({ status: "CREATED" }),
     getCaptureStatus: vi.fn().mockResolvedValue({ status: "COMPLETED" }),
   };
-  const service = createPayPalSaysService({ gateway, payments: repo, now: () => clock });
+  const service = createPayPalSaysService({ gateway, payments: repo, now: () => clock, deadlineMs: 50 });
   // Each insert gets its own createdAt so "newest first" is well defined.
   const add = async (p: NewPayment) => { clock = new Date(clock.getTime() + 1000); return repo.insert(p); };
   return { repo, gateway, service, add, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
@@ -138,5 +139,35 @@ describe("createPayPalSaysService", () => {
     expect(logged).not.toContain("CAP-SECRET");
     expect(logged).not.toContain("secret.payee");
     expect(warn.mock.calls[0]).toContainEqual({ errorName: "PayPalError", status: 500 });
+  });
+
+  it("a payment whose state changed is read again, not served from the cache", async () => {
+    const { gateway, service, add, repo } = setup();
+    await add(payment("s", { authorizationId: "A" }));
+    expect((await service.forCircle(CONTACT)).s).toEqual({ label: "On hold", matches: true });
+    await repo.transition("s", "held", { state: "voided" });
+    gateway.getAuthorizationStatus.mockResolvedValue({ status: "VOIDED" });
+    const again = await service.forCircle(CONTACT);
+    expect(gateway.getAuthorizationStatus).toHaveBeenCalledTimes(2);
+    expect(again.s).toEqual({ label: "Voided", matches: true });
+  });
+
+  it("returns within the deadline with Not checked for slow reads", async () => {
+    const { gateway, service, add } = setup();
+    await add(payment("fast", { authorizationId: "A1" }));
+    await add(payment("slow", { authorizationId: "A2" }));
+    gateway.getAuthorizationStatus.mockImplementation(({ authorizationId }: { authorizationId: string }) =>
+      authorizationId === "A2" ? new Promise(() => {}) : Promise.resolve({ status: "CREATED" }));
+    const result = await service.forCircle(CONTACT);
+    expect(result.slow).toEqual({ label: "Not checked", matches: null });
+    expect(result.fast).toEqual({ label: "On hold", matches: true });
+  });
+
+  it("two calls at once for the same contact share one set of reads", async () => {
+    const { gateway, service, add } = setup();
+    await add(payment("a", { authorizationId: "A" }));
+    const [x, y] = await Promise.all([service.forCircle(CONTACT), service.forCircle(CONTACT)]);
+    expect(gateway.getAuthorizationStatus).toHaveBeenCalledTimes(1);
+    expect(x).toEqual(y);
   });
 });
