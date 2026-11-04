@@ -34,6 +34,24 @@ test("a push shows a notification, even when its url points elsewhere", async ({
   await context.grantPermissions(["notifications"], { origin: new URL(baseURL!).origin });
   await page.goto("/");
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
+  const worker = context.serviceWorkers()[0]!;
+
+  // Watch what the worker asks the browser to show. We do not read the notification back with
+  // getNotifications(): headless Chromium keeps notification state in a store shared across
+  // test contexts (same origin, same registration id), so every other run's notification is
+  // dropped and that read-back is empty for the full timeout, whatever the worker did.
+  await worker.evaluate(() => {
+    const w = self as unknown as {
+      __shown: { title: string; options?: NotificationOptions }[];
+      registration: ServiceWorkerRegistration;
+    };
+    w.__shown = [];
+    const show = w.registration.showNotification.bind(w.registration);
+    w.registration.showNotification = (title: string, options?: NotificationOptions) => {
+      w.__shown.push({ title, options });
+      return show(title, options);
+    };
+  });
 
   const cdp = await context.newCDPSession(page);
   const registrationId = new Promise<string>((resolve) => {
@@ -51,13 +69,10 @@ test("a push shows a notification, even when its url points elsewhere", async ({
   });
 
   await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const reg = await navigator.serviceWorker.ready;
-        return (await reg.getNotifications()).map((n) => n.title);
-      }),
-    )
-    .toContain("T");
+    .poll(() => worker.evaluate(() => (self as unknown as { __shown: { title: string }[] }).__shown.map((n) => n.title)))
+    .toEqual(["T"]);
+  const shown = (await worker.evaluate(() => (self as unknown as { __shown: { options: NotificationOptions }[] }).__shown))[0]!;
+  expect(shown.options).toMatchObject({ body: "B", tag: "t", data: { url: "https://evil.example/x" } });
 });
 
 test.describe("opting in to notifications", () => {
