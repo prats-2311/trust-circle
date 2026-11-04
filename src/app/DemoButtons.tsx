@@ -28,16 +28,16 @@ export function DemoButtons() {
         <Button className="w-auto! px-7" disabled={busy} onClick={() => go("margaret")} data-testid="try-margaret">
           {label("margaret", "Try as Margaret")}
         </Button>
+        <Button variant="secondary" className="w-auto! px-7" disabled={busy} onClick={() => go("daniel")} data-testid="try-daniel">
+          {label("daniel", "Try as Daniel, her grandson")}
+        </Button>
         <Button variant="secondary" className="w-auto! px-7" disabled={busy} onClick={() => go("sarah")} data-testid="try-sarah">
           {label("sarah", "Try as Sarah, her daughter")}
         </Button>
       </div>
       <details className="text-[16px] text-ink-2">
-        <summary className="min-h-[44px] cursor-pointer py-2 font-bold">Other demo accounts</summary>
+        <summary className="min-h-[44px] cursor-pointer py-2 font-bold">Also built: business and edge cases</summary>
         <div className="flex flex-wrap gap-3 pt-2">
-          <Button variant="quiet" className="w-auto!" disabled={busy} onClick={() => go("daniel")} data-testid="try-daniel">
-            {label("daniel", "Daniel, the grandson")}
-          </Button>
           <Button variant="quiet" className="w-auto!" disabled={busy} onClick={() => go("priya")} data-testid="try-priya">
             {label("priya", "Priya, a freelancer (business)")}
           </Button>

@@ -13,7 +13,7 @@ export const SCREENS: Screen[] = [
   { name: "landing", as: null, prepare: async (p) => { await p.goto("/"); await settle(p); } },
   {
     name: "landing-other-accounts", as: null,
-    prepare: async (p) => { await p.goto("/"); await p.getByText("Other demo accounts").click(); await settle(p); },
+    prepare: async (p) => { await p.goto("/"); await p.getByText("Also built: business and edge cases").click(); await settle(p); },
   },
   { name: "home", as: "margaret", prepare: async (p) => { await p.goto("/home"); await p.getByTestId("home-send").waitFor(); } },
   { name: "check-input", as: "margaret", prepare: async (p) => { await p.goto("/check"); await settle(p); } },

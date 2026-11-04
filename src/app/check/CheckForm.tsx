@@ -5,6 +5,9 @@ import { Field, INPUT } from "@/ui/Field";
 import { AudioTile } from "./CheckResult";
 import { FinePrint, Screen, Title } from "@/ui/Screen";
 
+const EXAMPLE_MESSAGE =
+  "Hi Grandma it's me, I lost my phone so this is my new number. I need $800 in gift cards today. Please don't tell mom. Text me at +1 (415) 555-0199";
+
 export function CheckForm({
   text, onText, file, preview, onFile, error, busy, onSubmit,
 }: {
@@ -44,6 +47,11 @@ export function CheckForm({
             className={`${INPUT} py-3.5`}
           />
         </Field>
+        {!file && (
+          <Button variant="secondary" onClick={() => onText(EXAMPLE_MESSAGE)} data-testid="check-example">
+            Try an example message
+          </Button>
+        )}
         {file && (audio || preview) ? (
           <div className="flex items-center gap-4">
             {audio ? (

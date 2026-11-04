@@ -102,6 +102,15 @@ function Ready({ state, markRead }: { state: Extract<State, { kind: "ready" }>; 
       <h2 className="mt-7 text-[19px] font-bold">Needs you</h2>
       <div className="mt-2.5 flex flex-col gap-3">
         {nothing && <Notice tone="info">Nothing needs you right now.</Notice>}
+        {verifyRequests.map((a) => (
+          <Card key={a.id} className="flex flex-col gap-3.5">
+            <Chip tone="held">Waiting for you</Chip>
+            <span className="text-[21px] font-extrabold leading-snug">{a.title}</span>
+            <ButtonLink href={a.path} data-testid="answer-verification">
+              Answer
+            </ButtonLink>
+          </Card>
+        ))}
         {state.items.map(({ held, senderName }) => {
           const left = timeLeftText(holdProgress({ authorisedAt: held.authorisedAt, coolingOffUntil: held.coolingOffUntil, now }).msLeft);
           return (
@@ -117,15 +126,6 @@ function Ready({ state, markRead }: { state: Extract<State, { kind: "ready" }>; 
             </Card>
           );
         })}
-        {verifyRequests.map((a) => (
-          <Card key={a.id} className="flex flex-col gap-3.5">
-            <Chip tone="held">Waiting for you</Chip>
-            <span className="text-[21px] font-extrabold leading-snug">{a.title}</span>
-            <ButtonLink href={a.path} data-testid="answer-verification">
-              Answer
-            </ButtonLink>
-          </Card>
-        ))}
       </div>
 
       {earlier.length > 0 && (
@@ -148,9 +148,6 @@ function Ready({ state, markRead }: { state: Extract<State, { kind: "ready" }>; 
       <div className="mt-auto flex flex-col gap-2.5 pt-8">
         <ButtonLink href="/circle/dashboard" variant="secondary">
           See all payments
-        </ButtonLink>
-        <ButtonLink href="/trends" variant="quiet" className="w-auto! self-center">
-          Scam trends
         </ButtonLink>
       </div>
     </>

@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { HoldRing } from "@/ui/HoldRing";
 import { DemoButtons } from "./DemoButtons";
 
 const STEPS = [
-  { title: "Check the message", body: "Paste a text or a screenshot. The AI explains what gave the scam away, in plain words.", tone: "evergreen" },
-  { title: "Pause the payment", body: "A risky payment is approved in PayPal but held, so the money doesn't leave and the pressure is off.", tone: "evergreen" },
-  { title: "Ask the real person", body: "“Did you just ask Grandma for $800?” One tap from the real Daniel stops it.", tone: "held" },
+  { title: "Check the message", body: "Paste a text or a screenshot. The AI explains what gave the scam away, in plain words. (as Margaret)", tone: "evergreen" },
+  { title: "Pause the payment", body: "A risky payment is approved in PayPal but held, so the money doesn't leave and the pressure is off. (as Margaret)", tone: "evergreen" },
+  { title: "Ask the real person", body: "“Did you just ask Grandma for $800?” One tap from the real Daniel stops it. (as Daniel)", tone: "held" },
   { title: "Warn other families", body: "A confirmed scam account is flagged for everyone, and reworded versions of the script are caught too.", tone: "held" },
 ] as const;
 
@@ -84,6 +85,12 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-[1200px] flex-wrap justify-between gap-4 px-6 pb-10 pt-7 text-[16px] text-ink-2">
           <span>Built for the PayPal AI Hackathon with PayPal Orders and Payouts, Groq, AG Grid and Render.</span>
           <span>A hackathon project, not a PayPal product.</span>
+        </div>
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-4 px-6 pb-8 text-[16px] text-ink-2">
+          <span className="font-bold">Also built</span>
+          <Link href="/trends" className="inline-flex min-h-[44px] items-center font-bold text-evergreen underline underline-offset-4">
+            Scam trends
+          </Link>
         </div>
       </footer>
     </div>
