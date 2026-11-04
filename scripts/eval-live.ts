@@ -106,7 +106,7 @@ async function main() {
     "",
     "## What these numbers mean",
     "",
-    `When the AI cannot check a payment, Trust Circle fails closed: the rules hold it, so an unchecked scam payment counts as held and an unchecked genuine payment counts as a false hold. A message the AI cannot check is shown as unchecked, never as safe, but the scoring here still counts an unchecked scam message as a miss. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is ${metrics.total} hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run: ${retried.length} of the ${metrics.total} cases needed a retry, and a repeat run can differ slightly.`,
+    `When the AI cannot check a payment, Trust Circle fails closed: it holds the payment, so an unchecked scam payment counts as held and an unchecked genuine payment counts as a false hold. A message the AI cannot check is shown as unchecked, never as safe, but the scoring here still counts an unchecked scam message as a miss. Each unchecked case gets one retry, after twice the normal pause, and the cause above is the error the AI service returned on the last attempt. The set is ${metrics.total} hand-written cases, so these numbers show behaviour on known situations, not real-world rates. This is a single run: ${retried.length} of the ${metrics.total} cases needed a retry, and a repeat run can differ slightly.`,
     "",
   ].join("\n");
   mkdirSync("docs/eval", { recursive: true });

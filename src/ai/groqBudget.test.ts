@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createGroqBudget } from "./groqBudget";
+import { groqChat } from "./groqClient";
+import { createGroqTranscriber } from "./groqTranscriber";
 
 const GROQ = "https://api.groq.com/openai/v1/chat/completions";
 const okFetch = () => vi.fn().mockResolvedValue(new Response("{}"));
@@ -51,5 +53,15 @@ describe("createGroqBudget", () => {
     await f(new URL(GROQ));
     await f(new Request(GROQ));
     expect(count).toHaveBeenCalledTimes(2);
+  });
+
+  it("turns into a failed result, not a throw, for groqChat and the transcriber", async () => {
+    const inner = okFetch();
+    const spent = createGroqBudget({ cap: 1, count: async () => 2, fetchImpl: inner });
+    const chat = await groqChat({ apiKey: "k", model: "m", messages: [], json: false, timeoutMs: 1000, fetchImpl: spent });
+    expect(chat).toEqual({ ok: false, error: "GroqBudgetError" });
+    const transcribe = createGroqTranscriber({ apiKey: "k", model: "m", fetchImpl: spent });
+    expect(await transcribe({ bytes: new Uint8Array([1]), format: "webm" })).toEqual({ ok: false, error: "GroqBudgetError" });
+    expect(inner).not.toHaveBeenCalled();
   });
 });

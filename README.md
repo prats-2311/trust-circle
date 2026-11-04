@@ -148,7 +148,7 @@ The text model used for the evaluation below was `qwen/qwen3.8-27b` (see [docs/e
 Two rules hold everywhere:
 
 - **The AI can raise the risk level, never lower it.** The final level is the higher of the rule level and the AI's level (`src/risk/decide.ts`).
-- **It fails closed.** If the AI is unavailable or its answer fails the schema, a payment with any signal is held. A message is shown as unchecked, never as safe.
+- **It fails closed.** If the AI is unavailable or its answer fails the schema, the payment is held, whatever the rules said. A message is shown as unchecked, never as safe.
 
 Text from messages, payments and tool results is treated as data. The prompts say so, and the aftercare agent's output is checked against a fixed schema.
 
@@ -178,7 +178,7 @@ The same run, scored on payments with the rules alone (first-time payee, unusual
 
 No rules-only setting matches the AI. Six of the scams are deliberately hard for rules: an everyday amount to a new payee, or a payee already paid (a friend's hacked account). The rules see nothing wrong; the AI reads the sender's own words and holds all six. Scam messages have no rules-only score at all: without AI, nothing reads the text.
 
-**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, the app holds any payment with a rule signal: that holds 22 of 23 scams but also 11 of 20 genuine payments, and the payee-already-paid scam goes through. The set is 79 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
+**Reading it honestly.** The AI can only raise a rule's level, never lower it, so the six hard genuine payments (a roofer's deposit, a funeral home, a new contractor, an apartment deposit, a garage bill, a friend's cabin share) keep the rules' warning. They still go through after the warning. 4 false alarms come from the pattern matcher, whose seed patterns are likely too broad for some ordinary messages. If the AI is unavailable, a payment it cannot check is held: that holds 23 of 23 scams and also 20 of 20 genuine payments. The set is 79 hand-written cases (the 12 hard payments and 4 remote-access cases were committed before the runs that scored them), so these numbers show behaviour on known situations, not real-world rates. This is a single run, and a repeat run can differ slightly. Run it yourself with `npm run eval:live`.
 
 ## Architecture
 

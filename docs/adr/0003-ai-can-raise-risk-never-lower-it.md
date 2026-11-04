@@ -23,5 +23,5 @@ a model can be wrong, can be talked round by text inside a scam message, and can
 - A prompt injection can't talk a payment below the rules' floor.
 - The AI can't reduce false alarms from the rules, only add catches. The README's accuracy section reports this
   honestly, with a rules-only comparison (`src/eval/rulesOnly.ts`).
-- With the AI down, a scam to a payee already paid, for an everyday amount, has no rule signal and goes through.
-  This is documented and tested (`src/eval/eval.test.ts`, case h02).
+- With the AI down, every payment is held, including a scam to a payee already paid for an everyday amount (case h02).
+  This is tested in `src/eval/eval.test.ts`.
