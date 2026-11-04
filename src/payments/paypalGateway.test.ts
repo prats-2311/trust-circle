@@ -379,4 +379,29 @@ describe("paypal gateway", () => {
       expect(sent).toBe("");
     });
   });
+
+  describe("reads", () => {
+    it("reads an authorisation's status", async () => {
+      server.use(token(), http.get(`${BASE}/v2/payments/authorizations/AUTH1`, () => HttpResponse.json({ id: "AUTH1", status: "VOIDED" })));
+      expect(await gw.getAuthorizationStatus({ authorizationId: "AUTH1" })).toEqual({ status: "VOIDED" });
+    });
+
+    it("reads a capture's status", async () => {
+      server.use(token(), http.get(`${BASE}/v2/payments/captures/CAP1`, () => HttpResponse.json({ id: "CAP1", status: "COMPLETED" })));
+      expect(await gw.getCaptureStatus({ captureId: "CAP1" })).toEqual({ status: "COMPLETED" });
+    });
+
+    it("a 404 on a read is a PayPalError with the status", async () => {
+      server.use(
+        token(),
+        http.get(`${BASE}/v2/payments/authorizations/AUTH1`, () =>
+          HttpResponse.json({ name: "RESOURCE_NOT_FOUND", details: [{ issue: "INVALID_RESOURCE_ID" }], debug_id: "D1" }, { status: 404 }),
+        ),
+      );
+      const e = (await gw.getAuthorizationStatus({ authorizationId: "AUTH1" }).catch((x: unknown) => x)) as PayPalError;
+      expect(e).toBeInstanceOf(PayPalError);
+      expect(e.status).toBe(404);
+      expect(e.issue).toBe("INVALID_RESOURCE_ID");
+    });
+  });
 });

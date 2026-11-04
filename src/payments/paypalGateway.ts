@@ -24,6 +24,10 @@ export interface PayPalGateway {
    * no money can be taken either way, but PayPal did not confirm a void just now.
    */
   voidAuthorization(a: { paymentId: string; authorizationId: string }): Promise<VoidResult>;
+  /** PayPal's own status for an authorisation ("CREATED", "VOIDED", ...), or null when the body has none. */
+  getAuthorizationStatus(a: { authorizationId: string }): Promise<{ status: string | null }>;
+  /** PayPal's own status for a capture ("COMPLETED", "REFUNDED", ...), or null when the body has none. */
+  getCaptureStatus(a: { captureId: string }): Promise<{ status: string | null }>;
   sendPayout(a: { paymentId: string; receiver: string; amountCents: number }): Promise<{ payoutBatchId: string }>;
   refundCapture(a: { paymentId: string; captureId: string }): Promise<{ refundId: string }>;
   /** True only when PayPal itself says the signature is valid. Any other answer or failure is false. */
@@ -202,6 +206,24 @@ export function createPayPalGateway(opts: { clientId: string; clientSecret: stri
           return { status: null, alreadyReleased: err.issue as AlreadyReleased };
         }
         throw err;
+      }
+    },
+
+    async getAuthorizationStatus({ authorizationId }) {
+      try {
+        const { result } = await payments.getAuthorizedPayment({ authorizationId });
+        return { status: result?.status ?? null };
+      } catch (e) {
+        throw toPayPalError(e, "getAuthorizationStatus");
+      }
+    },
+
+    async getCaptureStatus({ captureId }) {
+      try {
+        const { result } = await payments.getCapturedPayment({ captureId });
+        return { status: result?.status ?? null };
+      } catch (e) {
+        throw toPayPalError(e, "getCaptureStatus");
       }
     },
 
