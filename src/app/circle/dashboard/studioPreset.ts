@@ -30,11 +30,11 @@ export const studioPreset: AgReportState = {
       widgetLayout: {
         moneyProtected: { xTrack: 0, yTrack: 0, xSpan: 10, ySpan: 8 },
         paypalCheck: { xTrack: 10, yTrack: 0, xSpan: 14, ySpan: 8 },
-        filterStatus: { xTrack: 0, yTrack: 8, xSpan: 8, ySpan: 11 },
-        filterSender: { xTrack: 8, yTrack: 8, xSpan: 8, ySpan: 11 },
-        filterScam: { xTrack: 16, yTrack: 8, xSpan: 8, ySpan: 11 },
-        byScamType: { xTrack: 0, yTrack: 19, xSpan: 12, ySpan: 16 },
-        heldPerWeek: { xTrack: 12, yTrack: 19, xSpan: 12, ySpan: 16 },
+        filterStatus: { xTrack: 0, yTrack: 8, xSpan: 8, ySpan: 12 },
+        filterSender: { xTrack: 8, yTrack: 8, xSpan: 8, ySpan: 12 },
+        filterScam: { xTrack: 16, yTrack: 8, xSpan: 8, ySpan: 12 },
+        byScamType: { xTrack: 0, yTrack: 20, xSpan: 12, ySpan: 16 },
+        heldPerWeek: { xTrack: 12, yTrack: 20, xSpan: 12, ySpan: 16 },
       },
       filter: {
         widget: {

@@ -124,3 +124,49 @@ test("the explore board's widgets follow the filters", async ({ page }) => {
   await board.first().getByText("Sent", { exact: true }).first().click();
   await expect.poll(() => money.innerText()).not.toBe(before);
 });
+
+const LAYOUT_KEY = "tc.studio.layout.v1";
+
+test("Customise is remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  const board = page.getByTestId("studio-board");
+  await expect(board.getByText("Filter by: Sender")).toBeVisible();
+  await page.getByRole("button", { name: "Customise" }).click();
+  await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset layout" })).toBeVisible();
+  // Remove the Sender filter widget.
+  const sender = board.locator("div").filter({ hasText: "Filter by: Sender" }).filter({ has: page.locator('[aria-label="Delete"]') }).last();
+  await sender.hover();
+  await sender.locator('[aria-label="Delete"]').click({ force: true });
+  await expect(board.getByText("Filter by: Sender")).toHaveCount(0);
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("button", { name: "Reset layout" })).toHaveCount(0);
+  await expect.poll(() => page.evaluate((k) => localStorage.getItem(k), LAYOUT_KEY)).toContain('"v":1');
+  await page.reload();
+  await expect(board.getByText("Filter by: Status")).toBeVisible();
+  await expect(board.getByText("Filter by: Sender")).toHaveCount(0);
+  // Reset brings the preset back and forgets the saved layout.
+  await page.getByRole("button", { name: "Customise" }).click();
+  await page.getByRole("button", { name: "Reset layout" }).click();
+  await expect(board.getByText("Filter by: Sender")).toBeVisible();
+  expect(await page.evaluate((k) => localStorage.getItem(k), LAYOUT_KEY)).toBeNull();
+});
+
+test("a broken saved layout falls back to the preset", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript((k) => localStorage.setItem(k, "{not json"), LAYOUT_KEY);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByText("Payments by scam type").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("a saved layout Studio rejects falls back to the preset", async ({ page }) => {
+  const bad = JSON.stringify({ v: 1, state: { pages: [{ id: "x", widgets: { w: { type: "nope" } } }], selectedPageId: "missing" } });
+  await page.addInitScript(([k, v]) => localStorage.setItem(k!, v!), [LAYOUT_KEY, bad]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByText("Payments by scam type").first()).toBeVisible();
+});
