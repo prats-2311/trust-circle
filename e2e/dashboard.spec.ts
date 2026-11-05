@@ -86,3 +86,20 @@ test("the trends page draws the chart and the totals table", async ({ page }) =>
   await expect(page.getByTestId("trends-chart").locator("canvas").first()).toBeVisible();
   await expect(page.getByText("Family member in trouble").first()).toBeVisible();
 });
+
+test("on desktop the dashboard has an explore board", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByRole("heading", { name: "Explore your circle's payments" })).toBeVisible();
+  await expect(page.getByText("Payments by scam type").first()).toBeVisible();
+  await expect(page.locator(".ag-root").first()).toBeVisible();
+  await expect(page.getByTestId("status-stopped").first()).toBeVisible();
+});
+
+test("on a phone the explore board isn't loaded", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByTestId("money-protected")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Explore your circle's payments" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});

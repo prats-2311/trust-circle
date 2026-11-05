@@ -11,6 +11,7 @@ import { SignedOut } from "@/ui/SignedOut";
 import { Skeleton } from "@/ui/Skeleton";
 import { AftercareCard } from "./AftercareCard";
 import { DashboardGrid } from "./DashboardGrid";
+import { StudioBoardLazy } from "./StudioBoardLazy";
 
 export default function CircleDashboardPage() {
   const [data, setData] = useState<CircleDashboard | null>(null);
@@ -76,6 +77,7 @@ export default function CircleDashboardPage() {
           {[...new Map(data.rows.map((r) => [r.senderId, r.senderName])).entries()].map(([senderId, senderName]) => (
             <AftercareCard key={senderId} senderId={senderId} senderName={senderName} rows={data.rows.filter((r) => r.senderId === senderId)} />
           ))}
+          <StudioBoardLazy rows={data.rows} says={says} />
           {data.rows.length === 0 ? <p className="text-[17px] text-ink-2">No payments yet. When someone in your circle sends money, it shows here.</p> : <DashboardGrid rows={data.rows} says={says} />}
           {data.rows.length > 0 && <p className="mt-4 text-[16px] text-ink-3">Includes example payments created for this demo.</p>}
         </>
