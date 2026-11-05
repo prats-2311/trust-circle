@@ -9,6 +9,8 @@
   <img src="docs/images/payment-stopped.png" alt="Margaret's screen: Payment stopped. Your money is safe." width="45%">
 </p>
 
+<img src="docs/images/landing.png" alt="The landing page: Scammers pretend to be someone you trust, So we ask that person, with three buttons to try the demo as Margaret, Daniel or Sarah" width="100%">
+
 Trust Circle holds a risky PayPal payment and checks with the person the scammer is pretending to be, and with the sender's family, before any money moves. It runs entirely in the PayPal sandbox. No real money moves.
 
 **Built with:** PayPal Orders v2 (authorize, capture, void), Payouts, verified Webhooks, Agent Toolkit, Server SDK (APIMatic-generated) · Groq · AG Grid / AG Charts / AG Studio · APIMatic Context Plugin · Render
@@ -79,6 +81,10 @@ Every payment is assessed before PayPal is involved. Signals are computed in cod
 
 When the sender's answer names someone ("my grandson Daniel"), the AI identifies who is being impersonated. If that person is in the circle, they get an alert: "Did you just ask Margaret for $800?" **It wasn't me** voids the payment and puts the payee on the shared scam list. **Yes, it was me** releases it. If the claimed requester is an organisation, such as a bank or PayPal support, the app shows how to reach it through official routes and keeps the payment held. When the sender says a claimed company is connected to their computer or phone (the remote-access "refund" scam, where a fake balance is shown on screen), the payment is always held and the first step is to end the connection. With a circle, the decision is made on another person's phone, which the scammer can't control.
 
+<img src="docs/images/payment-waiting.png" alt="Margaret's screen: We've asked Daniel if it was really them, with a See what Daniel sees link" width="300" align="right">
+
+While Margaret waits, the demo shows a **See what Daniel sees** link that switches to his screen.
+
 <br clear="right">
 
 ### 4. The safe word and the memory challenge
@@ -116,6 +122,8 @@ A reported scam adds its identifiers to a shared list as unconfirmed. An entry i
 *The findings in this screenshot are a sample report in the app's real format, so the picture doesn't depend on a live model run.*
 
 From the dashboard, Sarah can ask an agent to review Margaret's recent payments for anything the earlier checks missed. The agent can only read: its PayPal tools are `list_transactions` and `get_order`, scoped in code to Margaret's own payments. Findings are graded "Needs action", "Worth a check" or "For information", and "What the agent checked" lists every tool call. If a completed payment went to an account that is now on the scam list, the finding says so and Sarah can copy a dispute draft. The app never sends it and never moves money.
+
+<img src="docs/images/explore-board.png" alt="The AG Studio explore board: money protected, how many payments match PayPal, filters for status, sender and scam type, and two charts" width="100%">
 
 ## How PayPal is used
 

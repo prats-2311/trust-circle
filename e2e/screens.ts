@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { Persona } from "../src/server/demo";
 import {
-  PAYMENT_ID, PAYMENT_KINDS, STUB_PAYEE, VERIFY_ID, stubAftercare, stubCircleAlerts, stubCircleReview, stubHighRiskPayment, stubNotChecked, stubPayment, stubScamCheck, stubVerify,
+  PAYMENT_ID, PAYMENT_KINDS, STUB_PAYEE, VERIFY_ID, stubAftercare, stubCircleAlerts, stubCircleReview, stubHighRiskPayment, stubNotChecked, stubPayPalSays, stubPayment, stubScamCheck, stubVerify,
 } from "./stubs";
 
 export type Screen = { name: string; as: Persona | null; prepare: (page: Page) => Promise<void> };
@@ -23,6 +23,16 @@ export const SCREENS: Screen[] = [
       await stubScamCheck(p);
       await p.goto("/check");
       await p.getByLabel("The message").fill("Hi Grandma it's me, new number. I need $800 in gift cards today.");
+      await p.getByTestId("check-submit").click();
+      await p.getByTestId("check-result-scam").waitFor();
+    },
+  },
+  {
+    name: "check-example-scam", as: "margaret",
+    prepare: async (p) => {
+      await stubScamCheck(p);
+      await p.goto("/check");
+      await p.getByTestId("check-example").click();
       await p.getByTestId("check-submit").click();
       await p.getByTestId("check-result-scam").waitFor();
     },
@@ -70,11 +80,27 @@ export const SCREENS: Screen[] = [
     name: "circle-dashboard-aftercare", as: "sarah",
     prepare: async (p) => {
       await stubAftercare(p);
+      await stubPayPalSays(p);
       await p.goto("/circle/dashboard");
       await p.locator(".ag-root").first().waitFor();
+      // The explore board shows from tablet width up.
+      if ((p.viewportSize()?.width ?? 0) >= 768) {
+        await p.getByTestId("studio-paypal-check").getByText("Matches PayPal").waitFor();
+        await p.locator("canvas").nth(1).waitFor({ timeout: 20_000 });
+        await p.getByTestId("studio-paypal-check").getByText("Matches PayPal").waitFor();
+        await p.getByText("Family member in trouble").first().waitFor();
+        await p.waitForTimeout(2500);
+      }
       await p.getByTestId("aftercare-run").click();
       await p.getByTestId("aftercare-finding").first().waitFor();
       await p.getByTestId("aftercare-tools").locator("summary").click();
+      if ((p.viewportSize()?.width ?? 0) >= 768) {
+        // Grow the window to the whole page first: a full-page screenshot resizes it, and the explore board redraws blank while it does.
+        const width = p.viewportSize()!.width;
+        await p.setViewportSize({ width, height: await p.evaluate(() => document.documentElement.scrollHeight) });
+        await p.waitForTimeout(3000);
+        await p.getByTestId("studio-paypal-check").getByText("Matches PayPal").waitFor();
+      }
     },
   },
   { name: "trends", as: "sarah", prepare: async (p) => { await p.goto("/trends"); await settle(p); } },

@@ -146,3 +146,21 @@ export async function stubNewNumberCheck(page: Page) {
     }),
   );
 }
+
+const PAYPAL_WORD: Record<string, string> = {
+  on_hold: "CREATED", in_progress: "CAPTURED", stopped: "VOIDED", hold_ended: "EXPIRED", sent: "COMPLETED", refunded: "REFUNDED", returning: "REFUNDED",
+};
+
+/** PayPal's own word for each of the circle's payments, matching ours, so the board's PayPal check shows real counts. Sign in as sarah first. */
+export async function stubPayPalSays(page: Page) {
+  await page.route("**/api/circle/dashboard/paypal", async (r) => {
+    const res = await page.request.get("/api/circle/dashboard");
+    const { rows } = (await res.json()) as { rows: { id: string; status: string }[] };
+    const says: Record<string, { label: string; matches: boolean | null }> = {};
+    rows.forEach((row, i) => {
+      const word = PAYPAL_WORD[row.status];
+      if (word && i % 5 !== 4) says[row.id] = { label: { CREATED: "On hold", CAPTURED: "Captured", VOIDED: "Voided", EXPIRED: "Expired", COMPLETED: "Captured", REFUNDED: "Refunded" }[word] ?? word, matches: true };
+    });
+    await r.fulfill({ json: { says } });
+  });
+}
