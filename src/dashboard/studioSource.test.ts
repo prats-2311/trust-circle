@@ -30,6 +30,11 @@ describe("toStudioRows", () => {
     expect(r[0]!.date).toBe("2026-11-05T15:30:00.000Z");
   });
 
+  it("puts the payments in date order, oldest first", () => {
+    const r = toStudioRows([row({ createdAt: new Date("2026-11-09T00:00:00Z") }), row({ createdAt: new Date("2026-10-05T00:00:00Z") })]);
+    expect(r.map((x) => x.week)).toEqual(["2026-10-05", "2026-11-09"]);
+  });
+
   it("maps all three PayPal check values", () => {
     const says = { a: { label: "Voided", matches: true }, b: { label: "Captured", matches: false }, c: { label: "Not checked", matches: null } };
     const r = toStudioRows([row({ id: "a" }), row({ id: "b" }), row({ id: "c" }), row({ id: "d" })], says);

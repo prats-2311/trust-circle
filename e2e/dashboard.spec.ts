@@ -170,3 +170,18 @@ test("a saved layout Studio rejects falls back to the preset", async ({ page }) 
   await page.goto("/circle/dashboard");
   await expect(page.getByText("Payments by scam type").first()).toBeVisible();
 });
+
+test("a filter picked in view mode is not remembered", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  const money = page.getByTestId("studio-money-protected");
+  await expect(money).toContainText("Money protected");
+  const before = await money.innerText();
+  await page.getByTestId("studio-board").getByText("Sent", { exact: true }).first().click();
+  await expect.poll(() => money.innerText()).not.toBe(before);
+  await page.waitForTimeout(1200); // longer than the save debounce
+  expect(await page.evaluate((k) => localStorage.getItem(k), LAYOUT_KEY)).toBeNull();
+  await page.reload();
+  await expect(page.getByTestId("studio-money-protected")).toContainText("Money protected");
+  await expect.poll(() => page.getByTestId("studio-money-protected").innerText()).toBe(before);
+});

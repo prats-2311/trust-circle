@@ -21,7 +21,7 @@ function store(): Storage | null {
   }
 }
 
-export default function StudioBoard({ rows, says }: { rows: DashboardRow[]; says?: Record<string, PayPalSays> }) {
+export default function StudioBoard({ rows, says, forcePreset = false }: { rows: DashboardRow[]; says?: Record<string, PayPalSays>; forcePreset?: boolean }) {
   const data = useMemo(
     () =>
       ({
@@ -51,13 +51,29 @@ export default function StudioBoard({ rows, says }: { rows: DashboardRow[]; says
   );
   const [editing, setEditing] = useState(false);
   // A saved layout wins over the preset; a bad one is dropped by the error handler below.
-  const [initial, setInitial] = useState<AgReportState>(() => (loadLayout(store()) as AgReportState | null) ?? studioPreset);
+  const [initial, setInitial] = useState<AgReportState>(() => (forcePreset ? null : (loadLayout(store()) as AgReportState | null)) ?? studioPreset);
   const [instance, setInstance] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+  // The newest state seen while customising, not yet written to storage.
+  const pending = useRef<AgReportState | null>(null);
+  const editingRef = useRef(false);
+  useEffect(() => {
+    editingRef.current = editing;
+  }, [editing]);
+
+  const flush = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    if (pending.current) saveLayout(store(), pending.current);
+    pending.current = null;
+  }, []);
+  // Leaving the page keeps what was customised.
+  useEffect(() => flush, [flush]);
 
   const restorePreset = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
     clearLayout(store());
     setInitial(studioPreset);
     setInstance((n) => n + 1);
@@ -68,7 +84,10 @@ export default function StudioBoard({ rows, says }: { rows: DashboardRow[]; says
   return (
     <div>
       <div className="mb-3 flex flex-wrap gap-3">
-        <button type="button" className={btn} aria-pressed={editing} onClick={() => setEditing((e) => !e)}>
+        <button type="button" className={btn} onClick={() => {
+            if (editing) flush();
+            setEditing((e) => !e);
+          }}>
           {editing ? "Done" : "Customise"}
         </button>
         {editing && (
@@ -88,9 +107,11 @@ export default function StudioBoard({ rows, says }: { rows: DashboardRow[]; says
             mode={editing ? "edit" : "view"}
             panels={editing ? undefined : panels}
             onStateUpdated={(e) => {
-              if (!e.durable) return;
+              // Only what you customise is remembered, never a filter pick made in view mode.
+              if (!e.durable || !editingRef.current) return;
+              pending.current = e.state;
               if (timer.current) clearTimeout(timer.current);
-              timer.current = setTimeout(() => saveLayout(store(), e.state), 500);
+              timer.current = setTimeout(flush, 500);
             }}
             onErrorRaised={(e) => {
               // A saved layout Studio can't load: fall back to the preset and forget it.

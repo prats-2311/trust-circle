@@ -17,6 +17,7 @@ services:
       - { key: PAYPAL_CLIENT_SECRET, sync: false }
       - { key: NEXT_PUBLIC_PAYPAL_CLIENT_ID, sync: false }
       - { key: PAYPAL_WEBHOOK_ID, sync: false }
+      - { key: NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY, sync: false }
       - { key: GROQ_API_KEY, sync: false }
       - { key: GROQ_TEXT_MODEL, sync: false }
       - { key: GROQ_VISION_MODEL, sync: false }

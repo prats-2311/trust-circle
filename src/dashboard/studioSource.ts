@@ -18,7 +18,9 @@ export type StudioRow = {
 };
 
 export function toStudioRows(rows: DashboardRow[], says?: Record<string, PayPalSays>): StudioRow[] {
-  return rows.map((r) => {
+  // Oldest first, so a chart grouped by week reads left to right in time.
+  const ordered = [...rows].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return ordered.map((r) => {
     const s = says?.[r.id];
     // Over the wire createdAt is an ISO string, whatever the type says.
     const at = new Date(r.createdAt);
