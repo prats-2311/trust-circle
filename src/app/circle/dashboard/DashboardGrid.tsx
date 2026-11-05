@@ -114,7 +114,7 @@ export function DashboardGrid({ rows, says }: { rows: DashboardRow[]; says?: Rec
   };
 
   return (
-    <section aria-label="Payments in your circle">
+    <section aria-label="Payments in your circle" data-testid="payments-grid">
       <label htmlFor="grid-search" style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>
         Search payments
       </label>

@@ -92,8 +92,15 @@ test("on desktop the dashboard has an explore board", async ({ page }) => {
   await page.goto("/circle/dashboard");
   await expect(page.getByRole("heading", { name: "Explore your circle's payments" })).toBeVisible();
   await expect(page.getByText("Payments by scam type").first()).toBeVisible();
-  await expect(page.locator(".ag-root").first()).toBeVisible();
+  await expect(page.getByTestId("payments-grid")).toBeVisible();
   await expect(page.getByTestId("status-stopped").first()).toBeVisible();
+});
+
+test("at tablet width the explore board renders without scrolling the page", async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 900 });
+  await page.goto("/circle/dashboard");
+  await expect(page.getByText("Payments by scam type").first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(800);
 });
 
 test("on a phone the explore board isn't loaded", async ({ page }) => {
@@ -101,5 +108,6 @@ test("on a phone the explore board isn't loaded", async ({ page }) => {
   await page.goto("/circle/dashboard");
   await expect(page.getByTestId("money-protected")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Explore your circle's payments" })).toHaveCount(0);
+  await expect(page.getByTestId("payments-grid")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });

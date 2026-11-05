@@ -1,6 +1,6 @@
 import type { DashboardRow } from "./dashboardService";
 import type { PayPalSays } from "./paypalSays";
-import { mondayOf } from "@/registry/registryRepo";
+import { mondayOf } from "@/domain/week";
 
 export type StudioRow = {
   date: string;

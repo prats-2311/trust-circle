@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { mondayOf } from "@/domain/week";
 import type { IdentifierType, ScamType } from "@/domain/types";
 import type { RegistrySource } from "./confirmation";
+
+export { mondayOf };
 
 export interface RegistryEntry {
   id: string;
@@ -26,12 +29,6 @@ export interface RegistryRepo {
   setStatus(entryId: string, status: "unconfirmed" | "confirmed", at: Date): Promise<void>;
   listKeys(): Promise<{ confirmed: string[]; unconfirmed: string[] }>;
   weeklyCounts(since: Date): Promise<WeeklyCount[]>;
-}
-
-export function mondayOf(d: Date): string {
-  const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
-  return day.toISOString().slice(0, 10);
 }
 
 export function createMemoryRegistryRepo(): RegistryRepo {
