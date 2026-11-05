@@ -11,6 +11,8 @@ export const studioPreset: AgReportState = {
     {
       id: "overview",
       widgets: {
+        moneyProtected: { type: "money-protected", dataMapping: { value: [{ ...f("stopped"), aggregation: "sum" }] } },
+        paypalCheck: { type: "paypal-check", dataMapping: { value: [f("paypalCheck")], count: [{ ...f("amount"), aggregation: "count" }] } },
         filterStatus: { type: "list-filter", dataMapping: { value: [f("status")] }, format: { title: { text: "Status", enabled: true } } },
         filterSender: { type: "list-filter", dataMapping: { value: [f("sender")] }, format: { title: { text: "Sender", enabled: true } } },
         filterScam: { type: "list-filter", dataMapping: { value: [f("scamType")] }, format: { title: { text: "Scam type", enabled: true } } },
@@ -26,11 +28,13 @@ export const studioPreset: AgReportState = {
         },
       },
       widgetLayout: {
-        filterStatus: { xTrack: 0, yTrack: 0, xSpan: 8, ySpan: 13 },
-        filterSender: { xTrack: 8, yTrack: 0, xSpan: 8, ySpan: 13 },
-        filterScam: { xTrack: 16, yTrack: 0, xSpan: 8, ySpan: 13 },
-        byScamType: { xTrack: 0, yTrack: 13, xSpan: 12, ySpan: 16 },
-        heldPerWeek: { xTrack: 12, yTrack: 13, xSpan: 12, ySpan: 16 },
+        moneyProtected: { xTrack: 0, yTrack: 0, xSpan: 10, ySpan: 8 },
+        paypalCheck: { xTrack: 10, yTrack: 0, xSpan: 14, ySpan: 8 },
+        filterStatus: { xTrack: 0, yTrack: 8, xSpan: 8, ySpan: 11 },
+        filterSender: { xTrack: 8, yTrack: 8, xSpan: 8, ySpan: 11 },
+        filterScam: { xTrack: 16, yTrack: 8, xSpan: 8, ySpan: 11 },
+        byScamType: { xTrack: 0, yTrack: 19, xSpan: 12, ySpan: 16 },
+        heldPerWeek: { xTrack: 12, yTrack: 19, xSpan: 12, ySpan: 16 },
       },
       filter: {
         widget: {

@@ -111,3 +111,16 @@ test("on a phone the explore board isn't loaded", async ({ page }) => {
   await expect(page.getByTestId("payments-grid")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test("the explore board's widgets follow the filters", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/circle/dashboard");
+  const money = page.getByTestId("studio-money-protected");
+  await expect(money).toContainText("Money protected");
+  const before = await money.innerText();
+  await expect(page.getByTestId("studio-paypal-check")).toContainText("Matches PayPal");
+  // Keep only one status that isn't "Stopped": the stopped money drops out of the total.
+  const board = page.locator("[data-testid=studio-board], body");
+  await board.first().getByText("Sent", { exact: true }).first().click();
+  await expect.poll(() => money.innerText()).not.toBe(before);
+});

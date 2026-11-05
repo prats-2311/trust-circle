@@ -5,6 +5,7 @@ import { studioTheme } from "ag-studio";
 import type { DashboardRow } from "@/dashboard/dashboardService";
 import type { PayPalSays } from "@/dashboard/paypalSays";
 import { toStudioRows } from "@/dashboard/studioSource";
+import { studioWidgets } from "./studioWidgets";
 import { STUDIO_SOURCE_ID, studioPreset } from "./studioPreset";
 
 const theme = studioTheme.withParams({
@@ -49,7 +50,7 @@ export default function StudioBoard({ rows, says }: { rows: DashboardRow[]; says
   return (
     <AgStudioProvider licenseKey={process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY}>
       <div style={{ height: 700 }}>
-        <AgStudio data={data} initialState={studioPreset} theme={theme} mode="view" panels={panels} />
+        <AgStudio data={data} widgets={studioWidgets} initialState={studioPreset} theme={theme} mode="view" panels={panels} />
       </div>
     </AgStudioProvider>
   );
