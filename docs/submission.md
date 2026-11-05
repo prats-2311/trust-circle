@@ -132,7 +132,7 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 >    - Password: **USER TO FILL (privately, on Devpost only)**
 > 3. The payment is held. Tap **See what Daniel sees** (or **Switch person**, then **Try as Daniel, her grandson**). Open the request and tap **It wasn't me**.
 > 4. Sign in as Margaret again: "Payment stopped. Your money is safe."
-> 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts), which is under **Also built** at the foot of the landing page (tap **Switch person** to get there).
+> 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts): tap **Switch person** (it goes to the demo buttons), then scroll down to **Also built** in the footer of the landing page.
 >
 > Other accounts, under **Also built: business and edge cases**: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Just me, no circle).
 >
@@ -144,7 +144,7 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 
 ### 28799: AG Grid experience
 
-> AG Grid powers the trusted contact's dashboard: every payment in the circle with its status, amount, scam type and the reasons it was held, with search and sorting. AG Charts draws the scam-trends page as a stacked bar chart of reports by scam type over 12 weeks, with an AG Grid table beside it. The Community editions covered the grid and the charts. Theming both to our design tokens took the most care, and on phones the grid switches to four columns (status, date, payee, amount) so it stays readable at 390 px without sideways scrolling. From tablet width up the dashboard also has an AG Studio explore board (`ag-studio-react`, `src/app/circle/dashboard/StudioBoard.tsx`): two custom widgets (`studioWidgets.tsx`, money protected and the PayPal check), our theme (`studioTheme.ts`), filters and charts over the same payments, and a Customise mode with a saved layout (`studioLayout.ts`). We also tried the Studio Agent Framework and did not ship it: it was too slow and inaccurate on our model.
+> AG Grid powers the trusted contact's dashboard: every payment in the circle with its status, amount, scam type and the reasons it was held, with search and sorting. AG Charts draws the scam-trends page as a stacked bar chart of reports by scam type over 12 weeks, with an AG Grid table beside it. The Community editions covered the grid and the charts. Theming both to our design tokens took the most care, and on phones the grid switches to four columns (status, date, payee, amount) so it stays readable at 390 px without sideways scrolling. From 640 px wide up the dashboard also has an AG Studio explore board (`ag-studio-react`, `src/app/circle/dashboard/StudioBoard.tsx`): two custom widgets (`studioWidgets.tsx`, money protected and the PayPal check), our theme (`studioTheme.ts`), filters and charts over the same payments, and a Customise mode with a saved layout (`studioLayout.ts`). We also tried the Studio Agent Framework and did not ship it: it was too slow and inaccurate on our model.
 
 ### 29053: AI tools used while building
 

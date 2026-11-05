@@ -47,7 +47,7 @@ The landing page signs you in as a demo person with one tap. There is no sign-up
 
 5. Tap **See what Daniel sees** (or **Switch person**, then **Try as Daniel, her grandson**). Open the request and tap **It wasn't me**. The authorisation is voided and the payee goes on the shared scam list.
 6. Sign back in as Margaret: "Payment stopped. Your money is safe."
-7. Sign in as **Sarah** (**Try as Sarah, her daughter**). Her circle shows what happened. Tap **See all payments** for the dashboard (AG Grid) and **Review recent payments** for the aftercare agent, then go back. **Scam trends** (AG Charts) is under **Also built** at the foot of the landing page (tap **Switch person** to get there).
+7. Sign in as **Sarah** (**Try as Sarah, her daughter**). Her circle shows what happened. Tap **See all payments** for the dashboard (AG Grid) and **Review recent payments** for the aftercare agent, then go back. For **Scam trends** (AG Charts), tap **Switch person** (it goes to the demo buttons), then scroll down to **Also built** in the footer of the landing page.
 
 The shared demo resets to its clean story every day at 09:00 UTC.
 
@@ -113,7 +113,7 @@ Margaret gets a calm, blame-free result. Every line on it is backed by something
 
 <img src="docs/images/trends.png" alt="Scam trends: a stacked bar chart of reports by scam type over 12 weeks, and a table" width="100%">
 
-A reported scam adds its identifiers to a shared list as unconfirmed. An entry is confirmed when a contact stops a payment to it, a real person says "It wasn't me", or two different people report it. A payment to a confirmed entry is high risk for every user. The AI also writes a short anonymised description of each reported script. It is embedded with a local MiniLM model and stored in pgvector, so a reworded version of a known scam is caught even when every phone number and link is new. Only the anonymised description is stored, never the message. The trends page groups reports by scam type over 12 weeks.
+A reported scam adds its identifiers to a shared list as unconfirmed. An entry is confirmed when a contact stops a payment to it, a real person says "It wasn't me", or two different people report it. A payment to a confirmed entry is high risk for every user. The AI also writes a short anonymised description of each reported script. It is embedded with a local MiniLM model and stored in pgvector, so a reworded version of a known scam is caught even when every phone number and link is new. Only the anonymised description goes into the shared pattern store, never the message or its phone numbers. The sender's own check history keeps the text (for a screenshot, the words read from it; for a voice note, the transcript), never the screenshot or the audio. The trends page groups reports by scam type over 12 weeks.
 
 ### 7. Aftercare
 
@@ -135,7 +135,7 @@ From the dashboard, Sarah can ask an agent to review Margaret's recent payments 
 | Payouts | Pays the payee by email or phone after capture | `src/payments/paypalGateway.ts` (`sendPayout`) |
 | Refunds | Refunds the sender when a payout fails | `src/payments/paypalGateway.ts` (`refundCapture`), `src/payments/paymentService.ts` |
 | Webhooks, verified online | Checks every event with `/v1/notifications/verify-webhook-signature`, stores it once per event id, and turns a returned, failed, blocked, canceled or refunded payout into `payout_failed`, which the sweep then refunds | `src/app/api/paypal/webhook/route.ts`, `src/webhooks/webhookService.ts` |
-| Get authorisation, get capture ("PayPal says") | Sarah's dashboard shows PayPal's own status for each payment beside ours ("Voided", "Captured", "Refunded"…) and flags "Doesn't match" when they disagree. At most 20 reads a load, 4 at a time, cached for 10 minutes and re-read when our state changes; a failed read shows "Not checked", and the column answers within 8 seconds. From tablet width up the same data feeds an AG Studio explore board with custom widgets, our theme and a saved layout ("Customise") | `src/payments/paypalGateway.ts` (`getAuthorizationStatus`, `getCaptureStatus`), `src/dashboard/paypalSays.ts`, `src/app/circle/dashboard/StudioBoard.tsx` |
+| Get authorisation, get capture ("PayPal says") | Sarah's dashboard shows PayPal's own status for each payment beside ours ("Voided", "Captured", "Refunded"…) and flags "Doesn't match" when they disagree. At most 20 reads a load, 4 at a time, cached for 10 minutes and re-read when our state changes; a failed read shows "Not checked", and the column answers within 8 seconds. From 640 px wide up the same data feeds an AG Studio explore board with custom widgets, our theme and a saved layout ("Customise") | `src/payments/paypalGateway.ts` (`getAuthorizationStatus`, `getCaptureStatus`), `src/dashboard/paypalSays.ts`, `src/app/circle/dashboard/StudioBoard.tsx` |
 | Agent Toolkit (`@paypal/agent-toolkit`) | Aftercare, read-only: `list_transactions` and `get_order` only. Disputes and refunds are not exposed. | `src/aftercare/tools.ts` |
 
 Every money-moving PayPal call carries a `PayPal-Request-Id` derived from the payment id, so a retry can't move money twice. The server SDK is `@paypal/paypal-server-sdk`. The gateway refuses any base URL other than the sandbox.
@@ -237,7 +237,7 @@ flowchart LR
   AI --> GROQ
   PP -- "signed webhook events" --> WH
   WH --> PAY
-  GHA -- "every 5 min: /api/cron/expire" --> API
+  GHA -- "every 15 min: /api/cron/expire" --> API
   GHA -- "09:00 UTC: /api/cron/demo-reset" --> API
   App -- "every module reads and writes" --> DB
 ```
@@ -265,7 +265,7 @@ The main design decisions, with their reasons and costs:
 
 ## Sponsor tools
 
-- **AG Grid and AG Charts.** The circle dashboard's payment table is AG Grid (`src/app/circle/dashboard/DashboardGrid.tsx`), and the scam trends page uses AG Charts for the stacked bar chart and AG Grid for the table (`src/app/trends/TrendsView.tsx`). From tablet width up the dashboard also has an AG Studio (`ag-studio-react`) explore board: two custom widgets (`studioWidgets.tsx`), our theme (`studioTheme.ts`), filters and charts over the same payments, and a Customise mode whose layout is remembered in the browser (`studioLayout.ts`). We also tried the Studio Agent Framework and did not ship it: it was too slow and inaccurate on our model.
+- **AG Grid and AG Charts.** The circle dashboard's payment table is AG Grid (`src/app/circle/dashboard/DashboardGrid.tsx`), and the scam trends page uses AG Charts for the stacked bar chart and AG Grid for the table (`src/app/trends/TrendsView.tsx`). From 640 px wide up the dashboard also has an AG Studio (`ag-studio-react`) explore board: two custom widgets (`studioWidgets.tsx`), our theme (`studioTheme.ts`), filters and charts over the same payments, and a Customise mode whose layout is remembered in the browser (`studioLayout.ts`). We also tried the Studio Agent Framework and did not ship it: it was too slow and inaccurate on our model.
 - **APIMatic.** PayPal's server SDK, `@paypal/paypal-server-sdk`, is generated by APIMatic, and we built against it with the APIMatic PayPal Context Plugin in Claude Code. The plugin's per-operation contracts shaped three money-safety fixes in `src/payments/paypalGateway.ts` and the "PayPal says" check (`getAuthorizedPayment` and `getCapturedPayment`, with their error arms).
 - **Render.** The app is hosted on a Render free web service, defined by the Blueprint in [`render.yaml`](render.yaml).
 
