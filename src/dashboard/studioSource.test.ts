@@ -38,8 +38,8 @@ describe("toStudioRows", () => {
   it("maps all three PayPal check values", () => {
     const says = { a: { label: "Voided", matches: true }, b: { label: "Captured", matches: false }, c: { label: "Not checked", matches: null } };
     const r = toStudioRows([row({ id: "a" }), row({ id: "b" }), row({ id: "c" }), row({ id: "d" })], says);
-    expect(r.map((x) => x.paypalCheck)).toEqual(["Matches", "Doesn't match", "Not checked", "Not checked"]);
-    expect(r.map((x) => x.paypalSays)).toEqual(["Voided", "Captured", "Not checked", "Not checked"]);
+    expect(r.map((x) => x.paypalCheck)).toEqual(["Matches", "Doesn't match", "Not checked", "Not at PayPal"]);
+    expect(r.map((x) => x.paypalSays)).toEqual(["Voided", "Captured", "Not checked", ""]);
   });
 
   it("only counts stopped money as stopped", () => {
@@ -53,6 +53,18 @@ describe("toStudioRows", () => {
 
   it("says Not checked when there are no PayPal answers at all", () => {
     const r = toStudioRows([row()])[0]!;
+    expect(r.paypalSays).toBe("Not checked");
+    expect(r.paypalCheck).toBe("Not checked");
+  });
+
+  it("says Not at PayPal for a payment with no entry once answers are in", () => {
+    const r = toStudioRows([row({ id: "x" })], { other: { label: "Voided", matches: true } })[0]!;
+    expect(r.paypalSays).toBe("");
+    expect(r.paypalCheck).toBe("Not at PayPal");
+  });
+
+  it("says Not checked for an entry whose read failed (matches null)", () => {
+    const r = toStudioRows([row({ id: "x" })], { x: { label: "Not checked", matches: null } })[0]!;
     expect(r.paypalSays).toBe("Not checked");
     expect(r.paypalCheck).toBe("Not checked");
   });

@@ -36,6 +36,13 @@ function PayPalCheck(params: AgWidgetParams<any>) {
     ["Doesn't match", "Doesn't match"],
     ["Not checked", "Not checked"],
   ];
+  if (cells.every(([, key]) => counts[key] === 0)) {
+    return (
+      <div data-testid="studio-paypal-check" className={`${tile} text-ink-2`}>
+        No payments have reached PayPal yet.
+      </div>
+    );
+  }
   return (
     <div data-testid="studio-paypal-check" className={`${tile} flex gap-4`}>
       {cells.map(([label, key]) => {

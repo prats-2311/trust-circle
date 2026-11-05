@@ -12,7 +12,7 @@ export type StudioRow = {
   risk: string;
   scamType: string;
   paypalSays: string;
-  paypalCheck: "Matches" | "Doesn't match" | "Not checked";
+  paypalCheck: "Matches" | "Doesn't match" | "Not checked" | "Not at PayPal";
   stopped: number;
   reasons: string;
 };
@@ -34,8 +34,8 @@ export function toStudioRows(rows: DashboardRow[], says?: Record<string, PayPalS
       status: r.statusLabel,
       risk: r.riskLevel,
       scamType: r.scamTypeLabel,
-      paypalSays: s ? s.label : "Not checked",
-      paypalCheck: s?.matches === true ? "Matches" : s?.matches === false ? "Doesn't match" : "Not checked",
+      paypalSays: s ? s.label : says ? "" : "Not checked",
+      paypalCheck: s ? (s.matches === true ? "Matches" : s.matches === false ? "Doesn't match" : "Not checked") : says ? "Not at PayPal" : "Not checked",
       stopped: r.status === "stopped" ? amount : 0,
       reasons: r.reasons.join("; "),
     };

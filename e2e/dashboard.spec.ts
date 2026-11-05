@@ -114,6 +114,10 @@ test("on a phone the explore board isn't loaded", async ({ page }) => {
 
 test("the explore board's widgets follow the filters", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
+  // Local seeded payments have no PayPal ids, so give every payment an answer.
+  const dash = (await (await page.request.get("/api/circle/dashboard")).json()) as { rows: { id: string }[] };
+  const says = Object.fromEntries(dash.rows.map((r) => [r.id, { label: "Voided", matches: true }]));
+  await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ json: { says } }));
   await page.goto("/circle/dashboard");
   const money = page.getByTestId("studio-money-protected");
   await expect(money).toContainText("Money protected");
@@ -184,4 +188,11 @@ test("a filter picked in view mode is not remembered", async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId("studio-money-protected")).toContainText("Money protected");
   await expect.poll(() => page.getByTestId("studio-money-protected").innerText()).toBe(before);
+});
+
+test("PayPal check says so when no payment has reached PayPal", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route("**/api/circle/dashboard/paypal", (r) => r.fulfill({ json: { says: {} } }));
+  await page.goto("/circle/dashboard");
+  await expect(page.getByTestId("studio-paypal-check")).toContainText("No payments have reached PayPal yet.");
 });
