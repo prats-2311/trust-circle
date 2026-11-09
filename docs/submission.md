@@ -25,7 +25,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 - **Safe word and memory challenge.** If the real person doesn't answer in 10 minutes, the sender is coached to ask the caller for the safe word or a memory question. The challenge is one-way: a wrong answer or an excuse stops the payment, and a right one never releases a high-risk payment by itself.
 - **The circle decides.** A trusted contact (Sarah, the daughter) can stop or approve. Approve captures the authorisation and pays the payee out with PayPal Payouts. If nobody decides, the sender can release it after a cooling-off period (24 hours by default), and the hold is voided after 72 hours.
 - **A shared scam list that learns.** A payee confirmed as a scam (stopped by a contact, denied by the real person, or reported by two people) is high risk for everyone. The AI writes an anonymised description of each reported script, embedded locally and matched in pgvector, so reworded versions are caught too. Trends are charted with AG Charts.
-- **Aftercare.** An agent built on PayPal's Agent Toolkit reviews the sender's recent payments for anything the earlier checks missed. It can only read (`list_transactions` and `get_order`, scoped in code to that sender), and for a completed payment to a now-confirmed scammer it drafts a dispute the family copies and sends. It never moves money.
+- **Aftercare.** An agent built on PayPal's Agent Toolkit reviews the sender's recent payments for anything the earlier checks missed. For a completed payment to a now-confirmed scammer, it drafts a dispute the family copies and sends. Its PayPal tools are read-only (`list_transactions` and `get_order`, scoped in code to that sender), so the money moves only through the hold, void and capture the circle decides.
 - **Family, Business and Solo presets**, push alerts, an installable app, and a dashboard in AG Grid showing money protected and scams stopped.
 
 ### How we built it
@@ -55,7 +55,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 
 - Asking the impersonated person is a stronger check than any classifier, and it gets stronger as scams get better.
 - Holding an authorisation, rather than refusing a payment, removes the urgency without pushing the victim to another way of paying.
-- An AI's job in a money flow is best kept narrow: raise risk, explain it in plain words, read but never act.
+- The AI decides which payments must wait, and PayPal then holds, voids or captures them for real (in the sandbox). Its power is one-way: it can raise risk but never lower it, and it never releases money by itself.
 
 ### What's next
 
