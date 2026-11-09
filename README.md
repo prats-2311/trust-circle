@@ -338,7 +338,7 @@ A small-business version is next. The same engine already runs a Business preset
 - **Email alerts are off** unless Resend is configured. The demo uses in-app and push alerts.
 - **iPhone push** works only when the app is added to the Home Screen.
 - **The shared demo resets every day at 09:00 UTC.** Anyone in the middle of a story at that moment loses their state.
-- **Expiry runs on a GitHub Actions schedule**, which can run a few minutes late, so a hold can end a few minutes after 72 hours.
+- **Expiry and keep-warm run on GitHub Actions schedules.** They are set to every 15 and every 5 minutes, but GitHub runs them hours apart in practice, so a hold can end a few hours after 72 hours, and the first load after a quiet spell can take about a minute.
 - **Aftercare needs Transaction Search** switched on for the sandbox app. Sandbox data lags by about 3 hours, and older demo payments carry no `custom_id`, so the agent often falls back to Trust Circle's own records. It says so when it does.
 - **The pattern matcher costs false alarms** (see Accuracy).
 - **The new-number check needs a number to compare.** It only works when a number appears in the message or screenshot. A WhatsApp screenshot from a saved contact shows a name, not a number.

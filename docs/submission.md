@@ -33,7 +33,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 - **Next.js 16** (App Router, TypeScript), installable as a PWA with web push.
 - **PayPal:** Orders v2 with `AUTHORIZE` intent, approval in the JavaScript SDK v6, then authorize, capture or void, Payouts, refunds when a payout fails, and webhooks verified online with `verify-webhook-signature` and stored once per event id. Every money-moving PayPal call carries a `PayPal-Request-Id`, so retries can't move money twice. The aftercare agent uses `@paypal/agent-toolkit`, cut down to a read-only allow-list.
 - **AI:** Groq for the text and vision judgements, the aftercare tool loop and the pattern descriptions; `meta-llama/llama-prompt-guard-2-86m` on Groq as an injection screen; `all-MiniLM-L6-v2` running inside the server for embeddings, stored in pgvector.
-- **Money safety:** a payment state machine (`created → approved → authorised → held → released → captured → paid_out`, with `blocked`, `expired`, `voided`, `payout_failed` and `refunded`). Each decision is claimed in the database before PayPal is called, and a sweep every 15 minutes finishes anything interrupted.
+- **Money safety:** a payment state machine (`created → approved → authorised → held → released → captured → paid_out`, with `blocked`, `expired`, `voided`, `payout_failed` and `refunded`). Each decision is claimed in the database before PayPal is called, and a scheduled sweep finishes anything interrupted.
 - **Hosting:** Render free web service, Neon free Postgres with pgvector, and GitHub Actions schedules for hold expiry and a daily demo reset.
 - **Testing:** Vitest unit and integration tests, Playwright end-to-end stories against the real sandbox, a production smoke test, and a live evaluation on 79 labelled cases, with a rules-only comparison.
 
@@ -43,7 +43,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 - **Telling the truth on screen.** Early screens said things like "Sarah has been told" before any alert existed. We made a rule that every line must be backed by something that really happened, and added the alerts to make those lines true.
 - **AI you can't talk down.** Scam messages can contain instructions aimed at the AI. Rules set a floor the AI can't lower, Prompt Guard flags injected instructions, and the aftercare agent can only call two read-only tools on one person's data.
 - **Pattern matching without a paid service.** We first planned Elastic, but a trial would expire before judging, so we moved to pgvector with a local MiniLM model. It catches reworded scams, but it also raised false alarms, which we report.
-- **Free-tier hosting.** Render's free service has no cron, so expiry runs from a GitHub Actions schedule that also keeps the service awake.
+- **Free-tier hosting.** Render's free service has no cron, so expiry runs from a GitHub Actions schedule that also pings the service. GitHub runs these schedules far less often than asked (hours apart, not every few minutes), so the first load after a quiet spell can take about a minute.
 
 ### Accomplishments that we're proud of
 
