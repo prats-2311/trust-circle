@@ -11,7 +11,7 @@
 
 <img src="docs/images/landing.png" alt="The landing page: Scammers pretend to be someone you trust, So we ask that person, with three buttons to try the demo as Margaret, Daniel or Sarah" width="100%">
 
-Trust Circle holds a risky PayPal payment and checks with the person the scammer is pretending to be, and with the sender's family, before any money moves. It runs entirely in the PayPal sandbox. No real money moves.
+Trust Circle holds a risky PayPal payment and checks with the person the scammer is pretending to be, and with the sender's family, before any money moves. The AI (Groq) decides which payments must wait and who is being impersonated; PayPal then holds the payment as an authorisation and voids or captures it when the real person or the family decides. On 79 labelled cases, all 43 scams were held and 1 of 36 genuine cases was held. It runs entirely in the PayPal sandbox. No real money moves.
 
 **Built with:** PayPal Orders v2 (authorize, capture, void), Payouts, verified Webhooks, Agent Toolkit, Server SDK (APIMatic-generated) · Groq · AG Grid / AG Charts / AG Studio · APIMatic Context Plugin · Render
 
@@ -121,7 +121,7 @@ A reported scam adds its identifiers to a shared list as unconfirmed. An entry i
 
 *The findings in this screenshot are a sample report in the app's real format, so the picture doesn't depend on a live model run.*
 
-From the dashboard, Sarah can ask an agent to review Margaret's recent payments for anything the earlier checks missed. The agent can only read: its PayPal tools are `list_transactions` and `get_order`, scoped in code to Margaret's own payments. Findings are graded "Needs action", "Worth a check" or "For information", and "What the agent checked" lists every tool call. If a completed payment went to an account that is now on the scam list, the finding says so and Sarah can copy a dispute draft for her to send. Money moves only through the hold, void and capture the circle decides, never from the agent.
+From the dashboard, Sarah can ask an agent to review Margaret's recent payments for anything the earlier checks missed. It grades each finding "Needs action", "Worth a check" or "For information". If a completed payment went to an account that is now on the scam list, the finding says so and the agent drafts a dispute that Sarah copies and sends. "What the agent checked" lists every tool call. Its PayPal tools are `list_transactions` and `get_order`, read-only and scoped in code to Margaret's own payments, so money moves only through the hold, void and capture the circle decides.
 
 <img src="docs/images/explore-board.png" alt="The AG Studio explore board: money protected, how many payments match PayPal, filters for status, sender and scam type, and two charts" width="100%">
 
