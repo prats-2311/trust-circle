@@ -26,7 +26,7 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 - **The circle decides.** A trusted contact (Sarah, the daughter) can stop or approve. Approve captures the authorisation and pays the payee out with PayPal Payouts. If nobody decides, the sender can release it after a cooling-off period (24 hours by default), and the hold is voided after 72 hours.
 - **A shared scam list that learns.** A payee confirmed as a scam (stopped by a contact, denied by the real person, or reported by two people) is high risk for everyone. The AI writes an anonymised description of each reported script, embedded locally and matched in pgvector, so reworded versions are caught too. Trends are charted with AG Charts.
 - **Aftercare.** An agent built on PayPal's Agent Toolkit reviews the sender's recent payments for anything the earlier checks missed. For a completed payment to a now-confirmed scammer, it drafts a dispute the family copies and sends. Its PayPal tools are read-only (`list_transactions` and `get_order`, scoped in code to that sender), so the money moves only through the hold, void and capture the circle decides.
-- **Family, Business and Solo presets**, push alerts, an installable app, and a dashboard in AG Grid showing money protected and scams stopped.
+- **Family, Business and Solo presets**, push alerts, an installable app, and a dashboard in AG Grid and AG Studio showing money protected, scams stopped and, for each payment, whether PayPal's own record matches ours ("PayPal says").
 
 ### How we built it
 
