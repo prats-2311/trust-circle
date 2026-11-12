@@ -149,6 +149,17 @@ describe("aftercare agent", () => {
     expect(everything).toContain("50.00 USD");
   });
 
+  it("lowers the model's act to a check for a payment that was stopped, since no money left", async () => {
+    const { tools } = runner();
+    const stopped = (id: string, state: string) => ({ id, payee: "scam@x.com", amountCents: 80000, state, createdAt: "2026-10-11T00:00:00Z", confirmedScamPayee: true });
+    const P3 = "33333333-3333-4333-8333-333333333333";
+    const P4 = "44444444-4444-4444-8444-444444444444";
+    const i = input({ payments: [stopped(P1, "voided"), stopped(P2, "blocked"), stopped(P3, "expired"), stopped(P4, "held")] });
+    const model = JSON.stringify({ summary: "s", findings: [P1, P2, P3, P4].map((id) => ({ paymentId: id, severity: "act", title: `t-${id}`, detail: "d" })) });
+    const r = await runAftercareAgent(deps(vi.fn<Chat>().mockResolvedValueOnce(reply(model)), tools), i);
+    expect(r.findings.map((f) => [f.paymentId, f.severity])).toEqual([[P1, "check"], [P2, "check"], [P3, "check"], [P4, "act"]]);
+  });
+
   it("does not raise an act for a payment that was not completed", async () => {
     const { tools } = runner();
     const i = input({ payments: [{ id: P2, payee: "scam@x.com", amountCents: 100, state: "held", createdAt: "2026-10-11T00:00:00Z", confirmedScamPayee: true }] });

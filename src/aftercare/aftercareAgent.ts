@@ -38,6 +38,7 @@ const NO_PAYPAL = "PayPal's transaction history wasn't available, so this review
 const NO_AI = "The AI review couldn't run, so these findings come from Trust Circle's own checks.";
 const NO_AI_NOTHING = "The AI review couldn't run, and Trust Circle's own checks found nothing to flag.";
 const DAY_MS = 86_400_000;
+const STOPPED_STATES = new Set(["blocked", "voided", "expired"]);
 
 const modelOutput = z.object({
   summary: z.string().max(400),
@@ -138,12 +139,14 @@ function finish(content: string | null, input: AftercareInput, toolCalls: Afterc
     return null;
   }
   const known = new Set(input.payments.map((p) => p.id));
+  // No money left on a stopped payment, so the model may flag it but not ask the family to act on it.
+  const stopped = new Set(input.payments.filter((p) => STOPPED_STATES.has(p.state)).map((p) => p.id));
   // A model finding may not borrow the scam-payee title: that title is what unlocks the dispute draft, and only code earns it.
   const fromModel: AftercareFinding[] = parsed.findings
     .filter((f) => f.title !== SCAM_PAYEE_TITLE)
     .map((f) => ({
       paymentId: f.paymentId && known.has(f.paymentId) ? f.paymentId : null,
-      severity: f.severity,
+      severity: f.severity === "act" && f.paymentId && stopped.has(f.paymentId) ? ("check" as const) : f.severity,
       source: "model" as const,
       title: f.title,
       detail: f.detail,
