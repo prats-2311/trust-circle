@@ -126,13 +126,16 @@ The AI can raise a risk level, never lower it, and when it can't run the payment
 >
 > No sign-up: the landing page signs you in as a demo person with one tap.
 >
+> Please use a single browser tab and switch person inside it: all tabs share one sign-in, so switching person in a second tab while the PayPal window is open makes the approval fail.
+>
 > 1. Tap **Try as Margaret**. Open **Check a message** and paste: "Hi Grandma it's me, I lost my phone so this is my new number. I need $800 in gift cards today. Please don't tell mom. Text me at +1 (415) 555-0199". You'll see why it's a scam.
-> 2. Back home, tap **Send money**. Pay `daniel.newphone@example.com` $800. For "Who asked you to make this payment, and why?", write "My grandson Daniel called crying, he's in jail and needs bail money today." Tap **Continue, and let Sarah review it** on the pause screen and approve in the PayPal sandbox window with this sandbox buyer login:
+> 2. Back home, tap **Send money**. Pay `daniel.newphone@example.com` $800. For "Who asked you to make this payment, and why?", write "My grandson Daniel called crying, he's in jail and needs bail money today." On the pause screen, tap the yellow **Pay with PayPal** button under **Continue, and let Sarah review it**, sign in with this sandbox buyer login and press **Complete Purchase** (with the AUTHORIZE intent PayPal only authorises; nothing is captured yet):
 >    - Email: **USER TO FILL (privately, on Devpost only)**
 >    - Password: **USER TO FILL (privately, on Devpost only)**
 > 3. The payment is held. Tap **See what Daniel sees** (or **Switch person**, then **Try as Daniel, her grandson**). Open the request and tap **It wasn't me**.
-> 4. Sign in as Margaret again: "Payment stopped. Your money is safe."
-> 5. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts): tap **Switch person** (it goes to the demo buttons), then scroll down to **Also built** in the footer of the landing page.
+> 4. Tap **Switch person**, then **Try as Margaret**, and open the payment: "Payment stopped. Your money is safe." and "PayPal confirmed it: this payment is voided."
+> 5. Optional, the genuine case: as Margaret, send $800 to `rent@harbourlets.example` with "My grandson Daniel asked me to pay his rent deposit." It is held the same way; as Daniel tap **Yes, it was me**, and PayPal captures and pays it out.
+> 6. Tap **Try as Sarah, her daughter**. See what happened, open **See all payments** (AG Grid dashboard) and **Review recent payments** (the aftercare agent), then **Scam trends** (AG Charts): tap **Switch person** (it goes to the demo buttons), then scroll down to **Also built** in the footer of the landing page.
 >
 > Other accounts, under **Also built: business and edge cases**: Priya (a freelancer, Business preset) and Tom, her accountant; Robert (Just me, no circle).
 >
