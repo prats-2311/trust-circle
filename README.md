@@ -16,7 +16,7 @@ Trust Circle holds a risky PayPal payment and checks with the person the scammer
 **Built with:** PayPal Orders v2 (authorize, capture, void), Payouts, verified Webhooks, Agent Toolkit, Server SDK (APIMatic-generated) · Groq · AG Grid / AG Charts / AG Studio · APIMatic Context Plugin · Render
 
 - Live demo: https://trust-circle.onrender.com
-- Video (under 3 minutes): {{VIDEO_URL}}
+- Video (under 3 minutes): https://youtu.be/BVwy5WATI2c
 - Devpost: [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/)
 
 The live demo runs on a free Render service. If it has been asleep, the first page can take about a minute to load.

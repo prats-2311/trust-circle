@@ -1,6 +1,6 @@
 # Devpost submission drafts
 
-Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. `{{VIDEO_URL}}` is replaced once the video is recorded.
+Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids are from Devpost's submission requirements. Fields marked **USER TO FILL** are personal: the controller doesn't answer them. The demo video is https://youtu.be/BVwy5WATI2c.
 
 ## Project name and tagline
 
