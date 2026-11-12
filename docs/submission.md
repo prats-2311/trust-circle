@@ -11,7 +11,7 @@ Draft answers for the PayPal AI Hackathon form (`paypalaihackathon`). Field ids 
 
 ### Inspiration
 
-In 2025, people 60 and over reported losing $7.7 billion to online fraud, in 201,266 complaints to the FBI ([FBI IC3 2025 Internet Crime Report](https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf)). Many of these scams work by borrowing someone's trust: a grandchild in trouble, a bank, PayPal itself. They add urgency and secrecy so the victim doesn't check with anyone.
+In 2025, people 60 and over reported losing $7.7 billion to online fraud, in 201,266 complaints to the FBI; across all ages, people reported losing $17.7 billion ([FBI IC3 2025 Internet Crime Report](https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf)). Many of these scams work by borrowing someone's trust: a grandchild in trouble, a bank, PayPal itself. They add urgency and secrecy so the victim doesn't check with anyone.
 
 Most of today's protections guess. Bank fraud models score the payment, scam checkers score the message, and when a bank calls to confirm, it calls the sender, who is the one being fooled. Detection alone is an arms race: every new script has to be recognised. We wanted to break the trick itself. A scammer can copy a grandson's voice and story, but can't answer from the real grandson's phone. So we ask him.
 

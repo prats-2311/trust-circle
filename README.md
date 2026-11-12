@@ -53,7 +53,7 @@ The shared demo resets to its clean story every day at 09:00 UTC.
 
 ## The problem
 
-**In 2025, people 60 and over reported losing $7.7 billion to online fraud.** 201,266 complaints to the FBI. Source: [FBI IC3 2025 Internet Crime Report](https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf).
+**In 2025, people 60 and over reported losing $7.7 billion to online fraud.** 201,266 complaints to the FBI. Across all ages, people reported losing $17.7 billion to online fraud. Source: [FBI IC3 2025 Internet Crime Report](https://www.ic3.gov/AnnualReport/Reports/2025_IC3Report.pdf).
 
 Many scams work by borrowing someone's trust: a grandchild, a bank, PayPal itself. Most of today's protections guess: bank fraud models score the payment, scam checkers score the message, and a bank's confirmation call goes to the sender, who is the one being fooled. Trust Circle doesn't try to out-guess every new script. It asks the one person a scammer can't fake, the real grandson on his own phone, and lets him say no.
 
