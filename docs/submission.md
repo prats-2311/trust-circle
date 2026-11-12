@@ -19,6 +19,8 @@ Most of today's protections guess. Bank fraud models score the payment, scam che
 
 Trust Circle is a protected way to send money with PayPal. It's a working reference for a setting PayPal could offer on every account, built only on PayPal's public APIs and running in the sandbox.
 
+![The real Daniel is asked on his own phone; "It wasn't me" voids the payment in PayPal](https://raw.githubusercontent.com/prats-2311/trust-circle/main/docs/images/story-ask-the-real-person.png)
+
 - **Check a message.** Paste a text, or add a screenshot or a voice note. A voice note is turned into words with Groq Whisper; the audio is never kept. Groq judges it and explains, in plain words, what gave the scam away. Meta's Prompt Guard screens the text for instructions aimed at the AI first. If a message claims to be someone in the circle but comes from a number that isn't theirs, it says so first: "It came from +1 (415) 555-0199, not Daniel's number." One tap adds the scammer's contact details to the shared scam list and drafts a report to `phishing@paypal.com` in the user's own email app.
 - **Guarded send.** Each payment is assessed by rules in code and then by the AI. The AI can raise the risk level, never lower it, and if it's unavailable the payment is held. A high-risk payment can still go ahead, but it is only authorised in PayPal and held. The sender feels they've "done it", so the pressure is off, yet the money hasn't left.
 - **Ask the real person.** When the sender says "my grandson Daniel asked", the AI identifies who is being impersonated. If Daniel is in the circle, he gets "Did you just ask Margaret for $800?" One tap on **It wasn't me** voids the authorisation. For a claimed bank or PayPal support, the app shows official routes and keeps the hold. In the remote-access "refund" scam, where a caller claiming to be a company controls the sender's computer and shows a fake balance, the payment is always held, the first step is to end the connection, and with a circle, the decision is made on someone else's phone, which the scammer can't touch.
@@ -30,12 +32,18 @@ Trust Circle is a protected way to send money with PayPal. It's a working refere
 
 ### How we built it
 
+![Architecture: Next.js on Render, PayPal sandbox, Groq, Neon Postgres with pgvector](https://raw.githubusercontent.com/prats-2311/trust-circle/main/docs/images/diagram-architecture.png)
+
+![The lead story, step by step](https://raw.githubusercontent.com/prats-2311/trust-circle/main/docs/images/diagram-lead-story.png)
+
 - **Next.js 16** (App Router, TypeScript), installable as a PWA with web push.
 - **PayPal:** Orders v2 with `AUTHORIZE` intent, approval in the JavaScript SDK v6, then authorize, capture or void, Payouts, refunds when a payout fails, and webhooks verified online with `verify-webhook-signature` and stored once per event id. Every money-moving PayPal call carries a `PayPal-Request-Id`, so retries can't move money twice. The aftercare agent uses `@paypal/agent-toolkit`, cut down to a read-only allow-list.
 - **AI:** Groq for the text and vision judgements, the aftercare tool loop and the pattern descriptions; `meta-llama/llama-prompt-guard-2-86m` on Groq as an injection screen; `all-MiniLM-L6-v2` running inside the server for embeddings, stored in pgvector.
 - **Money safety:** a payment state machine (`created → approved → authorised → held → released → captured → paid_out`, with `blocked`, `expired`, `voided`, `payout_failed` and `refunded`). Each decision is claimed in the database before PayPal is called, and a scheduled sweep finishes anything interrupted.
 - **Hosting:** Render free web service, Neon free Postgres with pgvector, and GitHub Actions schedules for hold expiry and a daily demo reset.
 - **Testing:** Vitest unit and integration tests, Playwright end-to-end stories against the real sandbox, a production smoke test, and a live evaluation on 79 labelled cases, with a rules-only comparison.
+
+![Payment states: each step is claimed before PayPal is called, so money never moves twice](https://raw.githubusercontent.com/prats-2311/trust-circle/main/docs/images/diagram-payment-states.png)
 
 ### Challenges we ran into
 
